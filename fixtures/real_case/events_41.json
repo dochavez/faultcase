@@ -1,0 +1,23 @@
+{
+  "description": "Kernel-Power 41 events from the real case (Lenovo, purchased January 2026). Local time UTC-06:00. Transcribed from Event Viewer.",
+  "events": [
+    {"time": "2026-04-22T20:38:54-06:00", "event_id": 41, "source": "Microsoft-Windows-Kernel-Power",
+     "BugcheckCode": 307, "params": ["0x1", "0x1e00", "0xfffff801c01c43b8", "0x0"],
+     "SleepInProgress": 0, "PowerButtonTimestamp": 0, "LidState": 1, "related_6008": "2026-04-22T20:39:07-06:00"},
+    {"time": "2026-04-30T17:34:39-06:00", "event_id": 41, "source": "Microsoft-Windows-Kernel-Power",
+     "BugcheckCode": 0, "params": ["0x0", "0x0", "0x0", "0x0"],
+     "SleepInProgress": 4, "PowerButtonTimestamp": 134220656452256797, "LidState": 1, "related_6008": "2026-04-30T17:34:51-06:00"},
+    {"time": "2026-07-17T11:00:57-06:00", "event_id": 41, "source": "Microsoft-Windows-Kernel-Power",
+     "BugcheckCode": 307, "params": ["0x1", "0x1e00", "0xfffff802bc7c43b8", "0x0"],
+     "SleepInProgress": 1, "PowerButtonTimestamp": 0, "LidState": 1, "related_6008": "2026-07-17T11:01:09-06:00"},
+    {"time": "2026-07-21T10:21:28-06:00", "event_id": 41, "source": "Microsoft-Windows-Kernel-Power",
+     "BugcheckCode": 307, "params": ["0x1", "0x1e00", "0xfffff80183dc43b8", "0x0"],
+     "SleepInProgress": 0, "PowerButtonTimestamp": 0, "LidState": 1, "related_6008": "2026-07-21T10:21:40-06:00"},
+    {"time": "2026-07-24T14:04:46-06:00", "event_id": 41, "source": "Microsoft-Windows-Kernel-Power",
+     "BugcheckCode": 0, "params": ["0x0", "0x0", "0x0", "0x0"],
+     "SleepInProgress": 4, "PowerButtonTimestamp": 0, "LidState": 0, "related_6008": "2026-07-24T14:04:58-06:00"},
+    {"time": "2026-10-23T20:45:23-06:00", "event_id": 41, "source": "Microsoft-Windows-Kernel-Power",
+     "BugcheckCode": 278, "params": ["0xffff8a85659d2010", "0xfffff80773b11050", "0xffffffffc000009a", "0x4"],
+     "SleepInProgress": 0, "PowerButtonTimestamp": 0, "LidState": 1, "related_6008": "2026-10-23T20:45:36-06:00"}
+  ]
+}

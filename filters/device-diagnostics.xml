@@ -1,0 +1,19 @@
+<ViewerConfig>
+  <QueryConfig>
+    <QueryParams>
+      <UserQuery />
+    </QueryParams>
+    <QueryNode>
+      <Name>FaultCase - Device diagnostics</Name>
+      <Description>System, disk, memory, CPU, display, update and application failures. Read-only.</Description>
+      <QueryList>
+        <Query Id="0" Path="System">
+          <Select Path="System">*[System[(EventID=41 or EventID=6008 or EventID=1001 or EventID=4101 or EventID=7 or EventID=51 or EventID=153 or EventID=129 or EventID=55 or EventID=98 or EventID=17 or EventID=18 or EventID=19 or EventID=47 or EventID=37 or EventID=20)]]</Select>
+        </Query>
+        <Query Id="1" Path="Application">
+          <Select Path="Application">*[System[(EventID=1000 or EventID=1002)]]</Select>
+        </Query>
+      </QueryList>
+    </QueryNode>
+  </QueryConfig>
+</ViewerConfig>

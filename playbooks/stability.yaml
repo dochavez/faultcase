@@ -1,0 +1,65 @@
+id: stability
+name: Unexpected reboots and blue screens
+component: system
+
+evidence:
+  - id: unexpected_reboot
+    event_id: 41
+    provider_contains: Kernel-Power
+    fields: [BugcheckCode, BugcheckParameter1, BugcheckParameter2, BugcheckParameter3,
+             BugcheckParameter4, SleepInProgress, PowerButtonTimestamp, LidState]
+  - id: unexpected_shutdown
+    event_id: 6008
+    provider_contains: EventLog
+  - id: bugcheck_logged
+    event_id: 1001
+    provider_contains: WER-SystemErrorReporting
+  - id: tdr_recovered
+    event_id: 4101
+    provider_contains: Display
+
+interpretation:
+  # BugcheckCode is DECIMAL in event 41.
+  codes:
+    278: {hex: "0x116", name: VIDEO_TDR_FAILURE, component: gpu,
+          explanation: "The display driver stopped responding and Windows could not recover it."}
+    307: {hex: "0x133", name: DPC_WATCHDOG_VIOLATION, component: driver,
+          explanation: "A driver took too long to respond and Windows stopped for safety."}
+    0:   {name: NO_BLUE_SCREEN, component: unknown,
+          explanation: "The device froze or lost power without producing a blue screen."}
+  rules:
+    - "An event 41 and an event 6008 less than 60 s apart are the SAME incident."
+    - "SleepInProgress > 0 means the incident happened during a sleep or hibernate transition."
+    - "PowerButtonTimestamp != 0 means the power button was pressed (possible forced shutdown after a freeze)."
+    - "BugcheckParameter3 = 0xffffffffc000009a in a 0x116 is STATUS_INSUFFICIENT_RESOURCES."
+    - "Many 4101 events without a blue screen also indicate display driver instability."
+
+patterns:
+  - id: repetition
+    condition: "3 or more incidents within 90 days"
+    severity: high
+  - id: same_module
+    condition: "2 or more dumps with the same IMAGE_NAME"
+    severity: high
+  - id: persists_across_driver_versions
+    condition: "the same module fails with 2 or more driver timestamps/versions"
+    severity: high
+    meaning: "Updating the driver did not fix it; points to hardware or a manufacturer-specific incompatibility."
+  - id: power_transition
+    condition: "50% or more of incidents with SleepInProgress > 0"
+    severity: medium
+    meaning: "Hypothesis: failure related to GPU low-power states."
+
+safe_fixes:
+  - "Install the display driver from the laptop manufacturer's support page (not only from NVIDIA/AMD)."
+  - "Install the BIOS updates offered by the manufacturer."
+
+escalate_if:
+  - "persists_across_driver_versions"
+  - "repetition and the device is under warranty"
+
+pre_claim_checklist:
+  - "Display driver installed from the laptop manufacturer's page."
+  - "BIOS on the latest version."
+  - "Manufacturer hardware scan run and exported (e.g. Lenovo Vantage)."
+  - "Serial number and purchase date at hand."

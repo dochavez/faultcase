@@ -1,0 +1,19 @@
+id: disk
+name: Disk and storage errors
+component: disk
+evidence:
+  - {id: bad_block, event_id: 7, provider_contains: disk}
+  - {id: paging_error, event_id: 51, provider_contains: disk}
+  - {id: io_retry, event_id: 153, provider_contains: disk}
+  - {id: controller_reset, event_id: 129, provider_contains_any: [stornvme, storahci, iaStor]}
+  - {id: ntfs_corruption, event_id: 55, provider_contains: Ntfs}
+  - {id: volume_needs_repair, event_id: 98, provider_contains: Ntfs}
+rules:
+  - "Any event 7 (bad block) is serious: recommend an immediate backup."
+  - "Several 129 or 153 events indicate a disk or controller that stops responding."
+safe_fixes:
+  - "Back up important files."
+escalate_if:
+  - "bad_block present"
+  - "5 or more controller_reset within 30 days"
+no_findings: "No disk errors were logged."

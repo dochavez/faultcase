@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Normalized evidence (OS-independent)",
+  "type": "object",
+  "required": ["os", "collected_at", "events"],
+  "properties": {
+    "os": {"enum": ["windows", "macos", "linux"]},
+    "collected_at": {"type": "string", "format": "date-time"},
+    "device": {
+      "type": "object",
+      "properties": {
+        "manufacturer": {"type": "string"},
+        "model": {"type": "string"},
+        "bios_version": {"type": "string"},
+        "gpu": {"type": "string"},
+        "gpu_driver_version": {"type": "string"},
+        "purchase_date": {"type": "string", "format": "date"}
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["time", "source", "event_id", "kind"],
+        "properties": {
+          "time": {"type": "string", "format": "date-time"},
+          "source": {"type": "string"},
+          "event_id": {"type": "integer"},
+          "kind": {"type": "string", "description": "playbook evidence id, e.g. unexpected_reboot"},
+          "playbook": {"type": "string"},
+          "code": {"type": ["integer", "null"]},
+          "params": {"type": "array", "items": {"type": "string"}},
+          "fields": {"type": "object"},
+          "incident_id": {"type": ["string", "null"], "description": "groups events of the same incident (41 + 6008 + dump)"}
+        }
+      }
+    },
+    "dumps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {"type": "string"},
+          "time": {"type": "string", "format": "date-time"},
+          "bugcheck_code": {"type": "string"},
+          "params": {"type": "array", "items": {"type": "string"}},
+          "image_name": {"type": "string"},
+          "symbol_name": {"type": "string"},
+          "failure_bucket_id": {"type": "string"},
+          "failure_id_hash": {"type": "string"},
+          "process_name": {"type": "string"},
+          "driver_timestamp": {"type": "string"}
+        }
+      }
+    }
+  }
+}

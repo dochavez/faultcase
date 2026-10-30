@@ -1,0 +1,38 @@
+BUGCHECK_CODE:  133
+BUGCHECK_P1: 1
+BUGCHECK_P2: 1e00
+BUGCHECK_P3: fffff802bc7c43b8
+BUGCHECK_P4: 0
+FILE_IN_CAB:  071726-15718-01.dmp
+DUMP_FILE_ATTRIBUTES: 0x21808
+  Kernel Generated Triage Dump
+FAULTING_THREAD:  ffffe70fec721040
+DPC_TIMEOUT_TYPE:  DPC_QUEUE_EXECUTION_TIMEOUT_EXCEEDED
+CUSTOMER_CRASH_COUNT:  1
+PROCESS_NAME:  System
+STACK_TEXT:  
+ffffd500`2f932c08 fffff802`bba9c95c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff802`bc7c43b8 : nt!KeBugCheckEx
+ffffd500`2f932c10 fffff802`bba9be8b     : 00000000`00000000 00000000`0398e1f6 00000000`00000000 ffffd500`2f916180 : nt!KeAccumulateTicks+0x59c
+ffffd500`2f932c80 fffff802`bbb3a9ce     : 00000000`00000000 00000893`8e2e410b ffffd500`2f916180 00000000`00000001 : nt!KiUpdateRunTime+0x9b
+ffffd500`2f932e40 fffff802`bbb3b3cc     : ffffe70f`ec77d360 ffffe70f`ec77d410 fffff802`bc78eee0 ffffd500`00000001 : nt!KeClockInterruptNotify+0x3ee
+ffffd500`2f932f40 fffff802`bbeace3e     : 00000000`00b81002 ffffe70f`ec77d360 00037f6d`ba813399 00000000`00000000 : nt!KiCallInterruptServiceRoutine+0x32c
+ffffd500`2f932fb0 fffff802`bbead64c     : 00000000`00000040 00000000`00000000 ffffe700`91477000 00000000`00000000 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e
+ffffc18b`46a4eef0 fffff802`69d17703     : 00000000`00000000 00000000`00000000 00000000`00000000 00000000`00000002 : nt!KiInterruptDispatchNoLockNoEtw+0x3c
+ffffc18b`46a4f080 00000000`00000000     : 00000000`00000000 00000000`00000000 00000000`00000002 00000000`00000000 : nvlddmkm+0xe7703
+SYMBOL_NAME:  nvlddmkm+e7703
+MODULE_NAME: nvlddmkm
+IMAGE_NAME:  nvlddmkm.sys
+BUCKET_ID_FUNC_OFFSET:  e7703
+FAILURE_BUCKET_ID:  0x133_ISR_nvlddmkm!unknown_function
+OSPLATFORM_TYPE:  x64
+OSNAME:  Windows 10
+FAILURE_ID_HASH:  {f97493a5-ea2b-23ca-a808-8602773c2a86}
+Followup:     MachineOwner
+---------
+1: kd> lmvm nvlddmkm
+start             end                 module name
+fffff802`69c30000 fffff802`70372000   nvlddmkm T (no symbols)
+    Image name: nvlddmkm.sys
+    Timestamp:        Wed Mar  4 16:33:40 2026 (69A8B344)
+    CheckSum:         064D8CD1
+    ImageSize:        06742000

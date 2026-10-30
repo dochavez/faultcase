@@ -1,0 +1,16 @@
+id: hardware
+name: Memory, CPU and bus errors (WHEA)
+component: hardware
+evidence:
+  - {id: whea_corrected, event_id: 17, provider_contains: WHEA-Logger}
+  - {id: whea_fatal, event_id: 18, provider_contains: WHEA-Logger}
+  - {id: whea_corrected_cpu, event_id: 19, provider_contains: WHEA-Logger}
+  - {id: whea_memory, event_id: 47, provider_contains: WHEA-Logger}
+rules:
+  - "Event 19 is also used by WindowsUpdateClient: ALWAYS filter by provider."
+  - "WHEA 18 (fatal) is strong evidence of a hardware failure."
+  - "Frequent WHEA 17/19/47 (corrected) may anticipate a failure."
+escalate_if:
+  - "whea_fatal present"
+  - "10 or more corrected WHEA events within 30 days"
+no_findings: "Windows logged no memory or CPU hardware errors."

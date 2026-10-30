@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+evidence/
+*.dmp
+.pytest_cache/
+.modal/
+logs/
+fixtures/real_case/failures.evtx

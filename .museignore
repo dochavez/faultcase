@@ -1,0 +1,6 @@
+.env
+.venv/
+evidence/
+*.dmp
+__pycache__/
+logs/

@@ -1,0 +1,28 @@
+# All three providers are OpenAI-compatible: switching between them
+# means changing base_url, api_key and model.
+
+providers:
+  meta:
+    base_url: https://api.meta.ai/v1
+    api_key_env: META_API_KEY
+    model: muse-spark-1.1          # check the hackathon console in case a newer version is assigned
+  baseten:
+    base_url: https://inference.baseten.co/v1
+    api_key_env: BASETEN_API_KEY
+    model_env: BASETEN_MODEL       # meta-models/muse-spark-open-1026 (hackathon model)
+  fireworks:
+    base_url: https://api.fireworks.ai/inference/v1
+    api_key_env: FIREWORKS_API_KEY
+    model: accounts/fireworks/models/muse-spark-open
+
+# Role → ordered list of providers. If one fails (error, timeout or invalid JSON
+# after one retry), the router moves to the next one.
+routes:
+  evidence_analysis: [baseten, fireworks]   # technical data: open-weights model
+  case_writing:      [meta, fireworks]      # manufacturer case and user explanation
+  tests:             [fireworks]            # tests marked as live
+
+settings:
+  timeout_seconds: 90
+  max_retries_per_provider: 1
+  log_usage: true      # tokens, latency and provider per call (to track cost)

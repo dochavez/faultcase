@@ -1,0 +1,23 @@
+{
+  "description": "Conclusions FaultCase MUST reach for this case. Never edit to make tests pass.",
+  "total_incidents": 6,
+  "incidents_with_dump": 4,
+  "freezes_without_dump": 2,
+  "codes_by_date": {
+    "2026-04-22": "0x133", "2026-04-30": "0x0", "2026-07-17": "0x133",
+    "2026-07-21": "0x133", "2026-07-24": "0x0", "2026-10-23": "0x116"
+  },
+  "common_module": "nvlddmkm.sys",
+  "dumps_with_common_module": 4,
+  "distinct_driver_timestamps": ["2026-03-04", "2026-02-14"],
+  "incidents_during_power_transition": 3,
+  "required_patterns": ["repetition", "same_module", "persists_across_driver_versions"],
+  "hypothesis_patterns": ["power_transition"],
+  "acceptable_verdicts": ["likely_hardware_fault", "likely_driver_fault"],
+  "minimum_confidence": "medium",
+  "must_not_claim": [
+    "that the FAILURE_ID_HASH proves the same defect as other machines",
+    "that the fault is definitely hardware (likely, not confirmed)"
+  ],
+  "photo_parameters_match": "2026-10-23"
+}

@@ -1,0 +1,39 @@
+BUGCHECK_CODE:  133
+BUGCHECK_P1: 1
+BUGCHECK_P2: 1e00
+BUGCHECK_P3: fffff80183dc43b8
+BUGCHECK_P4: 0
+FILE_IN_CAB:  072126-14468-01.dmp
+DUMP_FILE_ATTRIBUTES: 0x21808
+  Kernel Generated Triage Dump
+FAULTING_THREAD:  ffffbc8faa79f040
+DPC_TIMEOUT_TYPE:  DPC_QUEUE_EXECUTION_TIMEOUT_EXCEEDED
+CUSTOMER_CRASH_COUNT:  1
+PROCESS_NAME:  System
+STACK_TEXT:  
+ffffe400`23732998 fffff801`8309c95c     : 00000000`00000133 00000000`00000001 00000000`00001e00 fffff801`83dc43b8 : nt!KeBugCheckEx
+ffffe400`237329a0 fffff801`8309be8b     : 00000000`00000000 00000000`004aebc2 00000000`00000000 ffffe400`23716180 : nt!KeAccumulateTicks+0x59c
+ffffe400`23732a10 fffff801`8309bb40     : 00000000`00000018 ffffe400`22c02300 00000000`004aebc3 ffffe400`23732cd0 : nt!KiUpdateRunTime+0x9b
+ffffe400`23732bd0 fffff801`8313a86a     : 00000000`00000000 fffff801`83d212f0 ffffe400`23716180 00004370`3f6a5201 : nt!KiUpdateTime+0x380
+ffffe400`23732e40 fffff801`8313b3cc     : ffffbc8f`aa75c360 ffffbc8f`aa75c410 fffff801`83d8efe8 ffffe400`00000001 : nt!KeClockInterruptNotify+0x28a
+ffffe400`23732f40 fffff801`834ace3e     : ffffbc8f`affd3002 ffffbc8f`aa75c360 00000000`00000000 00000000`00000000 : nt!KiCallInterruptServiceRoutine+0x32c
+ffffe400`23732fb0 fffff801`834ad64c     : 00000000`00000000 00000000`00000020 00000000`00512c90 fffff801`31d77710 : nt!KiInterruptSubDispatchNoLockNoEtw+0x4e
+fffffe06`3d64eab0 fffff801`32473b10     : ffffbc8f`affd30f0 00000000`00000002 ffffbc8f`bfec1000 00000000`00000004 : nt!KiInterruptDispatchNoLockNoEtw+0x3c
+fffffe06`3d64ec40 ffffbc8f`affd30f0     : 00000000`00000002 ffffbc8f`bfec1000 00000000`00000004 fffffe06`3d64ecf0 : nvlddmkm+0x7e3b10
+SYMBOL_NAME:  nvlddmkm+7e3b10
+MODULE_NAME: nvlddmkm
+IMAGE_NAME:  nvlddmkm.sys
+BUCKET_ID_FUNC_OFFSET:  7e3b10
+FAILURE_BUCKET_ID:  0x133_ISR_nvlddmkm!unknown_function
+OSPLATFORM_TYPE:  x64
+OSNAME:  Windows 10
+FAILURE_ID_HASH:  {f97493a5-ea2b-23ca-a808-8602773c2a86}
+Followup:     MachineOwner
+---------
+lmvm nvlddmkm
+start             end                 module name
+fffff801`31c90000 fffff801`383d2000   nvlddmkm T (no symbols)
+    Image name: nvlddmkm.sys
+    Timestamp:        Wed Mar  4 16:33:40 2026 (69A8B344)
+    CheckSum:         064D8CD1
+    ImageSize:        06742000

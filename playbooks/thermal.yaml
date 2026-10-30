@@ -1,0 +1,13 @@
+id: thermal
+name: Temperature and CPU throttling
+component: cpu
+evidence:
+  - {id: firmware_throttling, event_id: 37, provider_contains: Kernel-Processor-Power}
+rules:
+  - "Event 37 means the firmware limited CPU speed, typically because of temperature."
+safe_fixes:
+  - "Use the laptop on a hard, ventilated surface."
+  - "Check the manufacturer's power mode."
+escalate_if:
+  - "firmware_throttling happens daily and the device is under warranty"
+no_findings: "No CPU throttling due to temperature was logged."

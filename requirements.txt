@@ -1,0 +1,12 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+jinja2>=3.1
+python-multipart>=0.0.9
+pydantic>=2.7
+pyyaml>=6.0
+openai>=1.40
+python-evtx>=0.8
+python-dotenv>=1.0
+jsonschema>=4.22
+pytest>=8.0
+modal>=0.64

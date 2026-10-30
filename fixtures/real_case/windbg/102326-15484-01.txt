@@ -1,0 +1,37 @@
+BUGCHECK_CODE:  116
+BUGCHECK_P1: ffff8a85659d2010
+BUGCHECK_P2: fffff80773b11050
+BUGCHECK_P3: ffffffffc000009a
+BUGCHECK_P4: 4
+FILE_IN_CAB:  102326-15484-01.dmp
+DUMP_FILE_ATTRIBUTES: 0x21808
+  Kernel Generated Triage Dump
+FAULTING_THREAD:  ffff8a852a8dd040
+CUSTOMER_CRASH_COUNT:  1
+PROCESS_NAME:  System
+STACK_TEXT:  
+ffff850f`5cbdf808 fffff807`56ce6d5d     : 00000000`00000116 ffff8a85`659d2010 fffff807`73b11050 ffffffff`c000009a : nt!KeBugCheckEx
+ffff850f`5cbdf810 fffff807`56f52e54     : fffff807`73b11050 ffff8a85`090112b0 00000000`00002000 ffff8a85`09011370 : dxgkrnl!TdrBugcheckOnTimeout+0x101
+ffff850f`5cbdf850 fffff807`56cf59e2     : ffff8a85`0ab20000 00000000`00000000 00000000`00000004 00000000`00000000 : dxgkrnl!ADAPTER_RENDER::Reset+0x220
+ffff850f`5cbdf880 fffff807`56d30465     : ffff8a85`00000100 00000000`00000000 ffff850f`00000000 00000000`00000000 : dxgkrnl!DXGADAPTER::Reset+0x58a
+ffff850f`5cbdf910 fffff807`56d305c2     : fffff807`c570d550 ffff8a84`f36b1e10 00000000`00000000 00000000`00000000 : dxgkrnl!TdrResetFromTimeout+0x15
+ffff850f`5cbdf940 fffff807`c4a0817b     : ffff8a85`2a8dd040 ffff8a84`f36efaa0 fffff807`c5638c00 ffff8a84`f36efaa0 : dxgkrnl!TdrResetFromTimeoutWorkItem+0x22
+ffff850f`5cbdf980 fffff807`c4c870ba     : ffff8a85`2a8dd040 ffff8a85`2a8dd040 fffff807`c4a07cc0 ffff8a84`f36efaa0 : nt!ExpWorkerThread+0x4bb
+ffff850f`5cbdfb30 fffff807`c4eabdf4     : ffffe481`872a2180 ffff8a85`2a8dd040 fffff807`c4c87060 000001e3`01c54f28 : nt!PspSystemThreadStartup+0x5a
+ffff850f`5cbdfb80 00000000`00000000     : ffff850f`5cbe0000 ffff850f`5cbd9000 00000000`00000000 00000000`00000000 : nt!KiStartSystemThread+0x34
+SYMBOL_NAME:  nvlddmkm+19b1050
+MODULE_NAME: nvlddmkm
+IMAGE_NAME:  nvlddmkm.sys
+FAILURE_BUCKET_ID:  0x116_IMAGE_nvlddmkm.sys
+OSPLATFORM_TYPE:  x64
+OSNAME:  Windows 10
+FAILURE_ID_HASH:  {c89bfe8c-ed39-f658-ef27-f2898997fdbd}
+Followup:     MachineOwner
+---------
+22: kd> lmvm nvlddmkm
+start             end                 module name
+fffff807`72160000 fffff807`788a7000   nvlddmkm T (no symbols)
+    Image name: nvlddmkm.sys
+    Timestamp:        Sat Feb 14 22:39:27 2026 (69914DFF)
+    CheckSum:         0647EB00
+    ImageSize:        06747000

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Case produced by FaultCase",
+  "type": "object",
+  "required": ["verdict", "confidence", "user_summary", "findings", "checklist", "manufacturer_report"],
+  "properties": {
+    "verdict": {"enum": ["likely_hardware_fault", "likely_driver_fault", "instability_unclear_cause", "no_relevant_issues"]},
+    "confidence": {"enum": ["high", "medium", "low"]},
+    "user_summary": {"type": "string", "description": "2 to 4 plain-language sentences in the user's language, no hex codes"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "type", "evidence"],
+        "properties": {
+          "text": {"type": "string"},
+          "type": {"enum": ["fact", "hypothesis"]},
+          "component": {"type": "string"},
+          "evidence": {"type": "array", "items": {"type": "string"}, "description": "references to events or dumps"}
+        }
+      }
+    },
+    "healthy_components": {"type": "array", "items": {"type": "string"}},
+    "checklist": {
+      "type": "array",
+      "items": {"type": "object", "required": ["step", "status"],
+        "properties": {"step": {"type": "string"}, "status": {"enum": ["done", "pending", "unknown"]}}}
+    },
+    "manufacturer_report": {
+      "type": "object",
+      "required": ["subject", "body_en", "body_es"],
+      "properties": {
+        "subject": {"type": "string"},
+        "body_en": {"type": "string"},
+        "body_es": {"type": "string"}
+      }
+    }
+  }
+}
