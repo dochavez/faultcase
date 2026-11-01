@@ -123,6 +123,10 @@ class Router:
 
     def call(self, role: str, messages: list, response_schema: dict) -> dict:
         """Call the role's providers in order; return the validated JSON dict."""
+        return self.call_with_info(role, messages, response_schema)[0]
+
+    def call_with_info(self, role: str, messages: list, response_schema: dict):
+        """Call the role's route; return (validated data, successful attempt info)."""
         routes = self._config.get("routes", {})
         if role not in routes:
             raise RouterError(
@@ -167,15 +171,18 @@ class Router:
                         validate(instance=data, schema=response_schema)
                     except ValidationError as exc:
                         raise _InvalidResponse(f"schema validation failed: {exc.message}")
-                    self._log({
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "role": role, "provider": name, "model": provider["model"],
+                    info = {
+                        "provider": name, "model": provider["model"],
                         "latency_ms": int((time.perf_counter() - start) * 1000),
                         "prompt_tokens": prompt_tokens,
                         "completion_tokens": completion_tokens,
-                        "success": True, "fallback_used": fallback_used,
+                        "fallback_used": fallback_used,
+                    }
+                    self._log({
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "role": role, **info, "success": True,
                     })
-                    return data
+                    return data, info
                 except _InvalidResponse as exc:
                     self._log({
                         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -207,9 +214,14 @@ class Router:
 _default_router: Router | None = None
 
 
-def call(role: str, messages: list, response_schema: dict) -> dict:
+def call_with_info(role: str, messages: list, response_schema: dict):
     """Call the role's route with the default router (lazy singleton)."""
     global _default_router
     if _default_router is None:
         _default_router = Router()
-    return _default_router.call(role, messages, response_schema)
+    return _default_router.call_with_info(role, messages, response_schema)
+
+
+def call(role: str, messages: list, response_schema: dict) -> dict:
+    """Call the role's route with the default router (lazy singleton)."""
+    return call_with_info(role, messages, response_schema)[0]
