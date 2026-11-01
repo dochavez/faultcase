@@ -24,7 +24,22 @@ image = (
     .add_local_dir("schemas", f"{REMOTE_ROOT}/schemas")
     .add_local_dir("templates", f"{REMOTE_ROOT}/templates")
     .add_local_dir("static", f"{REMOTE_ROOT}/static")
-    .add_local_dir("fixtures/real_case", f"{REMOTE_ROOT}/fixtures/real_case")
+    # Only the fixture files the app needs: never failures.evtx (private).
+    .add_local_file(
+        "fixtures/real_case/events_41.json",
+        f"{REMOTE_ROOT}/fixtures/real_case/events_41.json",
+    )
+    .add_local_file(
+        "fixtures/real_case/expected.json",
+        f"{REMOTE_ROOT}/fixtures/real_case/expected.json",
+    )
+    .add_local_file(
+        "fixtures/real_case/demo_case.json",
+        f"{REMOTE_ROOT}/fixtures/real_case/demo_case.json",
+    )
+    .add_local_dir(
+        "fixtures/real_case/windbg", f"{REMOTE_ROOT}/fixtures/real_case/windbg"
+    )
 )
 
 app = modal.App("faultcase")
