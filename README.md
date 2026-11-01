@@ -20,6 +20,7 @@
 - [Screenshots](#screenshots)
 - [How it works](#how-it-works)
 - [Models and providers](#models-and-providers)
+- [How Muse, Baseten and Fireworks work together](#how-muse-baseten-and-fireworks-work-together)
 - [How it was built with Muse Code](#how-it-was-built-with-muse-code)
 - [Privacy and safety](#privacy-and-safety)
 - [Design decisions](#design-decisions)
@@ -192,6 +193,88 @@ Second-opinion agreement: **100%** (12/12 runs with two opinions). Totals: 12 ru
 The real-case final verdict must be in `acceptable_verdicts` in `fixtures/real_case/expected.json`. Every other verdict matches when it contains an expected keyword (case-insensitive); keyword lists live in `fixtures/synthetic/*.json`. Only verdicts and metrics are stored — never API keys or personal data.
 
 </details>
+
+## How Muse, Baseten and Fireworks work together
+
+Integration map (every name, role and setting below comes from `config/providers.yaml` and `faultcase/router.py`):
+
+```mermaid
+flowchart TB
+    Browser["Browser<br/>3 screens, EN/ES"]
+    App["FastAPI app (app.py)<br/>upload, demo, evidence ZIP"]
+    Redact["redact.py"]
+    Rules["rules.py + playbooks/*.yaml"]
+    Router["router.py<br/>routes, fallback, hedge"]
+    Meta[("Meta Model API<br/>api.meta.ai/v1<br/>Muse Spark · case_writing")]
+    Baseten[("Baseten<br/>inference.baseten.co/v1<br/>Muse Spark Open · evidence_analysis")]
+    Fireworks[("Fireworks<br/>api.fireworks.ai/inference/v1<br/>Muse Spark Open · evidence_analysis")]
+    Code["Muse Code (terminal agent)"]
+    Repo[("Repository<br/>dochavez/faultcase")]
+    Browser -- ".evtx + msinfo upload" --> App
+    App -- "raw events, dumps" --> Redact
+    Redact -- "redacted evidence" --> Rules
+    Rules -- "redacted findings" --> Router
+    Router -- "analysis request" --> Baseten
+    Router -- "analysis request" --> Fireworks
+    Baseten -- "JSON analysis" --> Router
+    Fireworks -- "JSON analysis" --> Router
+    Router -- "case request" --> Meta
+    Meta -- "case JSON" --> Router
+    Router -- "validated case" --> App
+    App -- "Diagnosis + Action" --> Browser
+    Code -- "commits" --> Repo
+    Repo -. "deploys (modal_app.py)" .-> App
+```
+
+One real request, step by step:
+
+```mermaid
+sequenceDiagram
+    participant U as Browser
+    participant A as FastAPI app
+    participant D as redact + rules
+    participant G as agent.py
+    participant R as router.py
+    participant B as Baseten
+    participant F as Fireworks
+    participant M as Meta (muse-spark-1.1)
+    U->>A: POST /upload (.evtx)
+    A->>D: parse, redact, apply playbooks
+    D-->>A: redacted findings
+    A->>G: build_case(findings)
+    G->>R: evidence_analysis (parallel)
+    R->>B: same findings JSON
+    R->>F: same findings JSON
+    B-->>R: enum verdict + confidence
+    F-->>R: enum verdict + confidence
+    R-->>G: two opinions
+    G->>G: agreement check (enum + confidence)
+    G->>R: case_writing (analysis + device)
+    R->>M: write manufacturer case
+    M-->>R: case JSON
+    R->>R: validate vs case.schema.json
+    R-->>G: validated case
+    G-->>A: case + metadata
+    A-->>U: redirect to Diagnosis
+```
+
+Resilience: what happens at each failure, and what the user sees:
+
+```mermaid
+flowchart TD
+    Req["model request"] --> Try["try provider (timeout 90s)"]
+    Try --> OK{"valid JSON?"}
+    OK -- yes --> Done["return answer<br/>user: sees Diagnosis"]
+    OK -- "invalid JSON, schema fail or truncated" --> Retry{"retry left? (max 1)"}
+    Retry -- yes --> Try
+    Retry -- no --> Next{"next provider in route?"}
+    Next -- "yes (fallback_used)" --> Fallback["try next provider<br/>user: waits, notices nothing"]
+    Fallback --> Try
+    Next -- no --> Err["RouterError<br/>user: error page, try again"]
+    Try -. "slower than hedge_after_seconds (25s)" .-> Hedge["start next provider too<br/>first valid answer wins<br/>user: waits less"]
+    Hedge --> Done
+    SO["second opinion:<br/>one provider fails"] --> Cont["continue with the surviving opinion<br/>user: notices nothing"]
+```
 
 ## How it was built with Muse Code
 
