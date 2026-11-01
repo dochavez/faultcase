@@ -117,6 +117,57 @@ def test_build_device_redacts_personal_data():
     assert device["sources"]["manufacturer"] == "user_entered"
 
 
+def test_collect_wmi_option_hidden_without_support(monkeypatch):
+    monkeypatch.setattr(app_module, "LOCAL_WMI_AVAILABLE", False)
+    response = client.get("/")
+    assert "read its details automatically" not in response.text
+
+
+def test_collect_wmi_option_shown_when_supported(monkeypatch):
+    monkeypatch.setattr(app_module, "LOCAL_WMI_AVAILABLE", True)
+    response = client.get("/")
+    assert "read its details automatically" in response.text
+
+
+def test_upload_with_local_wmi_sends_device_to_agent(monkeypatch):
+    evtx_path = (
+        Path(__file__).resolve().parent.parent
+        / "fixtures" / "real_case" / "failures.evtx"
+    )
+    if not evtx_path.exists():
+        pytest.skip("failures.evtx not present")
+    seen = {}
+
+    def spy(evidence, ui_language="en", device=None, timezone=None):
+        seen["device"] = device
+        return _stub_build_case(evidence, ui_language, device, timezone)
+
+    monkeypatch.setattr(app_module, "build_case", spy)
+    monkeypatch.setattr(app_module, "settings", OPEN_SETTINGS)
+    monkeypatch.setattr(app_module, "LOCAL_WMI_AVAILABLE", True)
+    monkeypatch.setattr(
+        app_module.wmi,
+        "read_device_info",
+        lambda: {
+            "manufacturer": "LENOVO", "model": "Legion Pro 7",
+            "machine_type": "83F5", "system_sku": None,
+            "bios_version": "N3FCN12W", "bios_date": "2026-04-01",
+            "os_name": None, "os_version": None, "gpus": [],
+            "serial": "WMI-SERIAL-1",
+        },
+    )
+    response = client.post(
+        "/upload",
+        files={"file": ("failures.evtx", evtx_path.read_bytes())},
+        data={"lang": "en", "local_wmi": "yes"},
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 200
+    assert seen["device"]["serial"] == "WMI-SERIAL-1"
+    assert seen["device"]["sources"]["serial"] == "local_wmi"
+    assert seen["device"]["sources"]["manufacturer"] == "local_wmi"
+
+
 def test_upload_with_msinfo_sends_device_to_agent(monkeypatch):
     evtx_path = (
         Path(__file__).resolve().parent.parent

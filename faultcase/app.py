@@ -25,7 +25,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from faultcase.adapters.windows import evtx as evtx_adapter
-from faultcase.adapters.windows import cdb, msinfo
+from faultcase.adapters.windows import cdb, msinfo, wmi
 from faultcase.agent import build_case
 from faultcase.demo import DEMO_CASE_PATH, DEMO_DEVICE, build_demo_evidence
 from faultcase.demo import load_demo_summaries
@@ -41,42 +41,60 @@ MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_MSINFO_BYTES = 5 * 1024 * 1024
 
 
-def _build_device(msinfo_data: dict | None, manual: dict[str, str]) -> dict:
+_DEVICE_KEYS = (
+    "manufacturer", "model", "machine_type", "system_sku",
+    "bios_version", "bios_date", "os_name", "os_version",
+    "purchase_date", "serial",
+)
+
+
+def _build_device(
+    msinfo_data: dict | None,
+    manual: dict[str, str],
+    wmi_data: dict | None = None,
+) -> dict:
     """Assemble the device object with per-field sources, redacted.
 
-    msinfo data wins for the fields it provides; manual fields fill the
-    gaps. Only non-empty values are kept. Sources: one of
-    "windows_system_information" or "user_entered".
+    msinfo data wins for the fields it provides, manual fields fill the
+    gaps, live WMI data fills what is left (serial included). Only
+    non-empty values are kept. Sources: "windows_system_information",
+    "user_entered" or "local_wmi".
     """
+    layers = []
+    if msinfo_data:
+        layers.append((msinfo_data, "windows_system_information"))
+    layers.append(
+        (
+            {
+                "manufacturer": manual.get("manufacturer"),
+                "model": manual.get("model"),
+                "purchase_date": manual.get("purchase"),
+            },
+            "user_entered",
+        )
+    )
+    if wmi_data:
+        layers.append((wmi_data, "local_wmi"))
     device: dict = {}
     sources: dict[str, str] = {}
-    if msinfo_data:
-        parsed = msinfo_data
-        for key in (
-            "manufacturer", "model", "machine_type", "system_sku",
-            "bios_version", "bios_date", "os_name", "os_version",
-        ):
-            if parsed.get(key):
-                device[key] = parsed[key]
-                sources[key] = "windows_system_information"
-        gpus = [g for g in parsed.get("gpus", []) if g.get("name")]
-        if gpus:
+    for data, source in layers:
+        for key in _DEVICE_KEYS:
+            value = data.get(key)
+            if isinstance(value, str):
+                value = value.strip()
+            if value and key not in device:
+                device[key] = value
+                sources[key] = source
+        gpus = [g for g in (data.get("gpus") or []) if g.get("name")]
+        if gpus and "gpus" not in device:
             device["gpus"] = gpus
-            sources["gpus"] = "windows_system_information"
-            device["gpu"] = gpus[0]["name"]
-            sources["gpu"] = "windows_system_information"
-            if gpus[0].get("driver_version"):
-                device["gpu_driver_version"] = gpus[0]["driver_version"]
-                sources["gpu_driver_version"] = "windows_system_information"
-    for key, source_key in (
-        ("manufacturer", "manufacturer"),
-        ("model", "model"),
-        ("purchase_date", "purchase"),
-    ):
-        value = (manual.get(source_key) or "").strip()
-        if value and key not in device:
-            device[key] = value
-            sources[key] = "user_entered"
+            sources["gpus"] = source
+    if device.get("gpus"):
+        device["gpu"] = device["gpus"][0]["name"]
+        sources["gpu"] = sources["gpus"]
+        if device["gpus"][0].get("driver_version"):
+            device["gpu_driver_version"] = device["gpus"][0]["driver_version"]
+            sources["gpu_driver_version"] = sources["gpus"]
     if sources:
         device["sources"] = sources
     return redact.redact_obj(device)
@@ -84,6 +102,7 @@ def _build_device(msinfo_data: dict | None, manual: dict[str, str]) -> dict:
 settings = load_settings()
 
 LOCAL_DUMPS_AVAILABLE = cdb.find_cdb() is not None
+LOCAL_WMI_AVAILABLE = wmi.is_available()
 
 app = FastAPI(title="FaultCase")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
@@ -106,7 +125,8 @@ def _error(request: Request, lang: str, message: str, page: str = "collect.html"
             request, "error_box.html", _ctx(lang, message=message)
         )
     ctx = _ctx(lang, error=message, message=message,
-               local_dumps=LOCAL_DUMPS_AVAILABLE)
+               local_dumps=LOCAL_DUMPS_AVAILABLE,
+               local_wmi=LOCAL_WMI_AVAILABLE)
     return templates.TemplateResponse(request, page, ctx, status_code=400)
 
 
@@ -142,7 +162,9 @@ def _parse_upload(content: bytes) -> list[dict]:
 def collect(request: Request):
     lang = get_lang(request.query_params.get("lang"))
     return templates.TemplateResponse(
-        request, "collect.html", _ctx(lang, local_dumps=LOCAL_DUMPS_AVAILABLE)
+        request, "collect.html",
+        _ctx(lang, local_dumps=LOCAL_DUMPS_AVAILABLE,
+             local_wmi=LOCAL_WMI_AVAILABLE),
     )
 
 
@@ -167,6 +189,7 @@ async def upload(
     dev_manufacturer: str = Form(""),
     dev_model: str = Form(""),
     dev_purchase: str = Form(""),
+    local_wmi: str = Form(""),
 ):
     lang = get_lang(lang)
     t = STRINGS[lang]
@@ -199,11 +222,17 @@ async def upload(
         if not any(v for k, v in msinfo_data.items() if k != "gpus") \
                 and not msinfo_data.get("gpus"):
             return _error(request, lang, t["err_msinfo"])
+    wmi_data = None
+    if local_wmi and LOCAL_WMI_AVAILABLE:
+        try:
+            wmi_data = wmi.read_device_info()
+        except Exception as exc:
+            return _error(request, lang, f"{t['err_wmi']} ({exc})")
     device = _build_device(msinfo_data, {
         "manufacturer": dev_manufacturer,
         "model": dev_model,
         "purchase": dev_purchase,
-    })
+    }, wmi_data)
     dump_inputs: list[dict] = []
     summaries: dict[str, str] = {}
     local_stats: dict | None = None

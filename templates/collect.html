@@ -54,6 +54,15 @@
           <small>{{ t.dumps_note }}</small>
         </p>
         {% endif %}
+        {% if local_wmi %}
+        <p class="check">
+          <label for="local-wmi">
+            <input type="checkbox" id="local-wmi" name="local_wmi" value="yes">
+            {{ t.wmi_label }}
+          </label>
+          <small>{{ t.wmi_note }}</small>
+        </p>
+        {% endif %}
         <h3>{{ t.msinfo_title }}</h3>
         <ol class="substeps">
           <li>{{ t.msinfo_a }}</li>
