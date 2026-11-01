@@ -1,5 +1,7 @@
 """Agent unit tests with a stubbed router (no network)."""
 
+import json
+
 import pytest
 from jsonschema.exceptions import ValidationError
 
@@ -110,6 +112,26 @@ def test_invalid_case_output_raises(monkeypatch):
     )
     with pytest.raises(ValidationError):
         agent.build_case(EVIDENCE)
+
+
+def test_device_with_sources_reaches_case_writer(monkeypatch):
+    captured = []
+    monkeypatch.setattr(agent, "call_with_info", _stub_factory(captured))
+    agent.build_case(EVIDENCE, device={
+        "manufacturer": "LENOVO",
+        "bios_version": "LENOVO N3FCN12W",
+        "sources": {
+            "manufacturer": "windows_system_information",
+            "bios_version": "windows_system_information",
+        },
+    })
+    writer_call = next(c for c in captured if c["role"] == "case_writing")
+    payload = json.loads(writer_call["messages"][1]["content"])
+    assert payload["device"]["bios_version"] == "LENOVO N3FCN12W"
+    assert payload["device"]["sources"] == {
+        "manufacturer": "windows_system_information",
+        "bios_version": "windows_system_information",
+    }
 
 
 def test_cross_machine_defect_claim_detector():

@@ -26,10 +26,12 @@ For the manufacturer (`manufacturer_report`):
 - Describe driver version changes with the summary direction: say "across different driver versions". Never write "after a driver update" unless the later version is newer.
 - Write normal sentence case: no words in ALL CAPS except error code names (DPC_WATCHDOG_VIOLATION, VIDEO_TDR_FAILURE), vendor names (NVIDIA) and standard hardware acronyms (GPU, CPU, BIOS, WHEA, ISR).
 - Refer to incidents by date and time only, never by internal ids (inc-001) or variable names (SleepInProgress, BugcheckCode, dumps_with_common_module). Omit failure bucket and hash strings. Write in plain professional sentences. Always keep the error codes (0x133, DPC_WATCHDOG_VIOLATION) and the module name (nvlddmkm.sys).
+- Include the BIOS version and the currently installed GPU driver version when the device data provides them.
+- Add one line stating where the device details came from, matching the device sources: "Device details read from Windows System Information", "Device details entered by the user" or "Device details read from this computer".
 - Include: model and serial number (placeholder `{{SERIAL}}`, inserted locally), purchase date, incident timeline, error codes, responsible module, driver versions, steps already taken and the concrete request (diagnosis or warranty repair).
 - English version (`body_en`) and Spanish version (`body_es`).
 
-Checklist: mark as `pending` anything manufacturers usually ask for that is not yet in the evidence (manufacturer driver, BIOS, hardware scan).
+Checklist: mark as `pending` anything manufacturers usually ask for that is not yet in the evidence (manufacturer driver, BIOS, hardware scan). Include a "BIOS on the latest version" item showing the detected BIOS version (for example "BIOS on the latest version (detected: LENOVO N3FCN12W)") so the user can compare it with the manufacturer's site; mark it `unknown` when no BIOS version is known.
 
 Forbidden: legal advice, invented data, stating as fact anything the analysis labeled as a hypothesis.
 
