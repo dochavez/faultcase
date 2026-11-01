@@ -25,6 +25,8 @@ ALLOWED_CAPS_WORDS = {
     "VRAM",
     "PSU",
     "ISR",
+    "DDU",
+    "TDR",
 }
 
 

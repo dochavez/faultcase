@@ -1,8 +1,8 @@
 # Provider benchmark
 
-Generated: 2026-11-01T22:07:25.558258+00:00 · runs per case: 3 · failed runs: 0
+Generated: 2026-11-01T23:31:07.659293+00:00 · runs per case: 3 · failed runs: 0
 
-Config: case_writing=single/medium, evidence_analysis=second_opinion/high · hedge_after=25s
+Config: case_writing=single/medium, evidence_analysis=second_opinion/medium · hedge_after=25s
 baseten=meta-models/muse-spark-open-1026 · fireworks=accounts/fireworks/models/muse-spark-open · meta=muse-spark-1.1
 
 Correctness: real-case final verdict must be in expected.json acceptable_verdicts; every other verdict matches when it contains an expected keyword (case-insensitive). Costs use the example prices in config/providers.yaml.
@@ -11,32 +11,26 @@ Correctness: real-case final verdict must be in expected.json acceptable_verdict
 
 | Provider | Role | Calls ok/total | Correct | p50 ms | p95 ms | Prompt | Compl | Cached | Est. cost | Fallbacks | Hedge wins |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| baseten | evidence_analysis | 10/15 | 100% (10/10) | 10704 | 22680 | 28502 | 188523 | 18048 | $1.5381 | 0 | 0 |
-| fireworks | evidence_analysis | 12/12 | 100% (12/12) | 23054 | 31802 | 22194 | 30266 | 15040 | $0.2640 | 0 | 0 |
-| meta | case_writing | 12/12 | 100% (12/12) | 11218 | 13489 | 25516 | 44753 | 10233 | $0.5906 | 0 | 0 |
+| baseten | evidence_analysis | 12/12 | 100% (12/12) | 19728 | 26194 | 22998 | 32767 | 12928 | $0.2887 | 0 | 0 |
+| fireworks | evidence_analysis | 12/12 | 100% (12/12) | 14718 | 23649 | 22986 | 19019 | 16192 | $0.1738 | 0 | 0 |
+| meta | case_writing | 12/12 | 100% (12/12) | 12296 | 17566 | 24351 | 47280 | 13644 | $0.6097 | 0 | 0 |
 
 ## Second-opinion agreement
 
-Agreement rate: 0% (agreed runs / runs with two opinions).
+Agreement rate: 100% (agreed runs / runs with two opinions).
 
 | Case | Runs | Agreed | Disagreed | Single opinion |
 | --- | --- | --- | --- | --- |
-| disk_failure | 3 | 0 | 2 | 1 |
-| healthy | 3 | 0 | 3 | 0 |
-| real_case | 3 | 0 | 2 | 1 |
-| single_crash | 3 | 0 | 3 | 0 |
+| disk_failure | 3 | 3 | 0 | 0 |
+| healthy | 3 | 3 | 0 | 0 |
+| real_case | 3 | 3 | 0 | 0 |
+| single_crash | 3 | 3 | 0 | 0 |
 
 ## Totals
 
-Runs: 12 · hedges: 0 · estimated cost: $2.3927.
+Runs: 12 · hedges: 0 · estimated cost: $1.0722.
 
 ## Notes
 
-- Agreement is an exact case-insensitive match on free-text verdicts, so textually different but equivalent verdicts count as disagreement (by design the case then gets lower confidence plus a hypothesis finding).
+- Agreement requires the same verdict enum and the same confidence level; mismatches lower confidence one level and add a hypothesis finding to the case.
 - Keyword lists include synonyms observed in model output (e.g. inconclusive); see fixtures/synthetic/*.json.
-- baseten/evidence_analysis: 5 failed attempt(s) out of 15 (retried once each, then the other opinion was used).
-- All 5 baseten failures returned exactly 32768 completion tokens: the
-  model hit the completion cap with reasoning_effort high and the JSON
-  came back truncated. 3 recovered on retry, 2 runs continued with the
-  Fireworks opinion only. Follow-up: raise the completion limit or use
-  medium effort for Baseten.
