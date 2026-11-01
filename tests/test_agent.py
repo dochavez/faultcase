@@ -6,6 +6,13 @@ import pytest
 from jsonschema.exceptions import ValidationError
 
 from faultcase import agent
+from faultcase.router import RouterError
+
+
+@pytest.fixture(autouse=True)
+def _single_analysis_mode(monkeypatch):
+    monkeypatch.setattr(agent, "analysis_mode", lambda role: "single")
+
 
 ANALYSIS = {
     "verdict": "recurring display driver crashes",
@@ -132,6 +139,92 @@ def test_device_with_sources_reaches_case_writer(monkeypatch):
         "manufacturer": "windows_system_information",
         "bios_version": "windows_system_information",
     }
+
+
+def _opinion(provider, verdict, confidence):
+    data = dict(ANALYSIS, verdict=verdict, confidence=confidence)
+    return {
+        "provider": provider, "model": f"m-{provider}", "success": True,
+        "data": data,
+        "info": {"provider": provider, "model": f"m-{provider}",
+                 "latency_ms": 100, "prompt_tokens": 50,
+                 "completion_tokens": 20, "fallback_used": False},
+        "error": None,
+    }
+
+
+def _stub_second_opinion(monkeypatch, captured, results):
+    def fake_parallel(role, messages, response_schema):
+        captured.append({"role": role, "messages": messages})
+        return results
+    monkeypatch.setattr(agent, "call_parallel_with_info", fake_parallel)
+    monkeypatch.setattr(agent, "call_with_info", _stub_factory(captured))
+    monkeypatch.setattr(agent, "analysis_mode", lambda role: "second_opinion")
+
+
+def _writer_analysis(captured):
+    writer_call = next(c for c in captured if c["role"] == "case_writing")
+    return json.loads(writer_call["messages"][1]["content"])["analysis"]
+
+
+def test_second_opinion_agreement_keeps_confidence(monkeypatch):
+    captured = []
+    _stub_second_opinion(monkeypatch, captured, [
+        _opinion("baseten", "recurring display driver crashes", "high"),
+        _opinion("fireworks", "Recurring Display Driver Crashes", "medium"),
+    ])
+    result = agent.build_case(EVIDENCE)
+    assert result["metadata"]["second_opinion_agreement"] is True
+    assert [o["provider"] for o in result["metadata"]["analysis_opinions"]] == [
+        "baseten", "fireworks"]
+    assert all(o["success"] for o in result["metadata"]["analysis_opinions"])
+    merged = _writer_analysis(captured)
+    assert merged["confidence"] == "high"
+    assert len(merged["findings"]) == 1
+
+
+def test_second_opinion_disagreement_lowers_confidence(monkeypatch):
+    captured = []
+    _stub_second_opinion(monkeypatch, captured, [
+        _opinion("baseten", "recurring display driver crashes", "high"),
+        _opinion("fireworks", "failing disk", "medium"),
+    ])
+    result = agent.build_case(EVIDENCE)
+    assert result["metadata"]["second_opinion_agreement"] is False
+    merged = _writer_analysis(captured)
+    assert merged["verdict"] == "recurring display driver crashes"
+    assert merged["confidence"] == "medium"
+    extra = merged["findings"][-1]
+    assert extra["type"] == "hypothesis"
+    assert "disagreed" in extra["text"]
+    assert "baseten" in extra["text"] and "fireworks" in extra["text"]
+
+
+def test_second_opinion_single_survivor_is_used(monkeypatch):
+    captured = []
+    _stub_second_opinion(monkeypatch, captured, [
+        {"provider": "baseten", "model": "m-baseten", "success": False,
+         "data": None, "info": None, "error": "RuntimeError: baseten is down"},
+        _opinion("fireworks", "recurring display driver crashes", "low"),
+    ])
+    result = agent.build_case(EVIDENCE)
+    assert result["metadata"]["second_opinion_agreement"] is None
+    opinions = result["metadata"]["analysis_opinions"]
+    assert [o["success"] for o in opinions] == [False, True]
+    assert "baseten is down" in opinions[0]["error"]
+    assert _writer_analysis(captured)["verdict"] == "recurring display driver crashes"
+
+
+def test_second_opinion_both_fail_raises(monkeypatch):
+    captured = []
+    _stub_second_opinion(monkeypatch, captured, [
+        {"provider": "baseten", "model": "m", "success": False,
+         "data": None, "info": None, "error": "baseten is down"},
+        {"provider": "fireworks", "model": "m", "success": False,
+         "data": None, "info": None, "error": "fireworks is down"},
+    ])
+    with pytest.raises(RouterError, match="evidence_analysis"):
+        agent.build_case(EVIDENCE)
 
 
 def test_cross_machine_defect_claim_detector():

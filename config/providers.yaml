@@ -22,6 +22,15 @@ routes:
   case_writing:      [meta, fireworks]      # manufacturer case and user explanation
   tests:             [fireworks]            # tests marked as live
 
+# Per-role behavior. analysis_mode: "second_opinion" calls the first two
+# providers of the route concurrently and reconciles their verdicts;
+# "single" uses the classic sequential fallback.
+roles:
+  evidence_analysis:
+    analysis_mode: second_opinion
+  case_writing:
+    analysis_mode: single
+
 settings:
   timeout_seconds: 90
   max_retries_per_provider: 1

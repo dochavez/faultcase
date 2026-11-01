@@ -1,6 +1,7 @@
 """Router tests with fake clients: fallback, retry and total failure."""
 
 import json
+import threading
 from types import SimpleNamespace
 
 import pytest
@@ -195,3 +196,83 @@ def test_unknown_role_raises(tmp_path):
     })
     with pytest.raises(RouterError, match="unknown role"):
         router.call("nope", MESSAGES, SCHEMA)
+
+
+def test_analysis_mode_defaults_to_single_and_reads_config(tmp_path):
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([]),
+        "fireworks": FakeClient([]),
+    })
+    assert router.analysis_mode("test_role") == "single"
+    router._config["roles"] = {"test_role": {"analysis_mode": "second_opinion"}}
+    assert router.analysis_mode("test_role") == "second_opinion"
+
+
+def test_call_parallel_returns_both_in_route_order(tmp_path):
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([_completion('{"ok": true}')]),
+        "fireworks": FakeClient([_completion('{"ok": true}')]),
+    })
+    results = router.call_parallel("test_role", MESSAGES, SCHEMA)
+    assert [(r["provider"], r["success"], r["data"]) for r in results] == [
+        ("baseten", True, {"ok": True}),
+        ("fireworks", True, {"ok": True}),
+    ]
+    lines = _log_lines(tmp_path)
+    assert len(lines) == 2
+    assert all(line["success"] for line in lines)
+
+
+def test_call_parallel_captures_failure_without_raising(tmp_path):
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([RuntimeError("baseten is down")]),
+        "fireworks": FakeClient([_completion('{"ok": true}')]),
+    })
+    results = router.call_parallel("test_role", MESSAGES, SCHEMA)
+    assert [r["success"] for r in results] == [False, True]
+    assert "baseten is down" in results[0]["error"]
+    assert results[1]["data"] == {"ok": True}
+
+
+def test_call_parallel_unknown_role_raises(tmp_path):
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([]),
+        "fireworks": FakeClient([]),
+    })
+    with pytest.raises(RouterError, match="unknown role"):
+        router.call_parallel("nope", MESSAGES, SCHEMA)
+
+
+class RendezvousClient:
+    """Fails unless the peer call is in flight at the same time."""
+
+    def __init__(self, mine, peer, completion):
+        self._mine = mine
+        self._peer = peer
+        self._completion = completion
+
+    @property
+    def chat(self):
+        return self
+
+    @property
+    def completions(self):
+        return self
+
+    def create(self, **kwargs):
+        self._mine.set()
+        assert self._peer.wait(timeout=10), "providers were not called concurrently"
+        return self._completion
+
+
+def test_call_parallel_runs_concurrently(tmp_path):
+    started_baseten = threading.Event()
+    started_fireworks = threading.Event()
+    router, _ = _router(tmp_path, {
+        "baseten": RendezvousClient(
+            started_baseten, started_fireworks, _completion('{"ok": true}')),
+        "fireworks": RendezvousClient(
+            started_fireworks, started_baseten, _completion('{"ok": true}')),
+    })
+    results = router.call_parallel("test_role", MESSAGES, SCHEMA)
+    assert [r["success"] for r in results] == [True, True]

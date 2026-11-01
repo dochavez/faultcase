@@ -15,7 +15,7 @@ from pathlib import Path
 from jsonschema import validate
 
 from faultcase import redact, rules
-from faultcase.router import call_with_info
+from faultcase.router import RouterError, analysis_mode, call_parallel_with_info, call_with_info
 
 ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / "prompts"
@@ -44,6 +44,81 @@ ANALYSIS_SCHEMA = {
 }
 
 
+CONFIDENCE_LEVELS = ["low", "medium", "high"]
+
+
+def _lower_confidence(confidence: str) -> str:
+    try:
+        index = CONFIDENCE_LEVELS.index(confidence)
+    except ValueError:
+        return "low"
+    return CONFIDENCE_LEVELS[max(0, index - 1)]
+
+
+def _reconcile_opinions(results: list) -> tuple:
+    """Merge parallel analyses into (analysis, info, metadata).
+
+    Verdicts are compared case-insensitively: agreement keeps the primary
+    verdict and confidence, disagreement lowers confidence one level and
+    adds a hypothesis finding. A single surviving opinion is used as-is.
+    """
+    succeeded = [r for r in results if r["success"]]
+    if not succeeded:
+        detail = "; ".join(f"{r['provider']} ({r['error']})" for r in results)
+        raise RouterError(
+            f"all providers failed for role 'evidence_analysis': {detail or 'empty route'}"
+        )
+    opinions = []
+    for result in results:
+        entry = {
+            "provider": result["provider"], "model": result["model"],
+            "success": result["success"],
+        }
+        if result["success"]:
+            entry.update({
+                "verdict": result["data"]["verdict"],
+                "confidence": result["data"]["confidence"],
+                "latency_ms": result["info"]["latency_ms"],
+                "prompt_tokens": result["info"]["prompt_tokens"],
+                "completion_tokens": result["info"]["completion_tokens"],
+            })
+        else:
+            entry["error"] = result["error"]
+        opinions.append(entry)
+    primary = succeeded[0]
+    analysis = dict(primary["data"])
+    agreement = None
+    if len(succeeded) >= 2:
+        first, second = succeeded[0], succeeded[1]
+        agreement = (
+            first["data"]["verdict"].strip().lower()
+            == second["data"]["verdict"].strip().lower()
+        )
+        if not agreement:
+            analysis["confidence"] = _lower_confidence(first["data"]["confidence"])
+            analysis["findings"] = list(first["data"]["findings"]) + [{
+                "text": (
+                    "Two independent analyses disagreed "
+                    f"({first['provider']}: {first['data']['verdict']!r}; "
+                    f"{second['provider']}: {second['data']['verdict']!r}); "
+                    "treat the root cause as uncertain."
+                ),
+                "type": "hypothesis",
+            }]
+    info = {
+        "provider": primary["provider"], "model": primary["model"],
+        "latency_ms": max(r["info"]["latency_ms"] for r in succeeded),
+        "prompt_tokens": sum(r["info"]["prompt_tokens"] for r in succeeded),
+        "completion_tokens": sum(r["info"]["completion_tokens"] for r in succeeded),
+        "fallback_used": False,
+    }
+    metadata = {
+        "analysis_opinions": opinions,
+        "second_opinion_agreement": agreement,
+    }
+    return analysis, info, metadata
+
+
 def _replace_serial(obj: object, serial: str) -> object:
     if isinstance(obj, str):
         return obj.replace("{{SERIAL}}", serial)
@@ -70,20 +145,26 @@ def build_case(
     serial = clean_device.pop("serial", None)
 
     system_analysis = (PROMPTS_DIR / "evidence_analysis.md").read_text(encoding="utf-8")
-    analysis, analysis_info = call_with_info(
-        "evidence_analysis",
-        [
-            {"role": "system", "content": system_analysis},
-            {
-                "role": "user",
-                "content": json.dumps(
-                    {"findings": clean_findings, "evidence": clean_evidence,
-                     "timezone": timezone}
-                ),
-            },
-        ],
-        ANALYSIS_SCHEMA,
-    )
+    analysis_messages = [
+        {"role": "system", "content": system_analysis},
+        {
+            "role": "user",
+            "content": json.dumps(
+                {"findings": clean_findings, "evidence": clean_evidence,
+                 "timezone": timezone}
+            ),
+        },
+    ]
+    opinion_metadata: dict = {}
+    if analysis_mode("evidence_analysis") == "second_opinion":
+        results = call_parallel_with_info(
+            "evidence_analysis", analysis_messages, ANALYSIS_SCHEMA
+        )
+        analysis, analysis_info, opinion_metadata = _reconcile_opinions(results)
+    else:
+        analysis, analysis_info = call_with_info(
+            "evidence_analysis", analysis_messages, ANALYSIS_SCHEMA
+        )
 
     system_writer = (PROMPTS_DIR / "case_writer.md").read_text(encoding="utf-8")
     case, case_info = call_with_info(
@@ -118,5 +199,6 @@ def build_case(
             "total_tokens": prompt_tokens + completion_tokens,
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
+            **opinion_metadata,
         },
     }

@@ -12,7 +12,9 @@ contents or keys.
 from __future__ import annotations
 
 import json
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -58,6 +60,7 @@ class Router:
         self._settings = settings or load_settings()
         self._usage_path = Path(usage_path or DEFAULT_USAGE_PATH)
         self._factory = client_factory or self._default_client
+        self._log_lock = threading.Lock()
         options = config.get("settings", {})
         self._timeout = float(options.get("timeout_seconds", 90))
         self._max_retries = int(options.get("max_retries_per_provider", 1))
@@ -92,9 +95,15 @@ class Router:
     def _log(self, entry: dict) -> None:
         if not self._log_usage:
             return
-        self._usage_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self._usage_path, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(entry) + "\n")
+        with self._log_lock:
+            self._usage_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._usage_path, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(entry) + "\n")
+
+    def analysis_mode(self, role: str) -> str:
+        """Return "second_opinion" or "single" for a role (default "single")."""
+        roles = self._config.get("roles", {})
+        return roles.get(role, {}).get("analysis_mode", "single")
 
     def _create(self, name: str, model: str, messages: list, schema: dict):
         client = self._clients[name]
@@ -125,6 +134,83 @@ class Router:
         """Call the role's providers in order; return the validated JSON dict."""
         return self.call_with_info(role, messages, response_schema)[0]
 
+    def _attempt_provider(
+        self, name: str, provider: dict, role: str, messages: list,
+        schema: dict, fallback_used: bool = False,
+    ):
+        """Call one provider (retry once on invalid JSON); return (data, info).
+
+        Raises the last error: _InvalidResponse after retries, anything else
+        immediately. Every attempt is logged.
+        """
+        for attempt in range(self._max_retries + 1):
+            start = time.perf_counter()
+            prompt_tokens = completion_tokens = 0
+            try:
+                completion = self._create(
+                    name, provider["model"], messages, schema
+                )
+                try:
+                    usage = completion.usage
+                    prompt_tokens = usage.prompt_tokens or 0
+                    completion_tokens = usage.completion_tokens or 0
+                except AttributeError:
+                    pass
+                try:
+                    content = completion.choices[0].message.content or ""
+                except (AttributeError, IndexError):
+                    raise _InvalidResponse("malformed completion: no choices")
+                try:
+                    data = json.loads(content)
+                except json.JSONDecodeError as exc:
+                    raise _InvalidResponse(f"invalid JSON: {exc}")
+                try:
+                    validate(instance=data, schema=schema)
+                except ValidationError as exc:
+                    raise _InvalidResponse(f"schema validation failed: {exc.message}")
+                info = {
+                    "provider": name, "model": provider["model"],
+                    "latency_ms": int((time.perf_counter() - start) * 1000),
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "fallback_used": fallback_used,
+                }
+                self._log({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "role": role, **info, "success": True,
+                })
+                return data, info
+            except _InvalidResponse:
+                self._log({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "role": role, "provider": name, "model": provider["model"],
+                    "latency_ms": int((time.perf_counter() - start) * 1000),
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "success": False, "fallback_used": fallback_used,
+                })
+                if attempt < self._max_retries:
+                    continue
+                raise
+            except Exception:
+                self._log({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "role": role, "provider": name, "model": provider["model"],
+                    "latency_ms": int((time.perf_counter() - start) * 1000),
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "success": False, "fallback_used": fallback_used,
+                })
+                raise
+
+    def _failure(self, role: str, name: str, error: Exception | str) -> dict:
+        provider = self._providers[name]
+        message = error if isinstance(error, str) else f"{type(error).__name__}: {error}"
+        return {
+            "provider": name, "model": provider["model"], "success": False,
+            "data": None, "info": None, "error": message,
+        }
+
     def call_with_info(self, role: str, messages: list, response_schema: dict):
         """Call the role's route; return (validated data, successful attempt info)."""
         routes = self._config.get("routes", {})
@@ -146,69 +232,60 @@ class Router:
                     "success": False, "fallback_used": fallback_used,
                 })
                 continue
-            for attempt in range(self._max_retries + 1):
-                start = time.perf_counter()
-                prompt_tokens = completion_tokens = 0
-                try:
-                    completion = self._create(
-                        name, provider["model"], messages, response_schema
-                    )
-                    try:
-                        usage = completion.usage
-                        prompt_tokens = usage.prompt_tokens or 0
-                        completion_tokens = usage.completion_tokens or 0
-                    except AttributeError:
-                        pass
-                    try:
-                        content = completion.choices[0].message.content or ""
-                    except (AttributeError, IndexError):
-                        raise _InvalidResponse("malformed completion: no choices")
-                    try:
-                        data = json.loads(content)
-                    except json.JSONDecodeError as exc:
-                        raise _InvalidResponse(f"invalid JSON: {exc}")
-                    try:
-                        validate(instance=data, schema=response_schema)
-                    except ValidationError as exc:
-                        raise _InvalidResponse(f"schema validation failed: {exc.message}")
-                    info = {
-                        "provider": name, "model": provider["model"],
-                        "latency_ms": int((time.perf_counter() - start) * 1000),
-                        "prompt_tokens": prompt_tokens,
-                        "completion_tokens": completion_tokens,
-                        "fallback_used": fallback_used,
-                    }
-                    self._log({
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "role": role, **info, "success": True,
-                    })
-                    return data, info
-                except _InvalidResponse as exc:
-                    self._log({
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "role": role, "provider": name, "model": provider["model"],
-                        "latency_ms": int((time.perf_counter() - start) * 1000),
-                        "prompt_tokens": prompt_tokens,
-                        "completion_tokens": completion_tokens,
-                        "success": False, "fallback_used": fallback_used,
-                    })
-                    if attempt < self._max_retries:
-                        continue
-                    errors[name] = str(exc)
-                    break
-                except Exception as exc:
-                    self._log({
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "role": role, "provider": name, "model": provider["model"],
-                        "latency_ms": int((time.perf_counter() - start) * 1000),
-                        "prompt_tokens": prompt_tokens,
-                        "completion_tokens": completion_tokens,
-                        "success": False, "fallback_used": fallback_used,
-                    })
-                    errors[name] = f"{type(exc).__name__}: {exc}"
-                    break
+            try:
+                return self._attempt_provider(
+                    name, provider, role, messages, response_schema, fallback_used
+                )
+            except _InvalidResponse as exc:
+                errors[name] = str(exc)
+            except Exception as exc:
+                errors[name] = f"{type(exc).__name__}: {exc}"
         detail = "; ".join(f"{name} ({error})" for name, error in errors.items())
         raise RouterError(f"all providers failed for role {role!r}: {detail or 'empty route'}")
+
+    def call_parallel(self, role: str, messages: list, response_schema: dict) -> list:
+        """Call the first two providers of the role's route concurrently.
+
+        Returns one result dict per provider in route order:
+        {"provider", "model", "success", "data", "info", "error"}.
+        Per-provider failures are captured, never raised.
+        """
+        routes = self._config.get("routes", {})
+        if role not in routes:
+            raise RouterError(
+                f"unknown role {role!r} (available: {', '.join(sorted(routes))})"
+            )
+        names = (routes[role] or [])[:2]
+
+        def run(name: str) -> dict:
+            provider = self._providers[name]
+            if not provider["api_key"]:
+                self._log({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "role": role, "provider": name, "model": provider["model"],
+                    "latency_ms": 0, "prompt_tokens": 0, "completion_tokens": 0,
+                    "success": False, "fallback_used": False,
+                })
+                return self._failure(role, name, "missing API key")
+            try:
+                data, info = self._attempt_provider(
+                    name, provider, role, messages, response_schema
+                )
+            except _InvalidResponse as exc:
+                return self._failure(role, name, str(exc))
+            except Exception as exc:
+                return self._failure(role, name, exc)
+            return {
+                "provider": name, "model": provider["model"], "success": True,
+                "data": data, "info": info, "error": None,
+            }
+
+        results: dict[str, dict] = {}
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = {pool.submit(run, name): name for name in names}
+            for future in as_completed(futures):
+                results[futures[future]] = future.result()
+        return [results[name] for name in names]
 
 
 _default_router: Router | None = None
@@ -225,3 +302,19 @@ def call_with_info(role: str, messages: list, response_schema: dict):
 def call(role: str, messages: list, response_schema: dict) -> dict:
     """Call the role's route with the default router (lazy singleton)."""
     return call_with_info(role, messages, response_schema)[0]
+
+
+def call_parallel_with_info(role: str, messages: list, response_schema: dict) -> list:
+    """Call the role's first two providers concurrently (lazy singleton)."""
+    global _default_router
+    if _default_router is None:
+        _default_router = Router()
+    return _default_router.call_parallel(role, messages, response_schema)
+
+
+def analysis_mode(role: str) -> str:
+    """Return the role's analysis mode ("second_opinion" or "single")."""
+    global _default_router
+    if _default_router is None:
+        _default_router = Router()
+    return _default_router.analysis_mode(role)
