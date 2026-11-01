@@ -178,6 +178,15 @@ def apply_rules(
         stamp = dump.get("driver_timestamp")
         if stamp and stamp not in timestamps:
             timestamps.append(stamp)
+    dated = [i["driver_timestamp"] for i in incidents if i.get("driver_timestamp")]
+    if len(dated) < 2:
+        driver_change_direction = "unknown"
+    elif dated[-1] > dated[0]:
+        driver_change_direction = "newer"
+    elif dated[-1] < dated[0]:
+        driver_change_direction = "older"
+    else:
+        driver_change_direction = "unknown"
     dates = [i["date"] for i in incidents]
     if dates:
         days = (
@@ -202,6 +211,7 @@ def apply_rules(
             "first_incident_date": dates[0] if dates else None,
             "last_incident_date": dates[-1] if dates else None,
             "months_span": months_span,
+            "driver_change_direction": driver_change_direction,
             "incidents": [
                 {
                     "date": i["date"],

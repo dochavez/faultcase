@@ -53,7 +53,56 @@ def test_rules_summary():
         "first_incident_date": "2026-04-22",
         "last_incident_date": "2026-10-23",
         "months_span": 6,
+        "driver_change_direction": "older",
     }
+
+
+def _dumped_incident(day, stamp, incident_id):
+    return {
+        "time": f"{day}T12:00:00+00:00",
+        "source": "Microsoft-Windows-Kernel-Power",
+        "event_id": 41,
+        "kind": "unexpected_reboot",
+        "playbook": "stability",
+        "code": 307,
+        "fields": {"BugcheckCode": 307},
+        "incident_id": incident_id,
+    }, {
+        "file": f"{incident_id}.dmp",
+        "bugcheck_code": "133",
+        "params": ["1", "1e00", "0", "0"],
+        "image_name": "nvlddmkm.sys",
+        "driver_timestamp": stamp,
+        "incident_id": incident_id,
+    }
+
+
+def _direction_for(stamps):
+    events, dumps = [], []
+    for i, (day, stamp) in enumerate(stamps):
+        event, dump = _dumped_incident(day, stamp, f"inc-00{i + 1}")
+        events.append(event)
+        dumps.append(dump)
+    evidence = {
+        "os": "windows",
+        "collected_at": "2026-10-24T00:00:00+00:00",
+        "events": events,
+        "dumps": dumps,
+    }
+    return rules.apply_rules(evidence)["summary"]["driver_change_direction"]
+
+
+def test_driver_change_direction():
+    assert _direction_for([
+        ("2026-04-22", "2026-03-04"), ("2026-10-23", "2026-02-14"),
+    ]) == "older"
+    assert _direction_for([
+        ("2026-04-22", "2026-02-14"), ("2026-10-23", "2026-03-04"),
+    ]) == "newer"
+    assert _direction_for([("2026-04-22", "2026-03-04")]) == "unknown"
+    assert _direction_for([
+        ("2026-04-22", "2026-03-04"), ("2026-10-23", "2026-03-04"),
+    ]) == "unknown"
 
 
 def test_summary_incidents_list():
