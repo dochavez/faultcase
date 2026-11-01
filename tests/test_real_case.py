@@ -44,6 +44,17 @@ def test_total_incidents():
     assert len(FINDINGS["incidents"]) == EXPECTED["total_incidents"]
 
 
+def test_rules_summary():
+    assert FINDINGS["summary"] == {
+        "total_incidents": 6,
+        "incidents_with_dump": 4,
+        "freezes_without_dump": 2,
+        "first_incident_date": "2026-04-22",
+        "last_incident_date": "2026-10-23",
+        "months_span": 7,
+    }
+
+
 def test_incidents_with_dump():
     with_dump = [i for i in FINDINGS["incidents"] if i["dump_module"]]
     assert len(with_dump) == EXPECTED["incidents_with_dump"]

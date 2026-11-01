@@ -1,11 +1,33 @@
 """Shared builders for agent tests (helpers only, not collected by pytest)."""
 
+import re
 from pathlib import Path
 
 from faultcase import normalize
 from faultcase.adapters.windows import fixture_events, windbg
 
 REAL_CASE = Path(__file__).resolve().parent.parent / "fixtures" / "real_case"
+
+DENIAL_WORDS = re.compile(
+    r"\bnot\b|\bn['’]t\b|\bnever\b|\bno\b|\bwithout\b|\bcannot\b|\bcan['’]t\b"
+)
+
+
+def cross_machine_defect_claim(text: str) -> str | None:
+    """Return a sentence claiming the same defect as other machines, if any.
+
+    Sentences that deny the claim ("not proof of the same defect as other
+    machines") are correct and do not count.
+    """
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        low = sentence.lower()
+        if (
+            "other machine" in low
+            and re.search(r"same (underlying )?defect", low)
+            and not DENIAL_WORDS.search(low)
+        ):
+            return sentence
+    return None
 
 
 def build_real_case_evidence() -> dict:

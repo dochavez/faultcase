@@ -94,6 +94,7 @@ def build_case(
                 "role": "user",
                 "content": json.dumps({
                     "analysis": analysis,
+                    "summary": clean_findings["summary"],
                     "device": clean_device,
                     "ui_language": ui_language,
                     "timezone": timezone,

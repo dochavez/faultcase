@@ -168,6 +168,15 @@ def apply_rules(
         stamp = dump.get("driver_timestamp")
         if stamp and stamp not in timestamps:
             timestamps.append(stamp)
+    dates = [i["date"] for i in incidents]
+    if dates:
+        first_d = date.fromisoformat(dates[0])
+        last_d = date.fromisoformat(dates[-1])
+        months_span = (
+            (last_d.year - first_d.year) * 12 + (last_d.month - first_d.month) + 1
+        )
+    else:
+        months_span = 0
     return {
         "incidents": incidents,
         "patterns": patterns,
@@ -175,4 +184,14 @@ def apply_rules(
         "common_module": common,
         "dumps_with_common_module": counts.get(common, 0) if common else 0,
         "distinct_driver_timestamps": timestamps,
+        "summary": {
+            "total_incidents": len(incidents),
+            "incidents_with_dump": sum(1 for i in incidents if i["dump_module"]),
+            "freezes_without_dump": sum(
+                1 for i in incidents if i["code"] == 0 and not i["dump_module"]
+            ),
+            "first_incident_date": dates[0] if dates else None,
+            "last_incident_date": dates[-1] if dates else None,
+            "months_span": months_span,
+        },
     }

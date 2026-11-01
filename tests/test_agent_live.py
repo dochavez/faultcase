@@ -6,8 +6,9 @@ from pathlib import Path
 
 import pytest
 
+from faultcase import rules
 from faultcase.agent import build_case
-from tests.helpers import build_real_case_evidence
+from tests.helpers import build_real_case_evidence, cross_machine_defect_claim
 
 REAL_CASE = Path(__file__).resolve().parent.parent / "fixtures" / "real_case"
 EXPECTED = json.loads((REAL_CASE / "expected.json").read_text(encoding="utf-8"))
@@ -32,11 +33,16 @@ def test_live_build_real_case():
         + [case["manufacturer_report"]["body_en"],
            case["manufacturer_report"]["body_es"]]
     )
-    assert not re.search(r"same defect.{0,120}other machine", text, re.I | re.S)
-    assert not re.search(r"other machine.{0,120}same defect", text, re.I | re.S)
+    assert cross_machine_defect_claim(text) is None
     assert "definitely hardware" not in text.lower()
     assert "definitely a hardware" not in text.lower()
     assert "confirmed hardware" not in text.lower()
     assert not re.search(r"0x[0-9a-fA-F]+", case["user_summary"])
     assert case["manufacturer_report"]["body_en"].strip()
     assert case["manufacturer_report"]["body_es"].strip()
+    assert len(case["manufacturer_report"]["subject"]) >= 10
+    summary = rules.apply_rules(build_real_case_evidence())["summary"]
+    allowed = {str(summary["total_incidents"]), str(summary["months_span"])}
+    found = re.findall(r"\d+", case["user_summary"])
+    assert str(summary["total_incidents"]) in found
+    assert set(found) <= allowed

@@ -30,7 +30,7 @@
       "type": "object",
       "required": ["subject", "body_en", "body_es"],
       "properties": {
-        "subject": {"type": "string"},
+        "subject": {"type": "string", "minLength": 10},
         "body_en": {"type": "string"},
         "body_es": {"type": "string"}
       }

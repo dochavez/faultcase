@@ -110,3 +110,15 @@ def test_invalid_case_output_raises(monkeypatch):
     )
     with pytest.raises(ValidationError):
         agent.build_case(EVIDENCE)
+
+
+def test_cross_machine_defect_claim_detector():
+    from tests.helpers import cross_machine_defect_claim
+
+    assert cross_machine_defect_claim(
+        "This proves the same defect as other machines."
+    ) is not None
+    assert cross_machine_defect_claim(
+        "Same failure category, not proof of the same defect as other machines."
+    ) is None
+    assert cross_machine_defect_claim("The same module failed twice.") is None
