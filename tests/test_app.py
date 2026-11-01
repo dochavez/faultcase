@@ -222,8 +222,13 @@ def test_upload_accepts_real_evtx(monkeypatch):
     assert diagnosis.status_code == 200
 
 
-def test_unknown_case_returns_404():
-    assert client.get("/case/doesnotexist").status_code == 404
+def test_expired_case_shows_friendly_page():
+    diagnosis = client.get("/case/doesnotexist")
+    assert diagnosis.status_code == 200
+    assert "has expired" in diagnosis.text
+    action = client.get("/case/doesnotexist/action")
+    assert action.status_code == 200
+    assert "has expired" in action.text
     assert client.get("/case/doesnotexist/evidence.zip").status_code == 404
 
 

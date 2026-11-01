@@ -21,6 +21,7 @@ from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 from faultcase.adapters.windows import evtx as evtx_adapter
 from faultcase.adapters.windows import cdb
@@ -155,7 +156,7 @@ async def upload(
     if not evidence["events"]:
         return _error(request, lang, t["err_no_events"])
     try:
-        built = build_case(evidence, ui_language=lang, device=None)
+        built = await run_in_threadpool(build_case, evidence, lang, None)
     except (RouterError, ValueError) as exc:
         return _error(request, lang, f"{t['err_agent']}: {exc}")
     findings = apply_rules(evidence)
@@ -207,7 +208,7 @@ async def regenerate(
         return _error(request, lang, t["err_invite"], page="error.html")
     evidence, summaries = build_demo_evidence()
     try:
-        built = build_case(evidence, ui_language=lang, device=DEMO_DEVICE)
+        built = await run_in_threadpool(build_case, evidence, lang, DEMO_DEVICE)
     except (RouterError, ValueError) as exc:
         return _error(request, lang, f"{t['err_agent']}: {exc}", page="error.html")
     stored["case"] = built["case"]
@@ -223,16 +224,19 @@ def _get_case(case_id: str) -> dict | None:
     return CASES.get(case_id)
 
 
+def _expired(request: Request, lang: str):
+    return templates.TemplateResponse(
+        request, "error.html",
+        _ctx(lang, message=STRINGS[lang]["err_expired"]),
+    )
+
+
 @app.get("/case/{case_id}", response_class=HTMLResponse)
 def diagnosis(request: Request, case_id: str):
     lang = get_lang(request.query_params.get("lang"))
     stored = _get_case(case_id)
     if stored is None:
-        return templates.TemplateResponse(
-            request, "error.html",
-            _ctx(lang, message=STRINGS[lang]["err_not_found"]),
-            status_code=404,
-        )
+        return _expired(request, lang)
     case = stored["case"]
     healthy = case.get("healthy_components") or [
         entry["note"] for entry in stored["findings"]["healthy"]
@@ -252,11 +256,7 @@ def action(request: Request, case_id: str):
     lang = get_lang(request.query_params.get("lang"))
     stored = _get_case(case_id)
     if stored is None:
-        return templates.TemplateResponse(
-            request, "error.html",
-            _ctx(lang, message=STRINGS[lang]["err_not_found"]),
-            status_code=404,
-        )
+        return _expired(request, lang)
     return templates.TemplateResponse(
         request, "action.html",
         _ctx(lang, case_id=case_id, case=stored["case"]),

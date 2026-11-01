@@ -34,6 +34,8 @@ app = modal.App("faultcase")
     image=image,
     secrets=[modal.Secret.from_name("faultcase")],
     timeout=600,  # agent runs take a few minutes on slow providers
+    max_containers=1,  # cases live in memory: one container keeps links working
+    scaledown_window=1200,  # keep the container (and its cases) for 20 minutes
 )
 @modal.asgi_app()
 def fastapi_app():
