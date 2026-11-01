@@ -12,6 +12,7 @@ contents or keys.
 from __future__ import annotations
 
 import json
+import queue
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -35,6 +36,10 @@ class RouterError(Exception):
 
 class _InvalidResponse(Exception):
     """Invalid JSON or schema failure: retry the same provider once."""
+
+
+class _RaceFailed(Exception):
+    """Both hedged providers failed (errors already recorded)."""
 
 
 def _unsupported_format(error: Exception) -> bool:
@@ -74,6 +79,7 @@ class Router:
         options = config.get("settings", {})
         self._timeout = float(options.get("timeout_seconds", 90))
         self._max_retries = int(options.get("max_retries_per_provider", 1))
+        self._hedge_after = float(options.get("hedge_after_seconds", 25))
         self._log_usage = bool(options.get("log_usage", True))
         env_values = {
             "META_API_KEY": self._settings.meta_api_key,
@@ -225,6 +231,105 @@ class Router:
             "data": None, "info": None, "error": message,
         }
 
+    def _log_missing_key(self, role: str, name: str, fallback_used: bool) -> None:
+        provider = self._providers[name]
+        self._log({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "role": role, "provider": name, "model": provider["model"],
+            "latency_ms": 0, "prompt_tokens": 0, "completion_tokens": 0,
+            "cached_tokens": 0,
+            "success": False, "fallback_used": fallback_used,
+        })
+
+    def _race(
+        self, role: str, first: str, second: str, messages: list,
+        schema: dict, errors: dict, route: list,
+    ):
+        """Race two keyed providers; return (data, info) or raise _RaceFailed.
+
+        The second provider only starts if the first one is still running
+        after hedge_after_seconds. The first valid answer wins; the loser
+        is ignored (its daemon thread just finishes in the background).
+        A hedge summary line records which provider won.
+        """
+        results: queue.Queue = queue.Queue()
+
+        def leg(name: str) -> None:
+            try:
+                data, info = self._attempt_provider(
+                    name, self._providers[name], role, messages, schema,
+                    route.index(name) > 0,
+                )
+            except _InvalidResponse as exc:
+                results.put((name, None, None, str(exc)))
+            except Exception as exc:  # noqa: BLE001 - captured, not raised
+                results.put((name, None, None, f"{type(exc).__name__}: {exc}"))
+            else:
+                results.put((name, data, info, None))
+
+        def start(name: str) -> None:
+            thread = threading.Thread(target=leg, args=(name,), daemon=True)
+            thread.start()
+
+        start(first)
+        try:
+            name, data, info, error = results.get(
+                timeout=max(0.0, self._hedge_after)
+            )
+        except queue.Empty:
+            pass
+        else:
+            if error is None:
+                return data, info
+            errors[name] = error
+            try:
+                return self._attempt_provider(
+                    second, self._providers[second], role, messages, schema,
+                    route.index(second) > 0,
+                )
+            except _InvalidResponse as exc:
+                errors[second] = str(exc)
+            except Exception as exc:
+                errors[second] = f"{type(exc).__name__}: {exc}"
+            raise _RaceFailed
+        start(second)
+        try:
+            name, data, info, error = results.get(
+                timeout=max(1.0, 2 * self._timeout + 5)
+            )
+        except queue.Empty:
+            errors[first] = errors[second] = "hedge leg timed out"
+            raise _RaceFailed
+        if error is None:
+            loser = second if name == first else first
+            self._log({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "role": role, "event": "hedge",
+                "providers": [first, second], "winner": name,
+                "ignored": loser, "winner_latency_ms": info["latency_ms"],
+            })
+            return data, info
+        errors[name] = error
+        try:
+            name, data, info, error = results.get(
+                timeout=max(1.0, 2 * self._timeout)
+            )
+        except queue.Empty:
+            other = second if name == first else first
+            errors[other] = "hedge leg timed out"
+            raise _RaceFailed
+        if error is None:
+            loser = second if name == first else first
+            self._log({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "role": role, "event": "hedge",
+                "providers": [first, second], "winner": name,
+                "ignored": loser, "winner_latency_ms": info["latency_ms"],
+            })
+            return data, info
+        errors[name] = error
+        raise _RaceFailed
+
     def call_with_info(self, role: str, messages: list, response_schema: dict):
         """Call the role's route; return (validated data, successful attempt info)."""
         routes = self._config.get("routes", {})
@@ -234,22 +339,27 @@ class Router:
             )
         route = routes[role] or []
         errors: dict[str, str] = {}
+        keyed = []
         for index, name in enumerate(route):
-            provider = self._providers[name]
-            fallback_used = index > 0
-            if not provider["api_key"]:
+            if self._providers[name]["api_key"]:
+                keyed.append(name)
+            else:
                 errors[name] = "missing API key"
-                self._log({
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "role": role, "provider": name, "model": provider["model"],
-                    "latency_ms": 0, "prompt_tokens": 0, "completion_tokens": 0,
-                    "cached_tokens": 0,
-                    "success": False, "fallback_used": fallback_used,
-                })
-                continue
+                self._log_missing_key(role, name, index > 0)
+        rest = keyed
+        if len(keyed) >= 2:
+            try:
+                return self._race(
+                    role, keyed[0], keyed[1], messages, response_schema,
+                    errors, route,
+                )
+            except _RaceFailed:
+                rest = keyed[2:]
+        for name in rest:
             try:
                 return self._attempt_provider(
-                    name, provider, role, messages, response_schema, fallback_used
+                    name, self._providers[name], role, messages,
+                    response_schema, route.index(name) > 0,
                 )
             except _InvalidResponse as exc:
                 errors[name] = str(exc)

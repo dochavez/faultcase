@@ -34,4 +34,5 @@ roles:
 settings:
   timeout_seconds: 90
   max_retries_per_provider: 1
+  hedge_after_seconds: 25  # start the next provider if the first one is slower
   log_usage: true      # tokens, latency and provider per call (to track cost)

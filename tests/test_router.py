@@ -49,6 +49,8 @@ class FakeClient:
         behavior = self._behaviors.pop(0)
         if isinstance(behavior, Exception):
             raise behavior
+        if callable(behavior):
+            return behavior()
         return behavior
 
 
@@ -286,6 +288,64 @@ def test_cached_tokens_default_to_zero(tmp_path):
     _, info = router.call_with_info("test_role", MESSAGES, SCHEMA)
     assert info["cached_tokens"] == 0
     assert _log_lines(tmp_path)[0]["cached_tokens"] == 0
+
+
+def test_no_hedge_when_primary_answers_fast(tmp_path):
+    fireworks = FakeClient([_completion('{"ok": true}')])
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([_completion('{"ok": true}')]),
+        "fireworks": fireworks,
+    })
+    router._hedge_after = 30
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    assert fireworks.calls == []
+    assert [line for line in _log_lines(tmp_path)
+            if line.get("event") == "hedge"] == []
+
+
+def test_hedge_fires_when_primary_is_slow(tmp_path):
+    gate = threading.Event()
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([
+            lambda: gate.wait(timeout=30) and _completion('{"ok": true}'),
+        ]),
+        "fireworks": FakeClient([
+            lambda: (gate.set(), _completion('{"ok": true}'))[1],
+        ]),
+    })
+    router._hedge_after = 0.05
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    hedges = [line for line in _log_lines(tmp_path)
+              if line.get("event") == "hedge"]
+    assert len(hedges) == 1
+    assert hedges[0]["winner"] == "fireworks"
+    assert hedges[0]["ignored"] == "baseten"
+    assert hedges[0]["providers"] == ["baseten", "fireworks"]
+    assert gate.is_set()
+
+
+def test_fast_primary_failure_falls_back_without_hedge(tmp_path):
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([RuntimeError("baseten is down")]),
+        "fireworks": FakeClient([_completion('{"ok": true}')]),
+    })
+    router._hedge_after = 5
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    lines = _log_lines(tmp_path)
+    assert [line.get("event") for line in lines] == [None, None]
+    assert lines[1]["fallback_used"] is True
+
+
+def test_hedge_both_fail_raises_with_both_errors(tmp_path):
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([RuntimeError("baseten is down")]),
+        "fireworks": FakeClient([TimeoutError("fireworks timed out")]),
+    })
+    with pytest.raises(RouterError) as exc_info:
+        router.call("test_role", MESSAGES, SCHEMA)
+    message = str(exc_info.value)
+    assert "baseten is down" in message
+    assert "fireworks timed out" in message
 
 
 def test_call_parallel_runs_concurrently(tmp_path):
