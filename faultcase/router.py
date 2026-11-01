@@ -38,6 +38,10 @@ class _InvalidResponse(Exception):
     """Invalid JSON or schema failure: retry the same provider once."""
 
 
+class _TruncatedResponse(_InvalidResponse):
+    """finish_reason=length: truncated output, retry the same provider once."""
+
+
 class _RaceFailed(Exception):
     """Both hedged providers failed (errors already recorded)."""
 
@@ -140,30 +144,38 @@ class Router:
         roles = self._config.get("roles", {})
         return roles.get(role, {}).get("reasoning_effort")
 
+    def max_tokens(self, role: str):
+        """Return the role's max_tokens cap (or None when unset)."""
+        roles = self._config.get("roles", {})
+        return roles.get(role, {}).get("max_tokens")
+
     def _create(
         self, name: str, model: str, messages: list, schema: dict, role: str
     ):
         effort = self.reasoning_effort(role)
         if name in self._no_reasoning_effort:
             effort = None
+        cap = self.max_tokens(role)
         try:
             return self._create_with_format(
-                name, model, messages, schema, effort
+                name, model, messages, schema, effort, cap
             )
         except Exception as exc:
             if effort is not None and _unsupported_param(exc, "reasoning_effort"):
                 self._no_reasoning_effort.add(name)
                 return self._create_with_format(
-                    name, model, messages, schema, None
+                    name, model, messages, schema, None, cap
                 )
             raise
 
     def _create_with_format(
         self, name: str, model: str, messages: list, schema: dict,
-        effort=None,
+        effort=None, cap=None,
     ):
         client = self._clients[name]
         extra = {"reasoning_effort": effort} if effort is not None else {}
+        if cap is not None:
+            extra["max_tokens"] = cap
         if self._json_mode[name] == "json_object":
             return client.chat.completions.create(
                 model=model, messages=messages,
@@ -216,9 +228,17 @@ class Router:
                 except AttributeError:
                     pass
                 try:
-                    content = completion.choices[0].message.content or ""
+                    choice = completion.choices[0]
                 except (AttributeError, IndexError):
                     raise _InvalidResponse("malformed completion: no choices")
+                if getattr(choice, "finish_reason", None) == "length":
+                    raise _TruncatedResponse(
+                        "truncated response: finish_reason=length"
+                    )
+                try:
+                    content = choice.message.content or ""
+                except AttributeError:
+                    raise _InvalidResponse("malformed completion: no message")
                 try:
                     data = json.loads(content)
                 except json.JSONDecodeError as exc:
@@ -240,7 +260,7 @@ class Router:
                     "role": role, **info, "success": True,
                 })
                 return data, info
-            except _InvalidResponse:
+            except _InvalidResponse as exc:
                 self._log({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "role": role, "provider": name, "model": provider["model"],
@@ -248,6 +268,7 @@ class Router:
                     "prompt_tokens": prompt_tokens,
                     "completion_tokens": completion_tokens,
                     "cached_tokens": cached_tokens,
+                    "truncated": isinstance(exc, _TruncatedResponse),
                     "success": False, "fallback_used": fallback_used,
                 })
                 if attempt < self._max_retries:

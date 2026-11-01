@@ -17,14 +17,17 @@ SCHEMA = {
 MESSAGES = [{"role": "user", "content": "SECRET-PROMPT-DO-NOT-LOG"}]
 
 
-def _completion(content, prompt_tokens=10, completion_tokens=5, cached_tokens=None):
+def _completion(content, prompt_tokens=10, completion_tokens=5, cached_tokens=None,
+                finish_reason=None):
     usage = SimpleNamespace(
         prompt_tokens=prompt_tokens, completion_tokens=completion_tokens
     )
     if cached_tokens is not None:
         usage.prompt_tokens_details = SimpleNamespace(cached_tokens=cached_tokens)
     return SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
+        choices=[SimpleNamespace(
+            message=SimpleNamespace(content=content), finish_reason=finish_reason
+        )],
         usage=usage,
     )
 
@@ -385,6 +388,44 @@ def test_reasoning_effort_rejected_once_then_remembered(tmp_path):
     assert fireworks.calls[0]["reasoning_effort"] == "medium"
     assert "reasoning_effort" not in fireworks.calls[1]
     assert "reasoning_effort" not in fireworks.calls[2]
+
+
+def test_max_tokens_sent_when_configured(tmp_path):
+    baseten = FakeClient([_completion('{"ok": true}')])
+    router, _ = _router(tmp_path, {
+        "baseten": baseten,
+        "fireworks": FakeClient([]),
+    }, route=("baseten",))
+    router._config["roles"] = {"test_role": {"max_tokens": 16384}}
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    assert baseten.calls[0]["max_tokens"] == 16384
+
+
+def test_max_tokens_omitted_when_unset(tmp_path):
+    baseten = FakeClient([_completion('{"ok": true}')])
+    router, _ = _router(tmp_path, {
+        "baseten": baseten,
+        "fireworks": FakeClient([]),
+    }, route=("baseten",))
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    assert "max_tokens" not in baseten.calls[0]
+
+
+def test_truncated_response_logged_and_retried(tmp_path):
+    baseten = FakeClient([
+        _completion('{"ok": tru', finish_reason="length"),
+        _completion('{"ok": true}', finish_reason="stop"),
+    ])
+    router, _ = _router(tmp_path, {
+        "baseten": baseten,
+        "fireworks": FakeClient([]),
+    }, route=("baseten",))
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    lines = _log_lines(tmp_path)
+    assert len(lines) == 2
+    assert lines[0]["truncated"] is True
+    assert lines[0]["success"] is False
+    assert lines[1]["success"] is True
 
 
 def test_call_parallel_runs_concurrently(tmp_path):
