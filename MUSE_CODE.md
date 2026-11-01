@@ -14,17 +14,19 @@ A web tool that turns repeated failures on a Windows laptop into a warranty case
 
 ## Layout
 ```
-faultcase/            # Python package
-  app.py              # FastAPI, 3 screens + /demo
-  ingest/             # evtx.py, msinfo.py, windbg.py (parsers)
-  normalize.py        # maps everything to schemas/evidence.schema.json
-  redact.py           # removes user name, computer name, serial, MAC, personal paths
-  rules.py            # applies playbooks/*.yaml and produces findings
-  router.py           # picks a provider per role with fallback (config/providers.yaml)
-  agent.py            # orchestrates: findings → analysis (Baseten/Fireworks) → case (Meta)
-  local/cdb.py        # LOCAL MODE ONLY on Windows: runs cdb.exe on minidumps
-templates/ static/
+faultcase/                 # Python package
+  adapters/windows/        # evtx.py, windbg.py, fixture_events.py, cdb.py (local only)
+  app.py                   # FastAPI, 3 screens + /demo
+  agent.py                 # findings → analysis (Baseten/Fireworks) → case (Meta)
+  normalize.py             # maps everything to schemas/evidence.schema.json
+  redact.py                # removes user name, computer name, serial, MAC, personal paths
+  rules.py                 # applies playbooks/*.yaml and produces findings
+  router.py                # picks a provider per role with fallback (config/providers.yaml)
+  demo.py / i18n.py        # precomputed demo builders, EN/ES strings
+templates/ static/         # Jinja2 pages, CSS
 config/ filters/ playbooks/ prompts/ schemas/ fixtures/ tests/
+scripts/                   # smoke_test.py, build_demo_case.py
+modal_app.py               # Modal deployment
 ```
 
 ## Mandatory rules
