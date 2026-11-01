@@ -41,7 +41,11 @@ def _driver_timestamp(text: str) -> str | None:
 
 def parse_windbg(path: str | Path) -> dict:
     """Parse one WinDbg output file into a dump dict (missing fields are None)."""
-    text = Path(path).read_text(encoding="utf-8")
+    return parse_windbg_text(Path(path).read_text(encoding="utf-8"))
+
+
+def parse_windbg_text(text: str) -> dict:
+    """Parse WinDbg output text into a dump dict (missing fields are None)."""
     values: dict[str, str] = {}
     for line in text.splitlines():
         key, sep, value = line.partition(":")

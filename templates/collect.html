@@ -44,6 +44,15 @@
           <input type="password" id="invite" name="invite_code" autocomplete="off">
           <small>{{ t.invite_help }}</small>
         </p>
+        {% if local_dumps %}
+        <p class="check">
+          <label for="local-dumps">
+            <input type="checkbox" id="local-dumps" name="local_dumps" value="yes">
+            {{ t.dumps_label }}
+          </label>
+          <small>{{ t.dumps_note }}</small>
+        </p>
+        {% endif %}
         <p><button class="btn btn-primary" id="upload-btn" type="submit">{{ t.upload_btn }}</button></p>
       </form>
       <div id="upload-loading" class="loading" aria-live="polite">

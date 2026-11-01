@@ -50,4 +50,7 @@
   <a class="btn btn-primary btn-big" href="/case/{{ case_id }}/action?lang={{ lang }}">{{ t.dg_cta }}</a>
 </p>
 <p class="meta">{{ t.dg_meta.format(providers=metadata.providers_used|join(", "), seconds=(metadata.total_latency_ms // 1000), tokens=metadata.total_tokens) }}</p>
+{% if local_dumps %}
+<p class="meta">{{ t.dg_local_dumps.format(ok=local_dumps.ok, failed=local_dumps.failed) }}</p>
+{% endif %}
 {% endblock %}

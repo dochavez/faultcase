@@ -71,6 +71,8 @@ h2 { font-size: 1.2rem; margin: 1.75rem 0 0.5rem; }
 .btn[disabled] { opacity: 0.6; cursor: wait; }
 
 label { display: block; font-weight: 600; margin-bottom: 0.2rem; }
+.check label { display: inline; font-weight: 400; }
+.check small { display: block; }
 input[type="file"], input[type="password"] {
   font-size: 1rem; padding: 0.4rem; max-width: 100%;
 }

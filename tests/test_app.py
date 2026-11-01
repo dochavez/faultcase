@@ -154,3 +154,60 @@ def test_upload_accepts_real_evtx(monkeypatch):
 def test_unknown_case_returns_404():
     assert client.get("/case/doesnotexist").status_code == 404
     assert client.get("/case/doesnotexist/evidence.zip").status_code == 404
+
+
+def test_collect_hides_dumps_option_when_cdb_missing(monkeypatch):
+    monkeypatch.setattr(app_module, "LOCAL_DUMPS_AVAILABLE", False)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "Also analyze my memory dumps" not in response.text
+
+
+def test_collect_shows_dumps_option_when_available(monkeypatch):
+    monkeypatch.setattr(app_module, "LOCAL_DUMPS_AVAILABLE", True)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "Also analyze my memory dumps" in response.text
+    assert "administrator" in response.text
+
+
+def test_upload_with_local_dumps(monkeypatch):
+    from faultcase.adapters.windows.windbg import parse_windbg
+
+    evtx_path = (
+        Path(__file__).resolve().parent.parent
+        / "fixtures" / "real_case" / "failures.evtx"
+    )
+    if not evtx_path.exists():
+        pytest.skip("failures.evtx not present")
+    fixture = (
+        Path(__file__).resolve().parent.parent
+        / "fixtures" / "real_case" / "windbg" / "071726-15718-01.txt"
+    )
+    monkeypatch.setattr(app_module, "build_case", _stub_build_case)
+    monkeypatch.setattr(app_module, "settings", OPEN_SETTINGS)
+    monkeypatch.setattr(app_module, "LOCAL_DUMPS_AVAILABLE", True)
+    monkeypatch.setattr(
+        app_module.cdb,
+        "collect_minidumps",
+        lambda: [{
+            "file": "071726-15718-01.dmp",
+            "dump": parse_windbg(fixture),
+            "summary": "raw cdb text",
+            "error": None,
+        }],
+    )
+    response = client.post(
+        "/upload",
+        files={"file": ("failures.evtx", evtx_path.read_bytes())},
+        data={"lang": "en", "local_dumps": "yes"},
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 200
+    base = response.headers["HX-Redirect"].split("?")[0]
+    diagnosis = client.get(response.headers["HX-Redirect"])
+    assert "nvlddmkm.sys" in diagnosis.text
+    assert "Local memory dumps: 1 analyzed, 0 failed" in diagnosis.text
+    archive = client.get(base + "/evidence.zip")
+    names = zipfile.ZipFile(io.BytesIO(archive.content)).namelist()
+    assert "windbg/071726-15718-01.dmp.txt" in names

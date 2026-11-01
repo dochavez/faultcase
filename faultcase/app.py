@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from faultcase.adapters.windows import evtx as evtx_adapter
-from faultcase.adapters.windows import fixture_events, windbg
+from faultcase.adapters.windows import cdb, fixture_events, windbg
 from faultcase.agent import build_case
 from faultcase.i18n import STRINGS, get_lang
 from faultcase.normalize import normalize
@@ -35,6 +35,8 @@ ROOT = Path(__file__).resolve().parent.parent
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 settings = load_settings()
+
+LOCAL_DUMPS_AVAILABLE = cdb.find_cdb() is not None
 
 app = FastAPI(title="FaultCase")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
@@ -57,18 +59,26 @@ def _error(request: Request, lang: str, message: str):
             request, "error_box.html", _ctx(lang, message=message)
         )
     return templates.TemplateResponse(
-        request, "collect.html", _ctx(lang, error=message, message=message),
+        request, "collect.html",
+        _ctx(lang, error=message, message=message,
+             local_dumps=LOCAL_DUMPS_AVAILABLE),
         status_code=400,
     )
 
 
-def _store_case(findings: dict, built: dict, summaries: dict[str, str]) -> str:
+def _store_case(
+    findings: dict,
+    built: dict,
+    summaries: dict[str, str],
+    local_dumps: dict | None = None,
+) -> str:
     case_id = uuid.uuid4().hex[:12]
     CASES[case_id] = {
         "findings": findings,
         "case": built["case"],
         "metadata": built["metadata"],
         "summaries": summaries,
+        "local_dumps": local_dumps,
     }
     return case_id
 
@@ -107,7 +117,9 @@ def _demo_evidence() -> tuple[dict, dict[str, str]]:
 @app.get("/", response_class=HTMLResponse)
 def collect(request: Request):
     lang = get_lang(request.query_params.get("lang"))
-    return templates.TemplateResponse(request, "collect.html", _ctx(lang))
+    return templates.TemplateResponse(
+        request, "collect.html", _ctx(lang, local_dumps=LOCAL_DUMPS_AVAILABLE)
+    )
 
 
 @app.get("/filter/device-diagnostics.xml")
@@ -125,6 +137,7 @@ async def upload(
     file: UploadFile = File(...),
     invite_code: str = Form(""),
     lang: str = Form("en"),
+    local_dumps: str = Form(""),
 ):
     lang = get_lang(lang)
     t = STRINGS[lang]
@@ -142,7 +155,24 @@ async def upload(
         raw_events = _parse_upload(content)
     except Exception:
         return _error(request, lang, t["err_parse"])
-    evidence = normalize(raw_events, []).evidence
+    dump_inputs: list[dict] = []
+    summaries: dict[str, str] = {}
+    local_stats: dict | None = None
+    if local_dumps and LOCAL_DUMPS_AVAILABLE:
+        records = cdb.collect_minidumps()
+        fatal = next((r for r in records if r["file"] is None), None)
+        if fatal is not None:
+            return _error(request, lang, f"{t['err_minidump']} ({fatal['error']})")
+        ok = failed = 0
+        for record in records:
+            if record["dump"] is not None:
+                dump_inputs.append({"file": record["file"], **record["dump"]})
+                summaries[record["file"] + ".txt"] = record["summary"] or ""
+                ok += 1
+            else:
+                failed += 1
+        local_stats = {"ok": ok, "failed": failed}
+    evidence = normalize(raw_events, dump_inputs).evidence
     if not evidence["events"]:
         return _error(request, lang, t["err_no_events"])
     try:
@@ -150,7 +180,7 @@ async def upload(
     except (RouterError, ValueError) as exc:
         return _error(request, lang, f"{t['err_agent']}: {exc}")
     findings = apply_rules(evidence)
-    case_id = _store_case(findings, built, {})
+    case_id = _store_case(findings, built, summaries, local_stats)
     url = f"/case/{case_id}?lang={lang}"
     if _is_htmx(request):
         return Response(status_code=200, headers={"HX-Redirect": url})
@@ -197,7 +227,8 @@ def diagnosis(request: Request, case_id: str):
         request, "diagnosis.html",
         _ctx(lang, case_id=case_id, case=case,
              incidents=stored["findings"]["incidents"],
-             healthy=healthy, metadata=stored["metadata"]),
+             healthy=healthy, metadata=stored["metadata"],
+             local_dumps=stored.get("local_dumps")),
     )
 
 
