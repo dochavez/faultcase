@@ -12,10 +12,27 @@
         "manufacturer": {"type": "string"},
         "model": {"type": "string"},
         "machine_type": {"type": "string"},
+        "system_sku": {"type": "string"},
         "bios_version": {"type": "string"},
+        "bios_date": {"type": "string"},
+        "os_name": {"type": "string"},
+        "os_version": {"type": "string"},
         "gpu": {"type": "string"},
         "gpu_driver_version": {"type": "string"},
-        "purchase_date": {"type": "string", "format": "date"}
+        "gpus": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "driver_version": {"type": "string"},
+              "driver_date": {"type": "string"}
+            }
+          }
+        },
+        "purchase_date": {"type": "string"},
+        "serial": {"type": "string"},
+        "sources": {"type": "object", "additionalProperties": {"type": "string"}}
       }
     },
     "events": {

@@ -75,6 +75,83 @@ def test_collect_posts_browser_timezone():
     assert "resolvedOptions" in response.text
 
 
+def test_collect_has_msinfo_guide_and_manual_fields():
+    response = client.get("/")
+    assert "msinfo32" in response.text
+    assert 'name="msinfo_file"' in response.text
+    assert 'name="dev_manufacturer"' in response.text
+    assert 'name="dev_model"' in response.text
+    assert 'name="dev_purchase"' in response.text
+
+
+def test_build_device_msinfo_wins_and_manual_fills_gaps():
+    from faultcase.adapters.windows import msinfo
+
+    parsed = msinfo.parse_msinfo(
+        Path(__file__).resolve().parent.parent / "fixtures" / "msinfo" / "en.txt"
+    )
+    device = app_module._build_device(parsed, {
+        "manufacturer": "BOGUS",
+        "model": "",
+        "purchase": "2026-01",
+    })
+    assert device["manufacturer"] == "LENOVO"
+    assert device["model"] == "Legion Pro 7 16IAX10H"
+    assert device["machine_type"] == "83F5"
+    assert device["bios_version"] == "LENOVO N3FCN12W"
+    assert device["gpu"] == "NVIDIA GeForce RTX 5090 Laptop GPU"
+    assert device["purchase_date"] == "2026-01"
+    assert device["sources"]["manufacturer"] == "windows_system_information"
+    assert device["sources"]["purchase_date"] == "user_entered"
+    assert "BOGUS" not in str(device)
+
+
+def test_build_device_redacts_personal_data():
+    device = app_module._build_device(None, {
+        "manufacturer": "C:\\Users\\janedoe\\x",
+        "model": "DESKTOP-X1",
+        "purchase": "",
+    })
+    assert "janedoe" not in str(device)
+    assert "DESKTOP-X1" not in str(device)
+    assert device["sources"]["manufacturer"] == "user_entered"
+
+
+def test_upload_with_msinfo_sends_device_to_agent(monkeypatch):
+    evtx_path = (
+        Path(__file__).resolve().parent.parent
+        / "fixtures" / "real_case" / "failures.evtx"
+    )
+    msinfo_path = (
+        Path(__file__).resolve().parent.parent / "fixtures" / "msinfo" / "en.txt"
+    )
+    if not evtx_path.exists():
+        pytest.skip("failures.evtx not present")
+    seen = {}
+
+    def spy(evidence, ui_language="en", device=None, timezone=None):
+        seen["device"] = device
+        return _stub_build_case(evidence, ui_language, device, timezone)
+
+    monkeypatch.setattr(app_module, "build_case", spy)
+    monkeypatch.setattr(app_module, "settings", OPEN_SETTINGS)
+    response = client.post(
+        "/upload",
+        files={
+            "file": ("failures.evtx", evtx_path.read_bytes()),
+            "msinfo_file": ("sysinfo.txt", msinfo_path.read_bytes()),
+        },
+        data={"lang": "en", "dev_purchase": "2026-01"},
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 200
+    assert response.headers["HX-Redirect"].startswith("/case/")
+    assert seen["device"]["machine_type"] == "83F5"
+    assert seen["device"]["purchase_date"] == "2026-01"
+    assert "FAKE123" not in str(seen["device"])
+    assert "fakeuser" not in str(seen["device"])
+
+
 def test_filter_download():
     response = client.get("/filter/device-diagnostics.xml")
     assert response.status_code == 200

@@ -76,7 +76,7 @@ label { display: block; font-weight: 600; margin-bottom: 0.2rem; }
 input[type="file"], input[type="password"] {
   font-size: 1rem; padding: 0.4rem; max-width: 100%;
 }
-input[type="password"] { border: 1px solid var(--line); border-radius: var(--radius); width: 16rem; max-width: 100%; }
+input[type="password"], input[type="text"], input[type="month"] { border: 1px solid var(--line); border-radius: var(--radius); width: 16rem; max-width: 100%; font-size: 1rem; padding: 0.4rem; }
 small { color: var(--muted); }
 
 .loading { display: none; margin: 1rem 0; font-weight: 600; }

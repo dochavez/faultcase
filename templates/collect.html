@@ -54,6 +54,29 @@
           <small>{{ t.dumps_note }}</small>
         </p>
         {% endif %}
+        <h3>{{ t.msinfo_title }}</h3>
+        <ol class="substeps">
+          <li>{{ t.msinfo_a }}</li>
+          <li>{{ t.msinfo_b }}</li>
+          <li>{{ t.msinfo_c }}</li>
+        </ol>
+        <p>
+          <label for="msinfo">{{ t.msinfo_label }}</label>
+          <input type="file" id="msinfo" name="msinfo_file" accept=".txt">
+        </p>
+        <h3>{{ t.manual_title }}</h3>
+        <p>
+          <label for="dev-manufacturer">{{ t.manufacturer_label }}</label>
+          <input type="text" id="dev-manufacturer" name="dev_manufacturer" autocomplete="off">
+        </p>
+        <p>
+          <label for="dev-model">{{ t.model_label }}</label>
+          <input type="text" id="dev-model" name="dev_model" autocomplete="off">
+        </p>
+        <p>
+          <label for="dev-purchase">{{ t.purchase_label }}</label>
+          <input type="month" id="dev-purchase" name="dev_purchase">
+        </p>
         <p><button class="btn btn-primary" id="upload-btn" type="submit">{{ t.upload_btn }}</button></p>
       </form>
       <div id="upload-loading" class="loading" aria-live="polite">

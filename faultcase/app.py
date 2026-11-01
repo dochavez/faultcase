@@ -25,18 +25,61 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from faultcase.adapters.windows import evtx as evtx_adapter
-from faultcase.adapters.windows import cdb
+from faultcase.adapters.windows import cdb, msinfo
 from faultcase.agent import build_case
 from faultcase.demo import DEMO_CASE_PATH, DEMO_DEVICE, build_demo_evidence
 from faultcase.demo import load_demo_summaries
 from faultcase.i18n import INCIDENT_LABELS, STRINGS, get_lang
 from faultcase.normalize import normalize
+from faultcase import redact
 from faultcase.router import RouterError
 from faultcase.rules import apply_rules
 from faultcase.settings import load_settings
 
 ROOT = Path(__file__).resolve().parent.parent
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+MAX_MSINFO_BYTES = 5 * 1024 * 1024
+
+
+def _build_device(msinfo_data: dict | None, manual: dict[str, str]) -> dict:
+    """Assemble the device object with per-field sources, redacted.
+
+    msinfo data wins for the fields it provides; manual fields fill the
+    gaps. Only non-empty values are kept. Sources: one of
+    "windows_system_information" or "user_entered".
+    """
+    device: dict = {}
+    sources: dict[str, str] = {}
+    if msinfo_data:
+        parsed = msinfo_data
+        for key in (
+            "manufacturer", "model", "machine_type", "system_sku",
+            "bios_version", "bios_date", "os_name", "os_version",
+        ):
+            if parsed.get(key):
+                device[key] = parsed[key]
+                sources[key] = "windows_system_information"
+        gpus = [g for g in parsed.get("gpus", []) if g.get("name")]
+        if gpus:
+            device["gpus"] = gpus
+            sources["gpus"] = "windows_system_information"
+            device["gpu"] = gpus[0]["name"]
+            sources["gpu"] = "windows_system_information"
+            if gpus[0].get("driver_version"):
+                device["gpu_driver_version"] = gpus[0]["driver_version"]
+                sources["gpu_driver_version"] = "windows_system_information"
+    for key, source_key in (
+        ("manufacturer", "manufacturer"),
+        ("model", "model"),
+        ("purchase_date", "purchase"),
+    ):
+        value = (manual.get(source_key) or "").strip()
+        if value and key not in device:
+            device[key] = value
+            sources[key] = "user_entered"
+    if sources:
+        device["sources"] = sources
+    return redact.redact_obj(device)
 
 settings = load_settings()
 
@@ -116,10 +159,14 @@ def download_filter():
 async def upload(
     request: Request,
     file: UploadFile = File(...),
+    msinfo_file: UploadFile | None = File(None),
     invite_code: str = Form(""),
     lang: str = Form("en"),
     local_dumps: str = Form(""),
     tz: str = Form("UTC"),
+    dev_manufacturer: str = Form(""),
+    dev_model: str = Form(""),
+    dev_purchase: str = Form(""),
 ):
     lang = get_lang(lang)
     t = STRINGS[lang]
@@ -138,6 +185,25 @@ async def upload(
         raw_events = _parse_upload(content)
     except Exception:
         return _error(request, lang, t["err_parse"])
+    msinfo_data = None
+    if msinfo_file is not None and msinfo_file.filename:
+        if not msinfo_file.filename.lower().endswith(".txt"):
+            return _error(request, lang, t["err_msinfo_type"])
+        msinfo_bytes = await msinfo_file.read(MAX_MSINFO_BYTES + 1)
+        if len(msinfo_bytes) > MAX_MSINFO_BYTES:
+            return _error(request, lang, t["err_msinfo_big"])
+        try:
+            msinfo_data = msinfo.parse_msinfo_bytes(msinfo_bytes)
+        except Exception:
+            return _error(request, lang, t["err_msinfo"])
+        if not any(v for k, v in msinfo_data.items() if k != "gpus") \
+                and not msinfo_data.get("gpus"):
+            return _error(request, lang, t["err_msinfo"])
+    device = _build_device(msinfo_data, {
+        "manufacturer": dev_manufacturer,
+        "model": dev_model,
+        "purchase": dev_purchase,
+    })
     dump_inputs: list[dict] = []
     summaries: dict[str, str] = {}
     local_stats: dict | None = None
@@ -159,7 +225,7 @@ async def upload(
     if not evidence["events"]:
         return _error(request, lang, t["err_no_events"])
     try:
-        built = await run_in_threadpool(build_case, evidence, lang, None, tz)
+        built = await run_in_threadpool(build_case, evidence, lang, device or None, tz)
     except (RouterError, ValueError) as exc:
         return _error(request, lang, f"{t['err_agent']}: {exc}")
     findings = apply_rules(evidence, tz=tz)
