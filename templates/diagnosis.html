@@ -53,4 +53,20 @@
 {% if local_dumps %}
 <p class="meta">{{ t.dg_local_dumps.format(ok=local_dumps.ok, failed=local_dumps.failed) }}</p>
 {% endif %}
+{% if is_demo %}
+<section class="regen">
+  <form hx-post="/case/{{ case_id }}/regenerate" hx-target="#regen-result" hx-swap="innerHTML"
+        hx-indicator="#regen-loading" method="post" action="/case/{{ case_id }}/regenerate">
+    <input type="hidden" name="lang" value="{{ lang }}">
+    <label for="regen-invite">{{ t.regen_label }}</label>
+    <input type="password" id="regen-invite" name="invite_code" autocomplete="off">
+    <button class="btn btn-secondary btn-small" type="submit">{{ t.regen_btn }}</button>
+    <small>{{ t.regen_note }}</small>
+  </form>
+  <div id="regen-loading" class="loading" aria-live="polite">
+    <span class="spinner" aria-hidden="true"></span> {{ t.loading }}
+  </div>
+  <div id="regen-result" aria-live="polite"></div>
+</section>
+{% endif %}
 {% endblock %}

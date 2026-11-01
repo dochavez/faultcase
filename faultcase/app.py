@@ -23,8 +23,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from faultcase.adapters.windows import evtx as evtx_adapter
-from faultcase.adapters.windows import cdb, fixture_events, windbg
+from faultcase.adapters.windows import cdb
 from faultcase.agent import build_case
+from faultcase.demo import DEMO_CASE_PATH, DEMO_DEVICE, build_demo_evidence
+from faultcase.demo import load_demo_summaries
 from faultcase.i18n import STRINGS, get_lang
 from faultcase.normalize import normalize
 from faultcase.router import RouterError
@@ -53,17 +55,14 @@ def _is_htmx(request: Request) -> bool:
     return request.headers.get("hx-request") == "true"
 
 
-def _error(request: Request, lang: str, message: str):
+def _error(request: Request, lang: str, message: str, page: str = "collect.html"):
     if _is_htmx(request):
         return templates.TemplateResponse(
             request, "error_box.html", _ctx(lang, message=message)
         )
-    return templates.TemplateResponse(
-        request, "collect.html",
-        _ctx(lang, error=message, message=message,
-             local_dumps=LOCAL_DUMPS_AVAILABLE),
-        status_code=400,
-    )
+    ctx = _ctx(lang, error=message, message=message,
+               local_dumps=LOCAL_DUMPS_AVAILABLE)
+    return templates.TemplateResponse(request, page, ctx, status_code=400)
 
 
 def _store_case(
@@ -71,6 +70,8 @@ def _store_case(
     built: dict,
     summaries: dict[str, str],
     local_dumps: dict | None = None,
+    is_demo: bool = False,
+    timezone: str = "UTC",
 ) -> str:
     case_id = uuid.uuid4().hex[:12]
     CASES[case_id] = {
@@ -79,6 +80,8 @@ def _store_case(
         "metadata": built["metadata"],
         "summaries": summaries,
         "local_dumps": local_dumps,
+        "is_demo": is_demo,
+        "timezone": timezone,
     }
     return case_id
 
@@ -88,30 +91,6 @@ def _parse_upload(content: bytes) -> list[dict]:
         path = Path(tmp) / "upload.evtx"
         path.write_bytes(content)
         return evtx_adapter.parse_evtx(path).events
-
-
-def _demo_evidence() -> tuple[dict, dict[str, str]]:
-    real = ROOT / "fixtures" / "real_case"
-    events = fixture_events.load_fixture_events(real / "events_41.json")
-    for event in list(events):
-        related = event["fields"].get("related_6008")
-        if related:
-            events.append({
-                "time": related,
-                "log": "System",
-                "source": "EventLog",
-                "event_id": 6008,
-                "fields": {},
-            })
-    dumps = []
-    summaries = {}
-    for path in sorted((real / "windbg").glob("*.txt")):
-        summaries[path.name] = path.read_text(encoding="utf-8")
-        dumps.append({
-            "file": path.name.replace(".txt", ".dmp"),
-            **windbg.parse_windbg(path),
-        })
-    return normalize(events, dumps).evidence, summaries
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -191,14 +170,49 @@ async def upload(
 async def demo(request: Request, lang: str = Form("en")):
     lang = get_lang(lang)
     t = STRINGS[lang]
-    evidence, summaries = _demo_evidence()
-    device = {"manufacturer": "Lenovo", "gpu": "NVIDIA", "purchase_date": "2026-01"}
+    if not DEMO_CASE_PATH.exists():
+        return _error(request, lang, t["err_demo_missing"])
+    data = json.loads(DEMO_CASE_PATH.read_text(encoding="utf-8"))
+    entry = data[lang]
+    case_id = _store_case(
+        data["findings"],
+        {"case": entry["case"], "metadata": entry["metadata"]},
+        load_demo_summaries(),
+        is_demo=True,
+        timezone=data.get("timezone", "UTC"),
+    )
+    url = f"/case/{case_id}?lang={lang}"
+    if _is_htmx(request):
+        return Response(status_code=200, headers={"HX-Redirect": url})
+    return RedirectResponse(url, status_code=303)
+
+
+@app.post("/case/{case_id}/regenerate")
+async def regenerate(
+    request: Request,
+    case_id: str,
+    invite_code: str = Form(""),
+    lang: str = Form("en"),
+):
+    lang = get_lang(lang)
+    t = STRINGS[lang]
+    stored = _get_case(case_id)
+    if stored is None or not stored.get("is_demo"):
+        return templates.TemplateResponse(
+            request, "error.html",
+            _ctx(lang, message=STRINGS[lang]["err_not_found"]),
+            status_code=404,
+        )
+    if not settings.invite_code or invite_code.strip() != settings.invite_code:
+        return _error(request, lang, t["err_invite"], page="error.html")
+    evidence, summaries = build_demo_evidence()
     try:
-        built = build_case(evidence, ui_language=lang, device=device)
+        built = build_case(evidence, ui_language=lang, device=DEMO_DEVICE)
     except (RouterError, ValueError) as exc:
-        return _error(request, lang, f"{t['err_agent']}: {exc}")
-    findings = apply_rules(evidence)
-    case_id = _store_case(findings, built, summaries)
+        return _error(request, lang, f"{t['err_agent']}: {exc}", page="error.html")
+    stored["case"] = built["case"]
+    stored["metadata"] = built["metadata"]
+    stored["summaries"] = summaries
     url = f"/case/{case_id}?lang={lang}"
     if _is_htmx(request):
         return Response(status_code=200, headers={"HX-Redirect": url})
@@ -228,7 +242,8 @@ def diagnosis(request: Request, case_id: str):
         _ctx(lang, case_id=case_id, case=case,
              incidents=stored["findings"]["incidents"],
              healthy=healthy, metadata=stored["metadata"],
-             local_dumps=stored.get("local_dumps")),
+             local_dumps=stored.get("local_dumps"),
+             is_demo=stored.get("is_demo", False)),
     )
 
 

@@ -1,0 +1,42 @@
+"""Build the precomputed demo case (calls live models for en and es).
+
+Usage: python scripts/build_demo_case.py
+Writes fixtures/real_case/demo_case.json. Rerun after prompt or model
+changes so /demo serves fresh output.
+"""
+
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from faultcase import rules  # noqa: E402
+from faultcase.agent import build_case  # noqa: E402
+from faultcase.demo import (  # noqa: E402
+    DEMO_CASE_PATH,
+    DEMO_DEVICE,
+    DEMO_TIMEZONE,
+    build_demo_evidence,
+)
+
+
+def main() -> None:
+    evidence, _summaries = build_demo_evidence()
+    data: dict = {
+        "timezone": DEMO_TIMEZONE,
+        "findings": rules.apply_rules(evidence),
+    }
+    for lang in ("en", "es"):
+        print(f"building {lang} ...", flush=True)
+        result = build_case(evidence, ui_language=lang, device=DEMO_DEVICE)
+        data[lang] = {"case": result["case"], "metadata": result["metadata"]}
+    DEMO_CASE_PATH.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(f"wrote {DEMO_CASE_PATH}")
+
+
+if __name__ == "__main__":
+    main()

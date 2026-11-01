@@ -1,6 +1,7 @@
 """Web app tests with stubbed agent (no network, no models)."""
 
 import io
+import json
 import zipfile
 from pathlib import Path
 
@@ -74,25 +75,35 @@ def test_filter_download():
     assert "FaultCase - Device diagnostics" in response.text
 
 
-def test_demo_flow_end_to_end(monkeypatch, tmp_path):
-    monkeypatch.setattr(app_module, "build_case", _stub_build_case)
-    monkeypatch.setattr(app_module, "settings", OPEN_SETTINGS)
+def _demo_file():
+    path = (
+        Path(__file__).resolve().parent.parent
+        / "fixtures" / "real_case" / "demo_case.json"
+    )
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_demo_flow_uses_precomputed_file(monkeypatch):
+    def explode(*args, **kwargs):
+        raise RuntimeError("demo must not call models")
+
+    monkeypatch.setattr(app_module, "build_case", explode)
     response = client.post("/demo", data={"lang": "en"}, headers={"HX-Request": "true"})
     assert response.status_code == 200
     target = response.headers["HX-Redirect"]
     assert target.startswith("/case/")
     base = target.split("?")[0]
+    file_case = _demo_file()["en"]["case"]
 
     diagnosis = client.get(target)
     assert diagnosis.status_code == 200
-    assert "Likely driver fault" in diagnosis.text
-    assert "Fact" in diagnosis.text and "Hypothesis" in diagnosis.text
+    assert EN["v_" + file_case["verdict"]] in diagnosis.text
+    assert "Regenerate live" in diagnosis.text
     assert "/action?lang=en" in diagnosis.text
 
     action = client.get(base + "/action?lang=en")
     assert action.status_code == 200
-    assert "English report body." in action.text
-    assert "Cuerpo del informe." in action.text
+    assert file_case["manufacturer_report"]["body_en"][:60] in action.text
 
     archive = client.get(base + "/evidence.zip")
     assert archive.status_code == 200
@@ -101,6 +112,66 @@ def test_demo_flow_end_to_end(monkeypatch, tmp_path):
     assert "report_en.txt" in names and "report_es.txt" in names
     assert any(n.startswith("windbg/") for n in names)
     assert not any(n.endswith(".evtx") or n.endswith(".dmp") for n in names)
+
+
+def test_demo_missing_file_shows_error(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        app_module, "DEMO_CASE_PATH", tmp_path / "no-such-file.json"
+    )
+    response = client.post("/demo", data={"lang": "en"}, headers={"HX-Request": "true"})
+    assert "Run scripts/build_demo_case.py" in response.text
+
+
+def test_regenerate_live_with_valid_invite(monkeypatch):
+    locked = Settings(
+        meta_api_key=None, baseten_api_key=None, fireworks_api_key=None,
+        baseten_model="m", invite_code="secret",
+    )
+    monkeypatch.setattr(app_module, "settings", locked)
+    target = client.post(
+        "/demo", data={"lang": "en"}, headers={"HX-Request": "true"}
+    ).headers["HX-Redirect"]
+    base = target.split("?")[0]
+    monkeypatch.setattr(app_module, "build_case", _stub_build_case)
+    response = client.post(
+        base + "/regenerate",
+        data={"invite_code": "secret", "lang": "en"},
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 200
+    assert response.headers["HX-Redirect"] == target
+    diagnosis = client.get(target)
+    assert "Likely driver fault" in diagnosis.text
+
+
+def test_regenerate_rejects_wrong_invite(monkeypatch):
+    locked = Settings(
+        meta_api_key=None, baseten_api_key=None, fireworks_api_key=None,
+        baseten_model="m", invite_code="secret",
+    )
+    monkeypatch.setattr(app_module, "settings", locked)
+    target = client.post(
+        "/demo", data={"lang": "en"}, headers={"HX-Request": "true"}
+    ).headers["HX-Redirect"]
+    response = client.post(
+        target.split("?")[0] + "/regenerate",
+        data={"invite_code": "wrong", "lang": "en"},
+        headers={"HX-Request": "true"},
+    )
+    assert "Wrong invite code" in response.text
+
+
+def test_regenerate_non_demo_case_returns_404():
+    app_module.CASES["notademo"] = {"is_demo": False}
+    try:
+        response = client.post(
+            "/case/notademo/regenerate",
+            data={"invite_code": "x", "lang": "en"},
+            headers={"HX-Request": "true"},
+        )
+        assert response.status_code == 404
+    finally:
+        del app_module.CASES["notademo"]
 
 
 def test_upload_rejects_wrong_invite_code(monkeypatch):
