@@ -1,9 +1,11 @@
 """Local cdb analysis: discovery, stubbed runs and read-only copies."""
 
-import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 from faultcase.adapters.windows import cdb
 from faultcase.adapters.windows.windbg import parse_windbg
@@ -23,14 +25,14 @@ def _completed(stdout=SAMPLE_OUTPUT):
     return subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr="")
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="requires Windows")
 def test_find_cdb_on_path(monkeypatch):
-    monkeypatch.setattr(os, "name", "nt")
     monkeypatch.setattr(shutil, "which", lambda name: "C:\\tools\\cdb.exe")
     assert cdb.find_cdb() == Path("C:\\tools\\cdb.exe")
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="requires Windows")
 def test_find_cdb_in_kit_folder(monkeypatch, tmp_path):
-    monkeypatch.setattr(os, "name", "nt")
     monkeypatch.setattr(shutil, "which", lambda name: None)
     exe = tmp_path / "cdb.exe"
     exe.write_bytes(b"fake")
@@ -38,15 +40,16 @@ def test_find_cdb_in_kit_folder(monkeypatch, tmp_path):
     assert cdb.find_cdb() == exe
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="requires Windows")
 def test_find_cdb_missing(monkeypatch, tmp_path):
-    monkeypatch.setattr(os, "name", "nt")
     monkeypatch.setattr(shutil, "which", lambda name: None)
     monkeypatch.setattr(cdb, "_candidate_paths", lambda: [tmp_path / "cdb.exe"])
     assert cdb.find_cdb() is None
 
 
-def test_find_cdb_only_on_windows(monkeypatch):
-    monkeypatch.setattr(os, "name", "posix")
+@pytest.mark.skipif(sys.platform == "win32", reason="non-Windows behavior")
+def test_find_cdb_returns_none_off_windows(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda name: "C:\\tools\\cdb.exe")
     assert cdb.find_cdb() is None
 
 
