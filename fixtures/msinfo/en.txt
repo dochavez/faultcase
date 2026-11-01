@@ -1,0 +1,67 @@
+System Information report written at: 10/27/26 20:15:33
+System Name: DESKTOP-FAKE123
+[System Summary]
+
+Item	Value	
+OS Name	Microsoft Windows 11 Pro	
+Version	10.0.26100 Build 26100	
+Other OS Description	Not Available	
+OS Manufacturer	Microsoft Corporation	
+System Name	DESKTOP-FAKE123	
+System Manufacturer	LENOVO	
+System Model	Legion Pro 7 16IAX10H	
+System Type	x64-based PC	
+System SKU	LENOVO_MT_83F5_BU_Think_FM_Legion Pro 7 16IAX10H	
+Processor	Intel(R) Core(TM) Ultra 9 275HX, 2400 Mhz, 8 Core(s), 8 Logical Processor(s)	
+BIOS Version/Date	LENOVO N3FCN12W, 4/1/2026	
+SMBIOS Version	3.8	
+Embedded Controller Version	1.12	
+BIOS Mode	UEFI	
+BaseBoard Manufacturer	LENOVO	
+BaseBoard Product	83F5	
+Platform Role	Mobile	
+Secure Boot State	On	
+PCR7 Configuration	Bound	
+Windows Directory	C:\Windows	
+System Directory	C:\Windows\system32	
+Boot Device	\Device\HarddiskVolume3	
+Locale	United States	
+Hardware Abstraction Layer	Version = "10.0.26100.1"	
+User Name	FAKEDOMAIN\fakeuser	
+Time Zone	Central America Standard Time	
+Installed Physical Memory (RAM)	32.0 GB	
+Total Physical Memory	31.6 GB	
+Available Physical Memory	24.1 GB	
+Total Virtual Memory	36.6 GB	
+Available Virtual Memory	28.9 GB	
+Page File Space	5.00 GB	
+Page File	C:\pagefile.sys	
+Kernel DMA Protection	On	
+Virtualization-based security	Running	
+Hyper-V - VM Monitor Mode Extensions	Yes	
+Hyper-V - Second Level Address Translation Extensions	Yes	
+Hyper-V - Virtualization Enabled in Firmware	Yes	
+Hyper-V - Data Execution Protection	Yes	
+[Display]
+
+Item	Value	
+Name	NVIDIA GeForce RTX 5090 Laptop GPU	
+PNP Device ID	PCI\VEN_10DE&DEV_2C58&SUBSYS_3DFA17AA&REV_A1\4&1FC8336&0&0008	
+Adapter Type	NVIDIA GeForce RTX 5090 Laptop GPU, NVIDIA compatible	
+Adapter Description	NVIDIA GeForce RTX 5090 Laptop GPU	
+Adapter RAM	(16,106,127,360) bytes	
+Installed Drivers	C:\Windows\System32\DriverStore\FileRepository\nvleig.inf_amd64_abc123\nvldumdx.dll	
+Driver Version	32.0.15.6636	
+Driver Date	2/14/2026	
+Name	Intel(R) Graphics	
+PNP Device ID	PCI\VEN_8086&DEV_7D55&SUBSYS_3DFA17AA&REV_08\3&11583659&0&10	
+Adapter Type	Intel(R) Graphics Family, Intel Corporation compatible	
+Adapter Description	Intel(R) Graphics	
+Adapter RAM	(1,073,741,824) bytes	
+Installed Drivers	C:\Windows\System32\DriverStore\FileRepository\iigd_dch.inf_amd64_def456\igdumdim64.dll	
+Driver Version	32.0.101.1234	
+Driver Date	1/15/2026	
+[Sound Device]
+
+Item	Value	
+Name	NVIDIA High Definition Audio	

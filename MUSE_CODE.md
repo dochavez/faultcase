@@ -15,7 +15,7 @@ A web tool that turns repeated failures on a Windows laptop into a warranty case
 ## Layout
 ```
 faultcase/                 # Python package
-  adapters/windows/        # evtx.py, windbg.py, fixture_events.py, cdb.py (local only)
+  adapters/windows/        # evtx.py, windbg.py, fixture_events.py, msinfo.py, cdb.py (local only)
   app.py                   # FastAPI, 3 screens + /demo
   agent.py                 # findings → analysis (Baseten/Fireworks) → case (Meta)
   normalize.py             # maps everything to schemas/evidence.schema.json

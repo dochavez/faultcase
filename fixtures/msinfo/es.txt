@@ -1,0 +1,53 @@
+Informe de información del sistema escrito el: 27/10/26 20:15:33
+Nombre del sistema: DESKTOP-FAKE123
+[Resumen del sistema]
+
+Elemento	Valor	
+Nombre del sistema operativo	Microsoft Windows 11 Pro	
+Versión	10.0.26100 compilación 26100	
+Otra descripción del sistema operativo	No disponible	
+Fabricante del sistema operativo	Microsoft Corporation	
+Nombre del sistema	DESKTOP-FAKE123	
+Fabricante del sistema	LENOVO	
+Modelo del sistema	Legion Pro 7 16IAX10H	
+Tipo de sistema	Equipo basado en x64	
+SKU del sistema	LENOVO_MT_83F5_BU_Think_FM_Legion Pro 7 16IAX10H	
+Procesador	Intel(R) Core(TM) Ultra 9 275HX, 2400 Mhz, 8 procesadores principales, 8 procesadores lógicos	
+Versión y fecha de BIOS	LENOVO N3FCN12W, 01/04/2026	
+Versión de SMBIOS	3.8	
+Versión del controlador incrustado	1.12	
+Modo de BIOS	UEFI	
+Fabricante de la placa base	LENOVO	
+Producto de placa base	83F5	
+Rol de plataforma	Móvil	
+Estado de arranque seguro	Activado	
+Directorio de Windows	C:\Windows	
+Directorio del sistema	C:\Windows\system32	
+Dispositivo de arranque	\Device\HarddiskVolume3	
+Configuración regional	Estados Unidos	
+Nombre de usuario	FALSODOMINIO\usuarioprueba	
+Zona horaria	Hora estándar central (Centroamérica)	
+Memoria física instalada (RAM)	32,0 GB	
+[Pantalla]
+
+Elemento	Valor	
+Nombre	NVIDIA GeForce RTX 5090 Laptop GPU	
+Id. de dispositivo PNP	PCI\VEN_10DE&DEV_2C58&SUBSYS_3DFA17AA&REV_A1\4&1FC8336&0&0008	
+Tipo de adaptador	NVIDIA GeForce RTX 5090 Laptop GPU, compatible con NVIDIA	
+Descripción del adaptador	NVIDIA GeForce RTX 5090 Laptop GPU	
+RAM del adaptador	(16.106.127.360) bytes	
+Controladores instalados	C:\Windows\System32\DriverStore\FileRepository\nvleig.inf_amd64_abc123\nvldumdx.dll	
+Versión del controlador	32.0.15.6636	
+Fecha del controlador	14/02/2026	
+Nombre	Intel(R) Graphics	
+Id. de dispositivo PNP	PCI\VEN_8086&DEV_7D55&SUBSYS_3DFA17AA&REV_08\3&11583659&0&10	
+Tipo de adaptador	Familia Intel(R) Graphics, compatible con Intel Corporation	
+Descripción del adaptador	Intel(R) Graphics	
+RAM del adaptador	(1.073.741.824) bytes	
+Controladores instalados	C:\Windows\System32\DriverStore\FileRepository\iigd_dch.inf_amd64_def456\igdumdim64.dll	
+Versión del controlador	32.0.101.1234	
+Fecha del controlador	15/01/2026	
+[Dispositivo de sonido]
+
+Elemento	Valor	
+Nombre	NVIDIA High Definition Audio	
