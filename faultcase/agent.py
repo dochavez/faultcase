@@ -21,12 +21,17 @@ from faultcase.router import RouterError, analysis_mode, call_parallel_with_info
 ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / "prompts"
 CASE_SCHEMA = json.loads((ROOT / "schemas" / "case.schema.json").read_text(encoding="utf-8"))
+CASE_VERDICTS = CASE_SCHEMA["properties"]["verdict"]["enum"]
 
 ANALYSIS_SCHEMA = {
     "type": "object",
     "required": ["verdict", "confidence", "findings", "healthy_components", "missing"],
     "properties": {
-        "verdict": {"type": "string"},
+        "verdict": {"enum": CASE_VERDICTS},
+        "summary": {
+            "type": "string",
+            "description": "optional free-text description of the verdict",
+        },
         "confidence": {"enum": ["high", "medium", "low"]},
         "findings": {
             "type": "array",
@@ -85,9 +90,11 @@ def _lower_confidence(confidence: str) -> str:
 def _reconcile_opinions(results: list) -> tuple:
     """Merge parallel analyses into (analysis, info, metadata).
 
-    Verdicts are compared case-insensitively: agreement keeps the primary
-    verdict and confidence, disagreement lowers confidence one level and
-    adds a hypothesis finding. A single surviving opinion is used as-is.
+    Opinions agree when both the verdict enum and the confidence level
+    match: agreement keeps the primary verdict and confidence,
+    disagreement lowers confidence one level and adds a hypothesis
+    finding. Free-text wording (summary, findings) is ignored. A single
+    surviving opinion is used as-is.
     """
     succeeded = [r for r in results if r["success"]]
     if not succeeded:
@@ -118,16 +125,18 @@ def _reconcile_opinions(results: list) -> tuple:
     if len(succeeded) >= 2:
         first, second = succeeded[0], succeeded[1]
         agreement = (
-            first["data"]["verdict"].strip().lower()
-            == second["data"]["verdict"].strip().lower()
+            first["data"]["verdict"] == second["data"]["verdict"]
+            and first["data"]["confidence"] == second["data"]["confidence"]
         )
         if not agreement:
             analysis["confidence"] = _lower_confidence(first["data"]["confidence"])
             analysis["findings"] = list(first["data"]["findings"]) + [{
                 "text": (
                     "Two independent analyses disagreed "
-                    f"({first['provider']}: {first['data']['verdict']!r}; "
-                    f"{second['provider']}: {second['data']['verdict']!r}); "
+                    f"({first['provider']}: {first['data']['verdict']} "
+                    f"with {first['data']['confidence']} confidence; "
+                    f"{second['provider']}: {second['data']['verdict']} "
+                    f"with {second['data']['confidence']} confidence); "
                     "treat the root cause as uncertain."
                 ),
                 "type": "hypothesis",

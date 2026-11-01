@@ -3,6 +3,7 @@
 import json
 
 import pytest
+from jsonschema import validate
 from jsonschema.exceptions import ValidationError
 
 from faultcase import agent
@@ -15,8 +16,9 @@ def _single_analysis_mode(monkeypatch):
 
 
 ANALYSIS = {
-    "verdict": "recurring display driver crashes",
+    "verdict": "likely_driver_fault",
     "confidence": "medium",
+    "summary": "The display driver fails repeatedly.",
     "findings": [{"text": "nvlddmkm.sys crashed twice", "type": "fact"}],
     "healthy_components": ["disk"],
     "missing": ["manufacturer hardware scan"],
@@ -146,8 +148,23 @@ def test_device_with_sources_reaches_case_writer(monkeypatch):
     }
 
 
-def _opinion(provider, verdict, confidence):
-    data = dict(ANALYSIS, verdict=verdict, confidence=confidence)
+def test_analysis_schema_verdict_matches_case_schema():
+    case_verdicts = agent.CASE_SCHEMA["properties"]["verdict"]["enum"]
+    assert case_verdicts == [
+        "likely_hardware_fault", "likely_driver_fault",
+        "instability_unclear_cause", "no_relevant_issues",
+    ]
+    assert agent.ANALYSIS_SCHEMA["properties"]["verdict"] == {"enum": case_verdicts}
+    validate(instance=ANALYSIS, schema=agent.ANALYSIS_SCHEMA)
+    with pytest.raises(ValidationError):
+        validate(
+            instance=dict(ANALYSIS, verdict="recurring display driver crashes"),
+            schema=agent.ANALYSIS_SCHEMA,
+        )
+
+
+def _opinion(provider, verdict, confidence, summary="opinion summary"):
+    data = dict(ANALYSIS, verdict=verdict, confidence=confidence, summary=summary)
     return {
         "provider": provider, "model": f"m-{provider}", "success": True,
         "data": data,
@@ -186,11 +203,13 @@ def test_user_messages_put_static_reference_first(monkeypatch):
         assert "findings" in case_data or "analysis" in case_data
 
 
-def test_second_opinion_agreement_keeps_confidence(monkeypatch):
+def test_second_opinion_agreement_ignores_wording(monkeypatch):
     captured = []
     _stub_second_opinion(monkeypatch, captured, [
-        _opinion("baseten", "recurring display driver crashes", "high"),
-        _opinion("fireworks", "Recurring Display Driver Crashes", "medium"),
+        _opinion("baseten", "likely_driver_fault", "high",
+                 "Recurrent display crashes"),
+        _opinion("fireworks", "likely_driver_fault", "high",
+                 "The display driver keeps failing"),
     ])
     result = agent.build_case(EVIDENCE)
     assert result["metadata"]["second_opinion_agreement"] is True
@@ -205,18 +224,31 @@ def test_second_opinion_agreement_keeps_confidence(monkeypatch):
 def test_second_opinion_disagreement_lowers_confidence(monkeypatch):
     captured = []
     _stub_second_opinion(monkeypatch, captured, [
-        _opinion("baseten", "recurring display driver crashes", "high"),
-        _opinion("fireworks", "failing disk", "medium"),
+        _opinion("baseten", "likely_driver_fault", "high"),
+        _opinion("fireworks", "likely_hardware_fault", "medium"),
     ])
     result = agent.build_case(EVIDENCE)
     assert result["metadata"]["second_opinion_agreement"] is False
     merged = _writer_analysis(captured)
-    assert merged["verdict"] == "recurring display driver crashes"
+    assert merged["verdict"] == "likely_driver_fault"
     assert merged["confidence"] == "medium"
     extra = merged["findings"][-1]
     assert extra["type"] == "hypothesis"
     assert "disagreed" in extra["text"]
     assert "baseten" in extra["text"] and "fireworks" in extra["text"]
+    assert "likely_driver_fault" in extra["text"]
+    assert "likely_hardware_fault" in extra["text"]
+
+
+def test_second_opinion_confidence_mismatch_disagrees(monkeypatch):
+    captured = []
+    _stub_second_opinion(monkeypatch, captured, [
+        _opinion("baseten", "likely_driver_fault", "high"),
+        _opinion("fireworks", "likely_driver_fault", "medium"),
+    ])
+    result = agent.build_case(EVIDENCE)
+    assert result["metadata"]["second_opinion_agreement"] is False
+    assert _writer_analysis(captured)["confidence"] == "medium"
 
 
 def test_second_opinion_single_survivor_is_used(monkeypatch):
@@ -224,14 +256,14 @@ def test_second_opinion_single_survivor_is_used(monkeypatch):
     _stub_second_opinion(monkeypatch, captured, [
         {"provider": "baseten", "model": "m-baseten", "success": False,
          "data": None, "info": None, "error": "RuntimeError: baseten is down"},
-        _opinion("fireworks", "recurring display driver crashes", "low"),
+        _opinion("fireworks", "likely_driver_fault", "low"),
     ])
     result = agent.build_case(EVIDENCE)
     assert result["metadata"]["second_opinion_agreement"] is None
     opinions = result["metadata"]["analysis_opinions"]
     assert [o["success"] for o in opinions] == [False, True]
     assert "baseten is down" in opinions[0]["error"]
-    assert _writer_analysis(captured)["verdict"] == "recurring display driver crashes"
+    assert _writer_analysis(captured)["verdict"] == "likely_driver_fault"
 
 
 def test_second_opinion_both_fail_raises(monkeypatch):
