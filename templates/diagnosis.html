@@ -13,6 +13,7 @@
   {% for incident in incidents %}
     <li>
       <time datetime="{{ incident.date }}">{{ incident.date }}</time>
+      <span class="plain">{{ labels.get(incident.code_hex, {}).get(lang, incident.code_name) }}</span>
       <span class="code">{{ incident.code_hex }}</span>
       <span>{{ incident.code_name }}</span>
       {% if incident.dump_module %}

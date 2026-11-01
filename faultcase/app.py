@@ -29,7 +29,7 @@ from faultcase.adapters.windows import cdb
 from faultcase.agent import build_case
 from faultcase.demo import DEMO_CASE_PATH, DEMO_DEVICE, build_demo_evidence
 from faultcase.demo import load_demo_summaries
-from faultcase.i18n import STRINGS, get_lang
+from faultcase.i18n import INCIDENT_LABELS, STRINGS, get_lang
 from faultcase.normalize import normalize
 from faultcase.router import RouterError
 from faultcase.rules import apply_rules
@@ -261,7 +261,8 @@ def diagnosis(request: Request, case_id: str):
              healthy=healthy, metadata=stored["metadata"],
              local_dumps=stored.get("local_dumps"),
              is_demo=stored.get("is_demo", False),
-             timezone=stored.get("timezone", "UTC")),
+             timezone=stored.get("timezone", "UTC"),
+             labels=INCIDENT_LABELS),
     )
 
 

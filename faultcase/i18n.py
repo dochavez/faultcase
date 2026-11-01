@@ -128,7 +128,7 @@ ES = {
     "dg_verdict": "Veredicto",
     "dg_confidence": "Confianza",
     "dg_timeline": "Línea de tiempo",
-    "dg_incidents": "incidencias",
+    "dg_incidents": "incidentes",
     "dg_findings": "Hallazgos",
     "dg_healthy": "Componentes sanos",
     "dg_cta": "Preparar mi caso de garantía",
@@ -161,6 +161,21 @@ ES = {
 }
 
 STRINGS = {"en": EN, "es": ES}
+
+INCIDENT_LABELS = {
+    "0x116": {
+        "en": "Blue screen: display driver",
+        "es": "Pantallazo azul: controlador de vídeo",
+    },
+    "0x133": {
+        "en": "Blue screen: driver timeout",
+        "es": "Pantallazo azul: tiempo de espera de un controlador",
+    },
+    "0x0": {
+        "en": "Freeze without blue screen",
+        "es": "Congelamiento sin pantallazo azul",
+    },
+}
 
 
 def get_lang(code: str | None) -> str:

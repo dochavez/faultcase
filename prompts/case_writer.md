@@ -12,6 +12,8 @@ Incident dates in the findings are already in the user's timezone: quote them ex
 
 The `summary` fields are precomputed and exact: `user_summary` must state the total number of incidents over the full period using ONLY the numbers `total_incidents` and `months_span` (for example "6 incidents over 6 months"). Do not include any other numbers in `user_summary`: no years, dump counts, day counts or codes.
 
+Spanish text (`body_es` and any Spanish `user_summary`) must use correct Spanish spelling with accents (gráfica, después, diagnóstico, evaluación) and proper punctuation (¿? ¡!).
+
 For the user (`user_summary`):
 - Write in the user's language (`ui_language`: "en" or "es"), plain words, 2 to 4 sentences, no hex codes or jargon.
 - Explain what is happening, how certain it is and what to do next.

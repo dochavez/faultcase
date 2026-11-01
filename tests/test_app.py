@@ -120,6 +120,25 @@ def test_demo_flow_uses_precomputed_file(monkeypatch):
     assert not any(n.endswith(".evtx") or n.endswith(".dmp") for n in names)
 
 
+def test_timeline_plain_language_labels():
+    target = client.post(
+        "/demo", data={"lang": "en"}, headers={"HX-Request": "true"}
+    ).headers["HX-Redirect"]
+    diagnosis = client.get(target)
+    assert "Blue screen: display driver" in diagnosis.text
+    assert "Blue screen: driver timeout" in diagnosis.text
+    assert "Freeze without blue screen" in diagnosis.text
+
+
+def test_timeline_labels_spanish():
+    target = client.post(
+        "/demo", data={"lang": "es"}, headers={"HX-Request": "true"}
+    ).headers["HX-Redirect"]
+    page = client.get(target)
+    assert "Pantallazo azul: controlador de vídeo" in page.text
+    assert "Congelamiento sin pantallazo azul" in page.text
+
+
 def test_demo_missing_file_shows_error(monkeypatch, tmp_path):
     monkeypatch.setattr(
         app_module, "DEMO_CASE_PATH", tmp_path / "no-such-file.json"
