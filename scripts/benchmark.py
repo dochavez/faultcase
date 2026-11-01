@@ -325,10 +325,9 @@ def render_markdown(data):
         "",
         "## Notes",
         "",
-        "- Agreement is an exact case-insensitive match on free-text "
-        "verdicts, so textually different but equivalent verdicts count "
-        "as disagreement (by design the case then gets lower confidence "
-        "plus a hypothesis finding).",
+        "- Agreement requires the same verdict enum and the same "
+        "confidence level; mismatches lower confidence one level and add "
+        "a hypothesis finding to the case.",
         "- Keyword lists include synonyms observed in model output "
         "(e.g. inconclusive); see fixtures/synthetic/*.json.",
     ]

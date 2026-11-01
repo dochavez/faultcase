@@ -46,6 +46,9 @@ class _RaceFailed(Exception):
     """Both hedged providers failed (errors already recorded)."""
 
 
+_MISSING = object()
+
+
 def _unsupported_format(error: Exception) -> bool:
     text = str(error).lower()
     return "response_format" in text or "json_schema" in text
@@ -139,10 +142,19 @@ class Router:
         roles = self._config.get("roles", {})
         return roles.get(role, {}).get("analysis_mode", "single")
 
-    def reasoning_effort(self, role: str):
-        """Return the role's reasoning effort (or None when unset)."""
-        roles = self._config.get("roles", {})
-        return roles.get(role, {}).get("reasoning_effort")
+    def reasoning_effort(self, role: str, provider: str | None = None):
+        """Return the reasoning effort for a role (provider override wins).
+
+        Returns None when unset (or explicitly null for the provider).
+        """
+        spec = self._config.get("roles", {}).get(role, {})
+        if provider is not None:
+            override = spec.get("reasoning_effort_by_provider", {}).get(
+                provider, _MISSING
+            )
+            if override is not _MISSING:
+                return override
+        return spec.get("reasoning_effort")
 
     def max_tokens(self, role: str):
         """Return the role's max_tokens cap (or None when unset)."""
@@ -152,7 +164,7 @@ class Router:
     def _create(
         self, name: str, model: str, messages: list, schema: dict, role: str
     ):
-        effort = self.reasoning_effort(role)
+        effort = self.reasoning_effort(role, name)
         if name in self._no_reasoning_effort:
             effort = None
         cap = self.max_tokens(role)

@@ -44,6 +44,8 @@ roles:
   evidence_analysis:
     analysis_mode: second_opinion
     reasoning_effort: medium
+    reasoning_effort_by_provider:
+      baseten: null    # reasoning + json_schema stalls on Baseten: omit it
     max_tokens: 16384
   case_writing:
     analysis_mode: single

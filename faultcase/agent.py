@@ -28,11 +28,19 @@ ANALYSIS_SCHEMA = {
     "required": ["verdict", "confidence", "findings", "healthy_components", "missing"],
     "properties": {
         "verdict": {"enum": CASE_VERDICTS},
+        "confidence": {
+            # Levels preferred; numbers accepted and normalized because
+            # some models emit 0.8 and stall when constrained to strings.
+            "anyOf": [
+                {"enum": ["high", "medium", "low"]},
+                {"type": "number"},
+                {"type": "string", "pattern": "^[0-9]*\\.?[0-9]+$"},
+            ],
+        },
         "summary": {
             "type": "string",
             "description": "optional free-text description of the verdict",
         },
-        "confidence": {"enum": ["high", "medium", "low"]},
         "findings": {
             "type": "array",
             "items": {
@@ -79,6 +87,32 @@ def _user_content(schema_keys: list, case_data: dict) -> str:
 CONFIDENCE_LEVELS = ["low", "medium", "high"]
 
 
+def _normalize_confidence(value) -> str:
+    """Map a model confidence (level, number or numeric string) to a level.
+
+    Numbers use thirds (unknown values fail safe to low); values above 1
+    are read as percentages.
+    """
+    if isinstance(value, str):
+        if value in CONFIDENCE_LEVELS:
+            return value
+        try:
+            value = float(value)
+        except ValueError:
+            return "low"
+    if isinstance(value, bool):
+        return "low"
+    if isinstance(value, (int, float)):
+        if value > 1:
+            value = value / 100
+        if value >= 0.66:
+            return "high"
+        if value >= 0.33:
+            return "medium"
+        return "low"
+    return "low"
+
+
 def _lower_confidence(confidence: str) -> str:
     try:
         index = CONFIDENCE_LEVELS.index(confidence)
@@ -101,6 +135,10 @@ def _reconcile_opinions(results: list) -> tuple:
         detail = "; ".join(f"{r['provider']} ({r['error']})" for r in results)
         raise RouterError(
             f"all providers failed for role 'evidence_analysis': {detail or 'empty route'}"
+        )
+    for result in succeeded:
+        result["data"]["confidence"] = _normalize_confidence(
+            result["data"].get("confidence")
         )
     opinions = []
     for result in results:
@@ -203,6 +241,7 @@ def build_case(
         analysis, analysis_info = call_with_info(
             "evidence_analysis", analysis_messages, ANALYSIS_SCHEMA
         )
+    analysis["confidence"] = _normalize_confidence(analysis.get("confidence"))
 
     system_writer = (PROMPTS_DIR / "case_writer.md").read_text(encoding="utf-8")
     case, case_info = call_with_info(

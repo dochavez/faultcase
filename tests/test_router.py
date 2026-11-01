@@ -428,6 +428,37 @@ def test_truncated_response_logged_and_retried(tmp_path):
     assert lines[1]["success"] is True
 
 
+def test_reasoning_effort_provider_override_wins(tmp_path):
+    baseten = FakeClient([_completion('{"ok": true}')])
+    fireworks = FakeClient([_completion('{"ok": true}')])
+    router, _ = _router(tmp_path, {
+        "baseten": baseten,
+        "fireworks": fireworks,
+    })
+    router._config["roles"] = {"test_role": {
+        "reasoning_effort": "high",
+        "reasoning_effort_by_provider": {"baseten": "low"},
+    }}
+    results = router.call_parallel("test_role", MESSAGES, SCHEMA)
+    assert [r["success"] for r in results] == [True, True]
+    assert baseten.calls[0]["reasoning_effort"] == "low"
+    assert fireworks.calls[0]["reasoning_effort"] == "high"
+
+
+def test_reasoning_effort_null_override_omits_param(tmp_path):
+    baseten = FakeClient([_completion('{"ok": true}')])
+    router, _ = _router(tmp_path, {
+        "baseten": baseten,
+        "fireworks": FakeClient([]),
+    }, route=("baseten",))
+    router._config["roles"] = {"test_role": {
+        "reasoning_effort": "high",
+        "reasoning_effort_by_provider": {"baseten": None},
+    }}
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    assert "reasoning_effort" not in baseten.calls[0]
+
+
 def test_call_parallel_runs_concurrently(tmp_path):
     started_baseten = threading.Event()
     started_fireworks = threading.Event()

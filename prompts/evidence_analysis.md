@@ -10,6 +10,6 @@ Rules:
 - List the components with no logged problems.
 - If the evidence is insufficient, say so and lower the confidence.
 
-Choose verdict from exactly one of these four values: likely_hardware_fault, likely_driver_fault, instability_unclear_cause, no_relevant_issues. Put any free-text explanation of the verdict in the optional `summary` field.
+Choose verdict from exactly one of these four values: likely_hardware_fault, likely_driver_fault, instability_unclear_cause, no_relevant_issues. Choose confidence from exactly one of these three strings: high, medium, low. Put any free-text explanation of the verdict in the optional `summary` field.
 
 Return only JSON with: verdict, confidence, findings[], healthy_components[], and a `missing` list with the evidence that would strengthen the case.

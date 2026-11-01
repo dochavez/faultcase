@@ -240,6 +240,37 @@ def test_second_opinion_disagreement_lowers_confidence(monkeypatch):
     assert "likely_hardware_fault" in extra["text"]
 
 
+def test_analysis_schema_accepts_numeric_confidence():
+    validate(instance=dict(ANALYSIS, confidence=0.8), schema=agent.ANALYSIS_SCHEMA)
+    with pytest.raises(ValidationError):
+        validate(
+            instance=dict(ANALYSIS, confidence="banana"),
+            schema=agent.ANALYSIS_SCHEMA,
+        )
+
+
+def test_normalize_confidence_maps_numbers_to_levels():
+    assert agent._normalize_confidence("high") == "high"
+    assert agent._normalize_confidence(0.8) == "high"
+    assert agent._normalize_confidence(0.5) == "medium"
+    assert agent._normalize_confidence(0.1) == "low"
+    assert agent._normalize_confidence("0.7") == "high"
+    assert agent._normalize_confidence(80) == "high"
+    assert agent._normalize_confidence("banana") == "low"
+    assert agent._normalize_confidence(None) == "low"
+
+
+def test_second_opinion_numeric_confidence_agrees(monkeypatch):
+    captured = []
+    _stub_second_opinion(monkeypatch, captured, [
+        _opinion("baseten", "likely_driver_fault", 0.8),
+        _opinion("fireworks", "likely_driver_fault", "high"),
+    ])
+    result = agent.build_case(EVIDENCE)
+    assert result["metadata"]["second_opinion_agreement"] is True
+    assert _writer_analysis(captured)["confidence"] == "high"
+
+
 def test_second_opinion_confidence_mismatch_disagrees(monkeypatch):
     captured = []
     _stub_second_opinion(monkeypatch, captured, [
