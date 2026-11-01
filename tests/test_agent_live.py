@@ -41,6 +41,10 @@ def test_live_build_real_case():
     assert case["manufacturer_report"]["body_en"].strip()
     assert case["manufacturer_report"]["body_es"].strip()
     assert len(case["manufacturer_report"]["subject"]) >= 10
+    for body in (case["manufacturer_report"]["body_en"],
+                 case["manufacturer_report"]["body_es"]):
+        assert "inc-" not in body.lower()
+        assert not re.search(r"[a-z]+_[a-z0-9_]+", body)
     summary = rules.apply_rules(build_real_case_evidence())["summary"]
     allowed = {str(summary["total_incidents"]), str(summary["months_span"])}
     found = re.findall(r"\d+", case["user_summary"])

@@ -19,6 +19,7 @@ For the user (`user_summary`):
 For the manufacturer (`manufacturer_report`):
 - Professional and factual tone, no exaggeration or threats.
 - The subject must name the device model and the main symptom, at least 10 characters (for example "Lenovo: recurring NVIDIA display crashes").
+- Refer to incidents by date and time only, never by internal ids (inc-001) or variable names (SleepInProgress, BugcheckCode, dumps_with_common_module). Omit failure bucket and hash strings. Write in plain professional sentences. Always keep the error codes (0x133, DPC_WATCHDOG_VIOLATION) and the module name (nvlddmkm.sys).
 - Include: model and serial number (placeholder `{{SERIAL}}`, inserted locally), purchase date, incident timeline, error codes, responsible module, driver versions, steps already taken and the concrete request (diagnosis or warranty repair).
 - English version (`body_en`) and Spanish version (`body_es`).
 
