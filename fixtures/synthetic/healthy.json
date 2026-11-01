@@ -1,0 +1,1 @@
+{"description": "Healthy laptop: no crash or error events logged at all.", "evidence": {"collected_at": "2026-06-01T12:00:00+00:00", "dumps": [], "events": [], "os": "windows"}, "expected_verdict_contains": ["healthy", "inconclusive", "insufficient", "no crash", "no failure", "no fault", "no issue", "no_incidents", "no_relevant", "stable"], "timezone": "UTC"}

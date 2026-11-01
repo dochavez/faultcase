@@ -1,0 +1,398 @@
+{
+  "generated_at": "2026-11-01T22:07:25.558258+00:00",
+  "runs_per_case": 3,
+  "config": {
+    "roles": {
+      "evidence_analysis": {
+        "analysis_mode": "second_opinion",
+        "reasoning_effort": "high"
+      },
+      "case_writing": {
+        "analysis_mode": "single",
+        "reasoning_effort": "medium"
+      }
+    },
+    "hedge_after_seconds": 25,
+    "models": {
+      "meta": "muse-spark-1.1",
+      "baseten": "meta-models/muse-spark-open-1026",
+      "fireworks": "accounts/fireworks/models/muse-spark-open"
+    }
+  },
+  "cases": [
+    {
+      "id": "real_case",
+      "description": "Real case: 6 incidents, NVIDIA display crashes."
+    },
+    {
+      "id": "disk_failure",
+      "description": "Disk failure: repeated bad blocks over two weeks."
+    },
+    {
+      "id": "healthy",
+      "description": "Healthy laptop: no crash or error events logged at all."
+    },
+    {
+      "id": "single_crash",
+      "description": "Single isolated unexpected reboot, no memory dump."
+    }
+  ],
+  "records": [
+    {
+      "case": "real_case",
+      "run": 1,
+      "final_verdict": "likely_hardware_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "Recurrent display/GPU subsystem instability centered on nvlddmkm.sys - 4 of 6 incidents produce dumps blaming the same module across 6 months (2026-04-22 to 2026-10-23), including 3x DPC_WATCHDOG_VIOLATION (0x133) and 1x VIDEO_TDR_FAILURE (0x116). Persistence across 2 driver timestamps (2026-03-04 -> 2026-02-14, driver downgrade) is the strongest argument to escalate to manufacturer/NVIDIA/OEM as potential hardware/firmware defect, though a persistent driver bug cannot be excluded on logs alone.",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "Recurring GPU subsystem instability (NVIDIA nvlddmkm.sys - DPC_WATCHDOG_VIOLATION 0x133 and VIDEO_TDR_FAILURE 0x116) persisting 6 months across 6 incidents; persistence across driver versions is strongest argument for GPU hardware/firmware/power fault and escalation to manufacturer - hypothesis, but strongly supported.",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "disk_failure",
+      "run": 1,
+      "final_verdict": "likely_hardware_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "critical_disk_failure_risk_immediate_backup_required",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "disk_degradation_with_bad_blocks_-_immediate_backup_required",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "healthy",
+      "run": 1,
+      "final_verdict": "no_relevant_issues",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "no_issue_detected_insufficient_data",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "healthy",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "single_crash",
+      "run": 1,
+      "final_verdict": "instability_unclear_cause",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "insufficient_evidence - single isolated DPC_WATCHDOG_VIOLATION, no hardware failure pattern detected",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "inconclusive - single isolated incident with no dump, insufficient evidence for root cause",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "real_case",
+      "run": 2,
+      "final_verdict": "likely_hardware_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": null,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": false,
+          "verdict": null,
+          "correct": false
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "Recurring NVIDIA graphics failure (nvlddmkm.sys) - 0x133 DPC_WATCHDOG_VIOLATION and 0x116 VIDEO_TDR_FAILURE - persisting across driver versions, indicative of underlying GPU hardware / power-delivery fault requiring manufacturer escalation",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "disk_failure",
+      "run": 2,
+      "final_verdict": "likely_hardware_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "disk_degradation_with_bad_blocks_immediate_backup_required",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "disk_bad_blocks_detected_immediate_backup_recommended",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "healthy",
+      "run": 2,
+      "final_verdict": "no_relevant_issues",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "inconclusive - no_incidents_detected",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "healthy",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "single_crash",
+      "run": 2,
+      "final_verdict": "instability_unclear_cause",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "inconclusive",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "inconclusive_single_isolated_incident",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "real_case",
+      "run": 3,
+      "final_verdict": "likely_hardware_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "Recurring NVIDIA GPU instability (nvlddmkm.sys) - 6 incidents over 6 months, persists across driver versions - likely hardware-related, recommend manufacturer escalation",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "PERSISTENT_GPU_FAILURE_PERSISTS_ACROSS_DRIVER_VERSIONS_LIKELY_HARDWARE_ESCALATE_TO_MANUFACTURER",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "disk_failure",
+      "run": 3,
+      "final_verdict": "likely_hardware_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": null,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": false,
+          "verdict": null,
+          "correct": false
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "Disk failure imminent - 3x Event ID 7 (bad block) - immediate backup recommended",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "healthy",
+      "run": 3,
+      "final_verdict": "no_relevant_issues",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "No incidents in provided evidence - insufficient data to confirm long-term health",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "no_failure_evidence_insufficient_observation_period",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "single_crash",
+      "run": 3,
+      "final_verdict": "instability_unclear_cause",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "Insufficient evidence for hardware failure: single isolated DPC_WATCHDOG_VIOLATION (0x133) on 2026-05-20 with no dump to identify causal module",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "inconclusive_insufficient_evidence_single_DPC_WATCHDOG_VIOLATION",
+          "correct": true
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "by_provider_role": [
+      {
+        "provider": "baseten",
+        "role": "evidence_analysis",
+        "calls_ok": 10,
+        "calls_total": 15,
+        "correct": 10,
+        "judged": 10,
+        "accuracy": 1.0,
+        "latency_p50_ms": 10703.5,
+        "latency_p95_ms": 22679.7,
+        "prompt_tokens": 28502,
+        "completion_tokens": 188523,
+        "cached_tokens": 18048,
+        "estimated_cost_usd": 1.5381,
+        "fallbacks": 0,
+        "hedge_wins": 0
+      },
+      {
+        "provider": "fireworks",
+        "role": "evidence_analysis",
+        "calls_ok": 12,
+        "calls_total": 12,
+        "correct": 12,
+        "judged": 12,
+        "accuracy": 1.0,
+        "latency_p50_ms": 23053.5,
+        "latency_p95_ms": 31802.199999999997,
+        "prompt_tokens": 22194,
+        "completion_tokens": 30266,
+        "cached_tokens": 15040,
+        "estimated_cost_usd": 0.264,
+        "fallbacks": 0,
+        "hedge_wins": 0
+      },
+      {
+        "provider": "meta",
+        "role": "case_writing",
+        "calls_ok": 12,
+        "calls_total": 12,
+        "correct": 12,
+        "judged": 12,
+        "accuracy": 1.0,
+        "latency_p50_ms": 11217.5,
+        "latency_p95_ms": 13489.449999999999,
+        "prompt_tokens": 25516,
+        "completion_tokens": 44753,
+        "cached_tokens": 10233,
+        "estimated_cost_usd": 0.5906,
+        "fallbacks": 0,
+        "hedge_wins": 0
+      }
+    ],
+    "agreement_by_case": [
+      {
+        "case": "disk_failure",
+        "runs": 3,
+        "agreed": 0,
+        "disagreed": 2,
+        "single": 1
+      },
+      {
+        "case": "healthy",
+        "runs": 3,
+        "agreed": 0,
+        "disagreed": 3,
+        "single": 0
+      },
+      {
+        "case": "real_case",
+        "runs": 3,
+        "agreed": 0,
+        "disagreed": 2,
+        "single": 1
+      },
+      {
+        "case": "single_crash",
+        "runs": 3,
+        "agreed": 0,
+        "disagreed": 3,
+        "single": 0
+      }
+    ],
+    "second_opinion_agreement_rate": 0.0,
+    "totals": {
+      "runs": 12,
+      "failed_runs": 0,
+      "hedges": 0,
+      "estimated_cost_usd": 2.3927
+    }
+  }
+}
