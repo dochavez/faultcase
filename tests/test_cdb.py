@@ -24,11 +24,13 @@ def _completed(stdout=SAMPLE_OUTPUT):
 
 
 def test_find_cdb_on_path(monkeypatch):
+    monkeypatch.setattr(os, "name", "nt")
     monkeypatch.setattr(shutil, "which", lambda name: "C:\\tools\\cdb.exe")
     assert cdb.find_cdb() == Path("C:\\tools\\cdb.exe")
 
 
 def test_find_cdb_in_kit_folder(monkeypatch, tmp_path):
+    monkeypatch.setattr(os, "name", "nt")
     monkeypatch.setattr(shutil, "which", lambda name: None)
     exe = tmp_path / "cdb.exe"
     exe.write_bytes(b"fake")
@@ -37,6 +39,7 @@ def test_find_cdb_in_kit_folder(monkeypatch, tmp_path):
 
 
 def test_find_cdb_missing(monkeypatch, tmp_path):
+    monkeypatch.setattr(os, "name", "nt")
     monkeypatch.setattr(shutil, "which", lambda name: None)
     monkeypatch.setattr(cdb, "_candidate_paths", lambda: [tmp_path / "cdb.exe"])
     assert cdb.find_cdb() is None
