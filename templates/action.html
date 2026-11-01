@@ -4,6 +4,12 @@
 <h1>{{ t.ac_report }}</h1>
 <p class="subject">{{ case.manufacturer_report.subject }}</p>
 
+<section class="serial-box">
+  <label for="serial">{{ t.serial_label }}</label>
+  <input type="text" id="serial" autocomplete="off" spellcheck="false" placeholder="{{SERIAL}}">
+  <small>{{ t.serial_help }}</small>
+</section>
+
 <section class="tabs" aria-label="{{ t.ac_report }}">
   <input type="radio" id="tab-en" name="report-lang" checked>
   <input type="radio" id="tab-es" name="report-lang">
@@ -13,12 +19,16 @@
   </div>
   <div class="tab-panel" id="panel-en" role="tabpanel">
     <p><button class="btn btn-secondary btn-small" type="button"
-        data-copy="report-en" data-copied="{{ t.ac_copied }}">{{ t.ac_copy }}</button></p>
+        data-copy="report-en" data-copied="{{ t.ac_copied }}">{{ t.ac_copy }}</button>
+      <button class="btn btn-secondary btn-small" type="button"
+        data-download="report-en" data-filename="report_en.txt">{{ t.download_txt }}</button></p>
     <pre id="report-en">{{ case.manufacturer_report.body_en }}</pre>
   </div>
   <div class="tab-panel" id="panel-es" role="tabpanel">
     <p><button class="btn btn-secondary btn-small" type="button"
-        data-copy="report-es" data-copied="{{ t.ac_copied }}">{{ t.ac_copy }}</button></p>
+        data-copy="report-es" data-copied="{{ t.ac_copied }}">{{ t.ac_copy }}</button>
+      <button class="btn btn-secondary btn-small" type="button"
+        data-download="report-es" data-filename="report_es.txt">{{ t.download_txt }}</button></p>
     <pre id="report-es">{{ case.manufacturer_report.body_es }}</pre>
   </div>
 </section>
@@ -42,6 +52,37 @@
 <p><a href="/case/{{ case_id }}?lang={{ lang }}">&larr; {{ t.ac_back }}</a></p>
 
 <script>
+var serialOriginals = {};
+document.querySelectorAll("pre[id^='report-']").forEach(function (pre) {
+  serialOriginals[pre.id] = pre.textContent;
+});
+var serialSubject = {{ case.manufacturer_report.subject|tojson }};
+var serialInput = document.getElementById("serial");
+function currentSerial() {
+  var value = serialInput.value.trim();
+  return value ? value : "{{SERIAL}}";
+}
+function fillSerial(text) {
+  return text.split("{{SERIAL}}").join(currentSerial());
+}
+serialInput.addEventListener("input", function () {
+  Object.keys(serialOriginals).forEach(function (id) {
+    document.getElementById(id).textContent = fillSerial(serialOriginals[id]);
+  });
+});
+document.querySelectorAll("[data-download]").forEach(function (button) {
+  button.addEventListener("click", function () {
+    var text = fillSerial(serialSubject) + "\n\n"
+      + document.getElementById(button.dataset.download).textContent;
+    var blob = new Blob([text], {type: "text/plain;charset=utf-8"});
+    var link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = button.dataset.filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(function () { URL.revokeObjectURL(link.href); link.remove(); }, 1000);
+  });
+});
 document.querySelectorAll("[data-copy]").forEach(function (button) {
   button.addEventListener("click", function () {
     var text = document.getElementById(button.dataset.copy).textContent;

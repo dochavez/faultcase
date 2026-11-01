@@ -375,6 +375,34 @@ def test_upload_accepts_real_evtx(monkeypatch):
     assert diagnosis.status_code == 200
 
 
+def test_serial_field_is_browser_only():
+    target = client.post(
+        "/demo", data={"lang": "en"}, headers={"HX-Request": "true"}
+    ).headers["HX-Redirect"]
+    page = client.get(target.split("?")[0] + "/action?lang=en")
+    assert 'id="serial"' in page.text
+    assert "Download .txt" in page.text
+    assert "<form" not in page.text
+    source = (
+        Path(__file__).resolve().parent.parent / "templates" / "action.html"
+    ).read_text(encoding="utf-8")
+    assert "fetch(" not in source
+    assert "XMLHttpRequest" not in source
+    assert "{{SERIAL}}" in source
+
+
+def test_serial_canary_never_reaches_server():
+    canary = "CANARY-SN-987654"
+    target = client.post(
+        "/demo",
+        data={"lang": "en", "serial": canary},
+        headers={"HX-Request": "true"},
+    ).headers["HX-Redirect"]
+    base = target.split("?")[0]
+    assert canary not in client.get(target).text
+    assert canary not in client.get(base + "/action?lang=en").text
+
+
 def test_expired_case_shows_friendly_page():
     diagnosis = client.get("/case/doesnotexist")
     assert diagnosis.status_code == 200

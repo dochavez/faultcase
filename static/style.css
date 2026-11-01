@@ -148,6 +148,11 @@ small { color: var(--muted); }
 
 .subject { font-weight: 600; }
 
+.serial-box { margin: 1.25rem 0; }
+.serial-box label { display: inline; font-weight: 600; margin-right: 0.5rem; }
+.serial-box input { width: 14rem; }
+.serial-box small { display: block; margin-top: 0.25rem; }
+
 .footer {
   margin-top: 3rem; padding: 1rem 0 2rem;
   border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem;
