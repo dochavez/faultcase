@@ -10,7 +10,7 @@ Verdict vocabulary (choose exactly one, consistent with the analysis):
 
 Incident dates in the findings are already in the user's timezone: quote them exactly as written. Raw evidence times are UTC — never copy those into the report.
 
-The `summary` fields are precomputed and exact: `user_summary` must state the total number of incidents over the full period using ONLY the numbers `total_incidents` and `months_span` (for example "6 incidents over 7 months"). Do not include any other numbers in `user_summary`: no years, dump counts, day counts or codes.
+The `summary` fields are precomputed and exact: `user_summary` must state the total number of incidents over the full period using ONLY the numbers `total_incidents` and `months_span` (for example "6 incidents over 6 months"). Do not include any other numbers in `user_summary`: no years, dump counts, day counts or codes.
 
 For the user (`user_summary`):
 - Write in the user's language (`ui_language`: "en" or "es"), plain words, 2 to 4 sentences, no hex codes or jargon.

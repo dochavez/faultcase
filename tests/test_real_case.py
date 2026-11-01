@@ -51,8 +51,34 @@ def test_rules_summary():
         "freezes_without_dump": 2,
         "first_incident_date": "2026-04-22",
         "last_incident_date": "2026-10-23",
-        "months_span": 7,
+        "months_span": 6,
     }
+
+
+def test_months_span_uses_elapsed_days():
+    # 2026-04-22 to 2026-10-23 is 184 days: round(184 / 30.44) = 6.
+    evidence = {
+        "os": "windows",
+        "collected_at": "2026-10-24T00:00:00+00:00",
+        "events": [
+            {
+                "time": f"{day}T12:00:00+00:00",
+                "source": "Microsoft-Windows-Kernel-Power",
+                "event_id": 41,
+                "kind": "unexpected_reboot",
+                "playbook": "stability",
+                "code": 307,
+                "fields": {"BugcheckCode": 307},
+                "incident_id": f"inc-00{i + 1}",
+            }
+            for i, day in enumerate(["2026-04-22", "2026-10-23"])
+        ],
+        "dumps": [],
+    }
+    summary = rules.apply_rules(evidence)["summary"]
+    assert summary["months_span"] == 6
+    assert summary["first_incident_date"] == "2026-04-22"
+    assert summary["last_incident_date"] == "2026-10-23"
 
 
 def test_incidents_with_dump():

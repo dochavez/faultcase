@@ -170,11 +170,10 @@ def apply_rules(
             timestamps.append(stamp)
     dates = [i["date"] for i in incidents]
     if dates:
-        first_d = date.fromisoformat(dates[0])
-        last_d = date.fromisoformat(dates[-1])
-        months_span = (
-            (last_d.year - first_d.year) * 12 + (last_d.month - first_d.month) + 1
-        )
+        days = (
+            date.fromisoformat(dates[-1]) - date.fromisoformat(dates[0])
+        ).days
+        months_span = max(1, round(days / 30.44))
     else:
         months_span = 0
     return {
