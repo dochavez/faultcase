@@ -13,6 +13,7 @@ from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from faultcase.i18n import INCIDENT_LABELS
 from faultcase.normalize import load_playbooks
 
 STABILITY = "stability"
@@ -32,6 +33,14 @@ def _incident_date(time_str: str, tz: str | None) -> str:
     if not tz:
         return time_str[:10]
     return datetime.fromisoformat(time_str).astimezone(ZoneInfo(tz)).date().isoformat()
+
+
+def _incident_time(time_str: str, tz: str | None) -> str:
+    if not tz:
+        return time_str[11:19]
+    return datetime.fromisoformat(time_str).astimezone(ZoneInfo(tz)).time().isoformat(
+        timespec="seconds"
+    )
 
 
 def _build_incidents(
@@ -56,6 +65,7 @@ def _build_incidents(
         incidents.append({
             "incident_id": incident_id,
             "date": _incident_date(main["time"], tz),
+            "time": _incident_time(main["time"], tz),
             "code": code,
             "code_hex": hex(code) if isinstance(code, int) else None,
             "code_name": info.get("name"),
@@ -192,5 +202,21 @@ def apply_rules(
             "first_incident_date": dates[0] if dates else None,
             "last_incident_date": dates[-1] if dates else None,
             "months_span": months_span,
+            "incidents": [
+                {
+                    "date": i["date"],
+                    "time": i["time"],
+                    "label": (
+                        INCIDENT_LABELS.get(i.get("code_hex") or "", {}).get("en")
+                        or i.get("code_name")
+                        or i.get("code_hex")
+                    ),
+                    "code": i.get("code_hex"),
+                    "has_dump": bool(i.get("dump_module")),
+                    "dump_module": i.get("dump_module"),
+                    "driver_timestamp": i.get("driver_timestamp"),
+                }
+                for i in incidents
+            ],
         },
     }

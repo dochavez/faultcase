@@ -12,6 +12,8 @@ DEMO_CASE_PATH = REAL_CASE_DIR / "demo_case.json"
 DEMO_TIMEZONE = "America/Managua"
 DEMO_DEVICE = {
     "manufacturer": "Lenovo",
+    "model": "Legion Pro 7 16IAX10H",
+    "machine_type": "83F5",
     "gpu": "NVIDIA",
     "purchase_date": "2026-01",
 }

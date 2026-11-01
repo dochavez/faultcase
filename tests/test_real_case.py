@@ -45,7 +45,8 @@ def test_total_incidents():
 
 
 def test_rules_summary():
-    assert FINDINGS["summary"] == {
+    summary = {k: v for k, v in FINDINGS["summary"].items() if k != "incidents"}
+    assert summary == {
         "total_incidents": 6,
         "incidents_with_dump": 4,
         "freezes_without_dump": 2,
@@ -53,6 +54,33 @@ def test_rules_summary():
         "last_incident_date": "2026-10-23",
         "months_span": 6,
     }
+
+
+def test_summary_incidents_list():
+    entries = FINDINGS["summary"]["incidents"]
+    assert [e["date"] for e in entries] == [
+        "2026-04-22", "2026-04-30", "2026-07-17",
+        "2026-07-21", "2026-07-24", "2026-10-23",
+    ]
+    assert entries[0] == {
+        "date": "2026-04-22",
+        "time": "20:38:54",
+        "label": "Blue screen: driver timeout",
+        "code": "0x133",
+        "has_dump": True,
+        "dump_module": "nvlddmkm.sys",
+        "driver_timestamp": None,
+    }
+    assert entries[1] == {
+        "date": "2026-04-30",
+        "time": "17:34:39",
+        "label": "Freeze without blue screen",
+        "code": "0x0",
+        "has_dump": False,
+        "dump_module": None,
+        "driver_timestamp": None,
+    }
+    assert entries[-1]["label"] == "Blue screen: display driver"
 
 
 def test_months_span_uses_elapsed_days():

@@ -5,6 +5,7 @@
       {
         "incident_id": "inc-001",
         "date": "2026-04-22",
+        "time": "20:38:54",
         "code": 307,
         "code_hex": "0x133",
         "code_name": "DPC_WATCHDOG_VIOLATION",
@@ -22,6 +23,7 @@
       {
         "incident_id": "inc-002",
         "date": "2026-04-30",
+        "time": "17:34:39",
         "code": 0,
         "code_hex": "0x0",
         "code_name": "NO_BLUE_SCREEN",
@@ -39,6 +41,7 @@
       {
         "incident_id": "inc-003",
         "date": "2026-07-17",
+        "time": "11:00:57",
         "code": 307,
         "code_hex": "0x133",
         "code_name": "DPC_WATCHDOG_VIOLATION",
@@ -56,6 +59,7 @@
       {
         "incident_id": "inc-004",
         "date": "2026-07-21",
+        "time": "10:21:28",
         "code": 307,
         "code_hex": "0x133",
         "code_name": "DPC_WATCHDOG_VIOLATION",
@@ -73,6 +77,7 @@
       {
         "incident_id": "inc-005",
         "date": "2026-07-24",
+        "time": "14:04:46",
         "code": 0,
         "code_hex": "0x0",
         "code_name": "NO_BLUE_SCREEN",
@@ -90,6 +95,7 @@
       {
         "incident_id": "inc-006",
         "date": "2026-10-23",
+        "time": "20:45:23",
         "code": 278,
         "code_hex": "0x116",
         "code_name": "VIDEO_TDR_FAILURE",
@@ -161,7 +167,63 @@
       "freezes_without_dump": 2,
       "first_incident_date": "2026-04-22",
       "last_incident_date": "2026-10-23",
-      "months_span": 6
+      "months_span": 6,
+      "incidents": [
+        {
+          "date": "2026-04-22",
+          "time": "20:38:54",
+          "label": "Blue screen: driver timeout",
+          "code": "0x133",
+          "has_dump": true,
+          "dump_module": "nvlddmkm.sys",
+          "driver_timestamp": null
+        },
+        {
+          "date": "2026-04-30",
+          "time": "17:34:39",
+          "label": "Freeze without blue screen",
+          "code": "0x0",
+          "has_dump": false,
+          "dump_module": null,
+          "driver_timestamp": null
+        },
+        {
+          "date": "2026-07-17",
+          "time": "11:00:57",
+          "label": "Blue screen: driver timeout",
+          "code": "0x133",
+          "has_dump": true,
+          "dump_module": "nvlddmkm.sys",
+          "driver_timestamp": "2026-03-04"
+        },
+        {
+          "date": "2026-07-21",
+          "time": "10:21:28",
+          "label": "Blue screen: driver timeout",
+          "code": "0x133",
+          "has_dump": true,
+          "dump_module": "nvlddmkm.sys",
+          "driver_timestamp": "2026-03-04"
+        },
+        {
+          "date": "2026-07-24",
+          "time": "14:04:46",
+          "label": "Freeze without blue screen",
+          "code": "0x0",
+          "has_dump": false,
+          "dump_module": null,
+          "driver_timestamp": null
+        },
+        {
+          "date": "2026-10-23",
+          "time": "20:45:23",
+          "label": "Blue screen: display driver",
+          "code": "0x116",
+          "has_dump": true,
+          "dump_module": "nvlddmkm.sys",
+          "driver_timestamp": "2026-02-14"
+        }
+      ]
     }
   },
   "en": {
@@ -169,64 +231,84 @@
       "checklist": [
         {
           "status": "pending",
-          "step": "Install Lenovo OEM-recommended NVIDIA driver using clean install and confirm version",
-          "evidence": "Only generic driver timestamps 2026-02-14 and 2026-03-04 available, no OEM driver confirmation"
+          "step": "Provide BIOS/UEFI version and GPU VBIOS/firmware version"
         },
         {
           "status": "pending",
-          "step": "Update and confirm system BIOS/EC firmware to latest Lenovo release",
-          "evidence": "BIOS version not provided in analysis"
+          "step": "Run Lenovo Vantage hardware scan and OEM GPU diagnostics - attach results"
         },
         {
           "status": "pending",
-          "step": "Run Lenovo authorized hardware diagnostics - GPU/VRAM stress, power delivery, thermals",
-          "evidence": "GPU temperature, VRAM test, FurMark/3D stress, PSU voltage not available"
+          "step": "Install latest graphics driver from Lenovo support site (not generic NVIDIA) with clean install option and report if crashes persist"
         },
         {
           "status": "pending",
-          "step": "Provide full kernel or complete memory dumps and System Event logs",
-          "evidence": "Only 4 minidumps available, 2 incidents without dumps; no Event logs for nvlddmkm warnings or display recovery"
+          "step": "Provide DxDiag report and power plan / sleep settings"
         },
         {
           "status": "pending",
-          "step": "Provide GPU exact model, VBIOS version and confirm docking/external display/power plan context",
-          "evidence": "GPU exact model, VBIOS, OEM model, and correlation with 3 power-transition incidents missing"
+          "step": "Provide System and Application event logs around each incident and NVIDIA reliability logs"
+        },
+        {
+          "status": "pending",
+          "step": "Provide GPU thermal, hotspot, VRAM, power draw logs and stress test logs (FurMark/3DMark, VRAM test, PSU rails)"
+        },
+        {
+          "status": "pending",
+          "step": "Provide full kernel memory dumps if available for the freezes without dump"
         }
       ],
       "confidence": "high",
       "findings": [
         {
           "evidence": [
-            "first 2026-04-22",
-            "last 2026-10-23",
-            "4 incidents within a 90-day window (2026-04-22..2026-07-21)"
+            "summary.total_incidents = 6, months_span ~6, first 2026-04-22, last 2026-10-23, 4 with dumps 0x133 x3 / 0x116 x1, 2 freezes Bugcheck 0x0"
           ],
-          "text": "System experienced 6 unexpected reboots over ~6 months (first 2026-04-22, last 2026-10-23) including 4 incidents within a 90-day window (2026-04-22..2026-07-21) meeting precomputed repetition threshold",
+          "text": "6 total incidents over ~6 months (2026-04-22 to 2026-10-23): 4 with dumps (0x133 x3, 0x116 x1) and 2 freezes without dump (Bugcheck 0x0). Counts, dates and codes are as precomputed.",
           "type": "fact"
         },
         {
           "evidence": [
-            "nvlddmkm.sys",
-            "incidents on 2026-04-22, dates in 2026-04-22..2026-07-21, and 2026-10-23",
-            "0x133 DPC_WATCHDOG_VIOLATION and 0x116 VIDEO_TDR_FAILURE"
+            "summary shows 4 incidents within 90 days 2026-04-22 .. 2026-07-21"
           ],
-          "text": "4/4 kernel dumps with data all blame the same module: nvlddmkm.sys",
+          "text": "Repetition pattern: 4 incidents within 90 days (2026-04-22 .. 2026-07-21) - exceeds stability threshold.",
           "type": "fact"
         },
         {
           "evidence": [
-            "driver timestamps 2026-03-04 and 2026-02-14"
+            "4 dumps all with dump_module nvlddmkm.sys on 2026-04-22 20:38:54, 2026-07-17 11:00:57, 2026-07-21 10:21:28, 2026-10-23 20:45:23"
           ],
-          "text": "Failure of nvlddmkm.sys persists across 2 distinct driver timestamps: 2026-03-04 and 2026-02-14. This is the strongest argument to escalate to manufacturer as it argues against a single bad driver build and implicates driver family / GPU hardware / firmware interaction",
+          "text": "Same module in all dumps: 4/4 dumps with dumps_with_common_module = nvlddmkm.sys (inc-001, inc-003, inc-004, inc-006).",
+          "type": "fact"
+        },
+        {
+          "evidence": [
+            "3 dumps on 2026-04-22 20:38:54, 2026-07-17 11:00:57, 2026-07-21 10:21:28 share same failure CATEGORY"
+          ],
+          "text": "Same failure CATEGORY on this device: 3 dumps (inc-001, inc-003, inc-004) share identical FAILURE_BUCKET_ID 0x133_ISR_nvlddmkm!unknown_function and FAILURE_ID_HASH {f97493a5-ea2b-23ca-a808-8602773c2a86}. Per rules this means same failure CATEGORY on this machine, not proof of same defect as other machines.",
+          "type": "fact"
+        },
+        {
+          "evidence": [
+            "incident on 2026-10-23 20:45:23 is 0x116_IMAGE_nvlddmkm.sys still nvlddmkm.sys"
+          ],
+          "text": "inc-006 is a different CATEGORY but same module: 0x116_IMAGE_nvlddmkm.sys with FAILURE_ID_HASH {c89bfe8c-ed39-f658-ef27-f2898997fdbd} - still VIDEO_TDR_FAILURE in nvlddmkm.sys.",
+          "type": "fact"
+        },
+        {
+          "evidence": [
+            "nvlddmkm.sys timestamp 2026-03-04 on 2026-07-17 and 2026-07-21, timestamp 2026-02-14 on 2026-10-23"
+          ],
+          "text": "Persists across driver versions: nvlddmkm.sys failed with 2 distinct driver timestamps 2026-03-04 (inc-003, inc-004) and 2026-02-14 (inc-006); inc-001 timestamp null so not counted. Same module failing after driver update is strongest argument to escalate to NVIDIA/OEM for driver or GPU hardware/firmware issue.",
           "type": "fact"
         }
       ],
       "manufacturer_report": {
-        "body_en": "Device Information:\nManufacturer: Lenovo\nModel: Lenovo system with NVIDIA GPU (exact model pending)\nSerial Number: {{SERIAL}}\nPurchase Date: 2026-01\n\nProblem Description:\nRecurring graphics subsystem instability with unexpected reboots and display failures.\n\nIncident Timeline (dates already in America/Managua timezone):\n- Total 6 unexpected reboots over approximately 6 months: first on 2026-04-22, last on 2026-10-23, including 4 incidents within 2026-04-22..2026-07-21.\n- Incidents with kernel dumps: on 2026-04-22, additional dates within 2026-04-22..2026-07-21, and on 2026-10-23.\n- Incidents without dumps (freeze / no blue screen): on 2026-04-30 code 0x0 NO_BLUE_SCREEN and on 2026-07-24 code 0x0 NO_BLUE_SCREEN.\n- Three incidents occurred during a power transition window and three outside it; power-state as primary trigger cannot be proven.\n\nDiagnostics Evidence:\n- All 4 available kernel dumps blame module nvlddmkm.sys.\n- Three dumps show Bugcheck 0x133 DPC_WATCHDOG_VIOLATION (ISR DPC watchdog stall).\n- One dump on 2026-10-23 shows Bugcheck 0x116 VIDEO_TDR_FAILURE (display driver failed to recover from timeout).\n- Distinct bugcheck codes but unified module point to broader GPU subsystem instability rather than a single-code bug.\n\nDriver Versions:\nFailures persist across two distinct driver timestamps: 2026-02-14 (seen on 2026-10-23) and 2026-03-04 (seen within 2026-04-22..2026-07-21). One dump on 2026-04-22 had no timestamp recorded. Pattern persists across driver builds, which argues against a single bad build.\n\nHealthy Components Checked:\n- Disk: No disk errors logged.\n- CPU/Memory hardware: No WHEA uncorrectable errors logged.\n- Software: No repeated application failures logged.\n- Thermal: No CPU thermal throttling logged. Note GPU thermal not covered by this data.\n\nSteps Already Taken:\nNo confirmed clean install of Lenovo OEM-recommended driver or BIOS update documented yet. No dedicated GPU diagnostics results available yet.\n\nRequest:\nPlease provide diagnosis and evaluation for warranty repair of the GPU subsystem. We request confirmation of the Lenovo-recommended NVIDIA driver version for this system, recommended BIOS/EC update, and instructions to run authorized hardware diagnostics (VRAM test, GPU stress, power delivery). If reproducible in your lab, please perform full memory dump analysis with symbols for nvlddmkm.sys.\n\nAttachments pending: full kernel dumps, System Event logs (nvlddmkm warnings, display recovery, thermal/power events), GPU exact model / VBIOS, driver install history.",
-        "body_es": "Información del dispositivo:\nFabricante: Lenovo\nModelo: Equipo Lenovo con gráfica NVIDIA (modelo exacto pendiente)\nNúmero de serie: {{SERIAL}}\nFecha de compra: 2026-01\n\nDescripción del problema:\nInestabilidad recurrente del subsistema gráfico con reinicios inesperados y fallos de pantalla.\n\nLínea de tiempo de incidentes (fechas ya en zona horaria America/Managua):\n- Total de 6 reinicios inesperados en aproximadamente 6 meses: primero el 2026-04-22, último el 2026-10-23, incluyendo 4 incidentes dentro de 2026-04-22..2026-07-21.\n- Incidentes con volcados de memoria: el 2026-04-22, fechas adicionales dentro de 2026-04-22..2026-07-21, y el 2026-10-23.\n- Incidentes sin volcado (congelamiento / sin pantalla azul): el 2026-04-30 código 0x0 y el 2026-07-24 código 0x0.\n\nEvidencia de diagnóstico:\n- Los 4 volcados de kernel disponibles señalan el módulo nvlddmkm.sys.\n- Tres volcados muestran Bugcheck 0x133 DPC_WATCHDOG_VIOLATION.\n- Un volcado el 2026-10-23 muestra Bugcheck 0x116 VIDEO_TDR_FAILURE, indicando que el controlador de pantalla no logró recuperarse.\n- Códigos distintos pero mismo módulo apuntan a una inestabilidad más amplia del subsistema gráfico y no a un único error puntual.\n\nVersiones del controlador:\nLos fallos persisten con dos marcas de tiempo distintas: 2026-02-14 (observada el 2026-10-23) y 2026-03-04 (observada dentro de 2026-04-22..2026-07-21). Un volcado del 2026-04-22 no tenía marca registrada. La persistencia entre versiones sugiere que no se trata de una sola compilación defectuosa.\n\nComponentes sanos verificados:\n- Disco: sin errores registrados.\n- Hardware de CPU/memoria: sin errores WHEA incorregibles.\n- Software: sin fallos repetidos de aplicaciones.\n- Térmico: sin limitación de CPU por temperatura. La temperatura de la gráfica no está cubierta por estos registros.\n\nPasos ya realizados:\nAún no se ha documentado instalación limpia del controlador recomendado por Lenovo ni actualización de BIOS.\n\nSolicitud:\nSolicitamos diagnóstico y evaluación para reparación en garantía del subsistema de gráfica. Pedimos confirmación de la versión recomendada del controlador NVIDIA por Lenovo, actualización recomendada de BIOS/EC y ejecución de diagnósticos de hardware autorizados (memoria VRAM, estrés de GPU y alimentación). Si es reproducible en su laboratorio, agradeceríamos análisis completo del volcado de memoria con símbolos para nvlddmkm.sys.\n\nAdjuntos pendientes: volcados completos, registros de eventos del sistema, modelo exacto de GPU y VBIOS, historial de instalación del controlador.",
-        "subject": "Lenovo: recurring NVIDIA graphics crashes - nvlddmkm.sys DPC_WATCHDOG_VIOLATION 0x133 and VIDEO_TDR_FAILURE 0x116"
+        "body_en": "Dear Lenovo Support Team,\n\nI am reporting recurrent instability on the following device:\nModel: Legion Pro 7 16IAX10H (Machine Type 83F5)\nSerial: {{SERIAL}}\nPurchase date: 2026-01\nGPU: NVIDIA - module nvlddmkm.sys\nOS Timezone: America/Managua\n\nIncident timeline (dates already in user timezone):\n- 2026-04-22 20:38:54 - Blue screen: driver timeout - Bugcheck 0x133 DPC_WATCHDOG_VIOLATION - dump module nvlddmkm.sys - driver timestamp not available\n- 2026-04-30 17:34:39 - Freeze without blue screen - Bugcheck 0x0 - no dump - dump module none\n- 2026-07-17 11:00:57 - Blue screen: driver timeout - Bugcheck 0x133 DPC_WATCHDOG_VIOLATION - dump module nvlddmkm.sys - driver timestamp 2026-03-04\n- 2026-07-21 10:21:28 - Blue screen: driver timeout - Bugcheck 0x133 DPC_WATCHDOG_VIOLATION - dump module nvlddmkm.sys - driver timestamp 2026-03-04\n- 2026-07-24 14:04:46 - Freeze without blue screen - Bugcheck 0x0 - no dump - dump module none\n- 2026-10-23 20:45:23 - Blue screen: display driver - Bugcheck 0x116 VIDEO_TDR_FAILURE - dump module nvlddmkm.sys - driver timestamp 2026-02-14\n\nAnalysis:\n- 4 of 6 incidents produced minidumps, all pointing to nvlddmkm.sys. 3 dumps on 2026-04-22 20:38:54, 2026-07-17 11:00:57 and 2026-07-21 10:21:28 share the same failure CATEGORY (0x133 ISR timeout in nvlddmkm.sys). The dump on 2026-10-23 20:45:23 is a different CATEGORY (0x116 VIDEO_TDR_FAILURE) but same module nvlddmkm.sys.\n- The failure persisted across 2 distinct driver timestamps (2026-03-04 and 2026-02-14), indicating the same module fails after driver update.\n- Bugcheck 0x133 with parameters 0x1, 0x1e00 indicates ISR/DPC timeout - driver took too long to respond. Bugcheck 0x116 with status 0xc000009a indicates display driver stopped responding and recovery failed. Both are consistent with GPU driver hang.\n- 2 freezes without dump on 2026-04-30 17:34:39 and 2026-07-24 14:04:46 could be related TDR/black-screen events that failed to generate dumps, but cannot be proven without logs.\n\nHealthy components check (from logs):\n- disk: No disk errors logged\n- No WHEA memory or CPU hardware errors logged (does not rule out GPU VRAM/VRM)\n- No repeated application failures (single Unity Hub.exe reference on 2026-04-22 not recurrent)\n- No CPU thermal throttling logged (GPU thermal not logged)\n\nSteps already attempted:\n- Driver updates (evidenced by at least two different nvlddmkm.sys timestamps after update)\n\nRequest:\nPlease evaluate for driver bug vs underlying GPU hardware/firmware defect. Given persistence after driver change, please provide diagnostic procedure and, if hardware defect is confirmed, propose warranty repair/replacement for the GPU subsystem.\n\nPending data that I will provide on request: BIOS/UEFI version, GPU VBIOS, DxDiag, Lenovo Vantage hardware scan, full kernel dumps, System/Application event logs, GPU temperature/VRAM/power logs.\n\nThank you.",
+        "body_es": "Estimado equipo de soporte de Lenovo,\n\nReporto inestabilidad recurrente en el siguiente equipo:\nModel: Legion Pro 7 16IAX10H (Machine Type 83F5)\nSerie: {{SERIAL}}\nFecha de compra: 2026-01\nGPU: NVIDIA - módulo nvlddmkm.sys\nZona horaria: América/Managua\n\nCronología de incidentes (fechas en hora local):\n- 2026-04-22 20:38:54 - Pantalla azul: tiempo de espera del controlador - Bugcheck 0x133 DPC_WATCHDOG_VIOLATION - módulo nvlddmkm.sys - marca de tiempo del controlador no disponible\n- 2026-04-30 17:34:39 - Congelamiento sin pantalla azul - Bugcheck 0x0 - sin volcado - módulo ninguno\n- 2026-07-17 11:00:57 - Pantalla azul: tiempo de espera del controlador - Bugcheck 0x133 DPC_WATCHDOG_VIOLATION - módulo nvlddmkm.sys - marca de tiempo del controlador 2026-03-04\n- 2026-07-21 10:21:28 - Pantalla azul: tiempo de espera del controlador - Bugcheck 0x133 DPC_WATCHDOG_VIOLATION - módulo nvlddmkm.sys - marca de tiempo del controlador 2026-03-04\n- 2026-07-24 14:04:46 - Congelamiento sin pantalla azul - Bugcheck 0x0 - sin volcado - módulo ninguno\n- 2026-10-23 20:45:23 - Pantalla azul: controlador de pantalla - Bugcheck 0x116 VIDEO_TDR_FAILURE - módulo nvlddmkm.sys - marca de tiempo del controlador 2026-02-14\n\nAnálisis:\n- 4 de 6 incidentes generaron minivolcados, todos señalan a nvlddmkm.sys. 3 volcados del 2026-04-22 20:38:54, 2026-07-17 11:00:57 y 2026-07-21 10:21:28 comparten la misma CATEGORÍA de fallo (0x133 ISR por nvlddmkm.sys). El volcado del 2026-10-23 20:45:23 es una CATEGORÍA diferente (0x116 VIDEO_TDR_FAILURE) pero del mismo módulo nvlddmkm.sys.\n- El fallo persistió después de 2 marcas de tiempo de controlador distintas (2026-03-04 y 2026-02-14), lo que indica que el mismo módulo falla después de actualizar el controlador.\n- El Bugcheck 0x133 con parámetros 0x1, 0x1e00 indica tiempo de espera de ISR/DPC; el 0x116 con estado 0xc000009a indica que el controlador gráfico dejó de responder y la recuperación falló. Ambos son compatibles con bloqueo de la gráfica.\n- Los 2 congelamientos sin volcado del 2026-04-30 17:34:39 y 2026-07-24 14:04:46 podrían ser eventos relacionados, pero no se puede probar sin registros.\n\nComponentes sin errores según registros:\n- Disco sin errores\n- Sin errores de hardware WHEA de memoria o CPU (no descarta defecto de VRAM/VRM de la GPU)\n- Sin fallos repetidos de aplicaciones\n- Sin limitación térmica de CPU registrada (temperatura de GPU no registrada)\n\nPasos ya intentados:\n- Actualizaciones del controlador gráfico (evidenciadas por dos marcas de tiempo distintas)\n\nSolicitud:\nPor favor, evalúe si se trata de un error de controlador o de un defecto de hardware/firmware de la GPU. Dada la persistencia después del cambio de controlador, solicito diagnóstico completo y, si se confirma defecto de hardware, gestión de reparación en garantía del subsistema gráfico.\n\nDatos pendientes que proporcionaré a petición: versión de BIOS/UEFI y VBIOS de GPU, DxDiag, escaneo de hardware de Lenovo Vantage, volcados completos de memoria, registros de eventos del sistema y aplicación, y registros de temperatura/VRAM/alimentación de la GPU.\n\nGracias.",
+        "subject": "Lenovo Legion Pro 7 16IAX10H: recurring NVIDIA graphics crashes - DPC_WATCHDOG_VIOLATION 0x133 and VIDEO_TDR_FAILURE 0x116"
       },
-      "user_summary": "Your system had 6 incidents over 6 months. All available crash reports point to the NVIDIA graphics driver failing to respond, with both freeze and display recovery failures happening across different driver versions, which strongly suggests a recurring graphics subsystem problem. You should share the detailed manufacturer report with Lenovo support and ask them to run hardware diagnostics and confirm the recommended driver and BIOS.",
+      "user_summary": "There were 6 incidents over 6 months where the graphics driver stopped responding, causing blue screens or complete freezes. This pattern has continued after driver updates, which suggests a problem with the graphics system that may involve hardware. Please share the attached technical report with Lenovo support to request a full diagnosis and warranty evaluation.",
       "verdict": "likely_hardware_fault"
     },
     "metadata": {
@@ -234,10 +316,10 @@
         "baseten",
         "meta"
       ],
-      "total_latency_ms": 30111,
-      "total_tokens": 14430,
-      "prompt_tokens": 5061,
-      "completion_tokens": 9369
+      "total_latency_ms": 28398,
+      "total_tokens": 15257,
+      "prompt_tokens": 6097,
+      "completion_tokens": 9160
     }
   },
   "es": {
@@ -245,61 +327,65 @@
       "checklist": [
         {
           "status": "pending",
-          "step": "Provide GPU exact make/model, VBIOS/firmware and full driver version strings"
+          "step": "Install manufacturer recommended NVIDIA driver from Lenovo Vantage / Support site and confirm version"
         },
         {
           "status": "pending",
-          "step": "Provide BIOS version and update to latest Lenovo BIOS"
+          "step": "Update BIOS and VBIOS to latest Lenovo version and report versions"
         },
         {
           "status": "pending",
-          "step": "Install Lenovo-recommended NVIDIA driver and report version"
+          "step": "Run Lenovo hardware scan and GPU VRAM test (MATS) + provide DXDiag and NVIDIA-SMI logs"
         },
         {
           "status": "pending",
-          "step": "Run Lenovo OEM hardware diagnostics including GPU/VRAM stress test and provide GPU thermal, power and throttling logs"
+          "step": "Collect GPU temperature, hotspot, VRAM temperature and fan logs at time of crash / under load"
         },
         {
           "status": "pending",
-          "step": "Collect full kernel/memory dumps for freeze events on 2026-04-30 and 2026-07-24"
+          "step": "Provide PSU wattage, dock/external display setup, sleep/hibernate/fast-startup settings and full Windows Update history"
         },
         {
           "status": "pending",
-          "step": "Provide system power plan, Modern Standby/hibernation settings and Reliability Monitor / LiveKernelReports"
+          "step": "Run GPU stress tests (FurMark/3DMark) and driver verifier, share full memory dumps if available"
         }
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "findings": [
         {
           "evidence": [
-            "6 total incidents over ~6 months (2026-04-22 to 2026-10-23): 4 with memory dumps, 2 freezes without dump (NO_BLUE_SCREEN 2026-04-30 and 2026-07-24)",
-            "4/4 dumps implicate same module nvlddmkm.sys - 3x DPC_WATCHDOG_VIOLATION (0x133) on 2026-04-22, 2026-07-17, 2026-07-21 and 1x VIDEO_TDR_FAILURE (0x116) on 2026-10-23",
-            "nvlddmkm.sys failures persist across 2 distinct driver timestamps: 2026-03-04 (2026-07-17, 2026-07-21) and 2026-02-14 (2026-10-23); 2026-04-22 also nvlddmkm.sys with no timestamp logged"
+            "2026-04-22 20:38:54 Blue screen: driver timeout 0x133 nvlddmkm.sys",
+            "2026-07-17 11:00:57 Blue screen: driver timeout 0x133 nvlddmkm.sys",
+            "2026-07-21 10:21:28 Blue screen: driver timeout 0x133 nvlddmkm.sys",
+            "2026-10-23 20:45:23 Blue screen: display driver 0x116 nvlddmkm.sys"
           ],
-          "text": "repetition across driver versions with same module",
+          "text": "All 4 dumps implicate nvlddmkm.sys: 3x DPC_WATCHDOG_VIOLATION 0x133 and 1x VIDEO_TDR_FAILURE 0x116",
           "type": "fact"
         },
         {
           "evidence": [
-            "3/6 incidents occurred during power transition (SleepInProgress !=0): 2026-04-30, 2026-07-17, 2026-07-24"
+            "2026-03-04 driver_timestamp in 2 dumps",
+            "2026-02-14 driver_timestamp in 1 dump",
+            "null timestamp in 1 dump with same failure category as 2026-03-04"
           ],
-          "text": "some incidents coincided with sleep/wake transitions - power/sleep handling may contribute but not proven",
-          "type": "hypothesis"
+          "text": "Failure persists across driver versions (2026-02-14 and 2026-03-04), not fixed by driver update",
+          "type": "fact"
         },
         {
           "evidence": [
-            "2 NO_BLUE_SCREEN freezes (2026-04-30 and 2026-07-24) have no dump and BugcheckCode 0, so their link to nvlddmkm.sys cannot be proven"
+            "2026-04-30 17:34:39 Freeze without blue screen 0x0 no dump",
+            "2026-07-24 14:04:46 Freeze without blue screen 0x0 no dump"
           ],
-          "text": "freeze events without dumps cannot be definitively linked to GPU driver",
-          "type": "hypothesis"
+          "text": "2 additional freezes without dump (0x0) on 2026-04-30 and 2026-07-24, consistent with TDR freeze",
+          "type": "fact"
         }
       ],
       "manufacturer_report": {
-        "body_en": "Device: Lenovo (GPU NVIDIA), Serial: {{SERIAL}}, Purchase date: 2026-01.\n\nIssue summary: Recurring system instability with freezes and blue screens attributed to display driver.\n\nTimeline (America/Managua timezone):\n- 2026-04-22: Blue screen DPC_WATCHDOG_VIOLATION (0x133) - dump implicates nvlddmkm.sys\n- 2026-04-30: Freeze with no blue screen, no dump captured\n- 2026-07-17: Blue screen DPC_WATCHDOG_VIOLATION (0x133) - dump implicates nvlddmkm.sys\n- 2026-07-21: Blue screen DPC_WATCHDOG_VIOLATION (0x133) - dump implicates nvlddmkm.sys\n- 2026-07-24: Freeze with no blue screen, no dump captured\n- 2026-10-23: Blue screen VIDEO_TDR_FAILURE (0x116) - dump implicates nvlddmkm.sys\n\nTotal 6 incidents over approximately 6 months from 2026-04-22 to 2026-10-23. 4 incidents generated memory dumps and all 4 point to the same module nvlddmkm.sys. Three DPC_WATCHDOG_VIOLATION (0x133) dumps share the same failure category on this machine. The same failure category means the same type on this machine, not proof of same defect as other machines. The fourth dump is VIDEO_TDR_FAILURE (0x116) with a different failure category but same module nvlddmkm.sys.\n\nDriver evidence: Failures persist across at least two distinct driver timestamps: 2026-03-04 and 2026-02-14, plus an additional dump on 2026-04-22 where timestamp was not logged. Persistence across versions indicates driver update did not resolve the issue.\n\nAdditional observation (hypothesis, not confirmed): 3 of the 6 incidents occurred during a power transition / sleep-wake phase, which may contribute to instability but cannot be confirmed from dumps alone.\n\nSystem health checks from logs: No disk errors were logged. No memory or CPU hardware errors logged by Windows. No repeated application failures. No CPU thermal throttling logged.\n\nSteps already taken: Collection and analysis of crash dumps and system logs; verification that all dumps point to nvlddmkm.sys across different driver timestamps; confirmation of absence of disk, memory, CPU and thermal issues in logs.\n\nRequest: Please perform full OEM diagnosis including GPU hardware diagnostics (VRAM / GPU stress test), VBIOS / firmware check, and evaluation of Lenovo-recommended NVIDIA driver and BIOS versions. Please advise on warranty repair or replacement if hardware fault is confirmed.",
-        "body_es": "Equipo: Lenovo (GPU NVIDIA), Serie: {{SERIAL}}, Fecha de compra: 2026-01.\n\nResumen de la falla: Inestabilidad recurrente del sistema con bloqueos y pantallas azules atribuidas al controlador de pantalla.\n\nCronología (zona horaria America/Managua):\n- 2026-04-22: Pantalla azul DPC_WATCHDOG_VIOLATION (0x133) - el volcado señala nvlddmkm.sys\n- 2026-04-30: Bloqueo sin pantalla azul, sin volcado\n- 2026-07-17: Pantalla azul DPC_WATCHDOG_VIOLATION (0x133) - el volcado señala nvlddmkm.sys\n- 2026-07-21: Pantalla azul DPC_WATCHDOG_VIOLATION (0x133) - el volcado señala nvlddmkm.sys\n- 2026-07-24: Bloqueo sin pantalla azul, sin volcado\n- 2026-10-23: Pantalla azul VIDEO_TDR_FAILURE (0x116) - el volcado señala nvlddmkm.sys\n\nEn total 6 incidentes en aproximadamente 6 meses entre 2026-04-22 y 2026-10-23. Cuatro generaron volcados de memoria y los cuatro apuntan al mismo módulo nvlddmkm.sys. Tres casos DPC_WATCHDOG_VIOLATION (0x133) comparten la misma categoría de fallo en este equipo. Misma categoría significa mismo tipo en este equipo, no prueba el mismo defecto en otros equipos. El cuarto volcado es VIDEO_TDR_FAILURE (0x116) con categoría distinta pero mismo módulo.\n\nEvidencia de versiones: Las fallas persisten entre al menos dos marcas de tiempo distintas del controlador: 2026-03-04 y 2026-02-14, además de un volcado el 2026-04-22 sin marca de tiempo registrada. La persistencia después de cambiar de versión indica que la actualización del controlador no resolvió el problema.\n\nObservación adicional (hipótesis no confirmada): 3 de los 6 incidentes ocurrieron durante una transición de energía / suspensión y reanudación, lo que podría contribuir a la inestabilidad, pero no puede confirmarse solo con los volcados.\n\nEstado del sistema según registros: No se registraron errores de disco, ni errores de hardware de memoria o CPU reportados por Windows, ni fallas repetidas de aplicaciones, ni estrangulamiento térmico de la CPU.\n\nAcciones realizadas: Recolección y análisis de volcados y registros del sistema; verificación de que las fallas apuntan a nvlddmkm.sys en distintas versiones; comprobación de ausencia de errores de disco, memoria, CPU y temperatura.\n\nSolicitud: Por favor realice un diagnóstico completo del fabricante que incluya pruebas de hardware de la gráfica (memoria de video y prueba de estrés de GPU), revisión de VBIOS / firmware y evaluación de las versiones recomendadas por el fabricante del controlador NVIDIA y del BIOS. Agradeceré indicación sobre reparación o reemplazo en garantía si se confirma falla de hardware.",
-        "subject": "Lenovo: recurring NVIDIA display crashes - nvlddmkm.sys DPC_WATCHDOG_VIOLATION 0x133 and VIDEO_TDR_FAILURE 0x116"
+        "body_en": "Device: Model: Legion Pro 7 16IAX10H (Machine Type 83F5)\nSerial Number: {{SERIAL}}\nPurchase Date: 2026-01\nGPU: NVIDIA - Module nvlddmkm.sys\n\nIssue Summary:\nRecurrent GPU subsystem instability with 6 incidents over 6 months (first 2026-04-22, last 2026-10-23). 4 incidents produced minidumps, all pointing to nvlddmkm.sys. 2 incidents were freezes without blue screen (BugcheckCode 0x0). Windows shows Kernel-Power 41 + EventLog 6008 for all incidents, with no WHEA memory/CPU errors, no disk errors, and no CPU thermal throttling logged.\n\nIncident Timeline (user timezone America/Managua - each incident on its own line):\n2026-04-22 20:38:54 - Blue screen: driver timeout - Code 0x133 (DPC_WATCHDOG_VIOLATION) - Module nvlddmkm.sys - Driver timestamp unavailable\n2026-04-30 17:34:39 - Freeze without blue screen - Code 0x0 - No dump module - No dump available\n2026-07-17 11:00:57 - Blue screen: driver timeout - Code 0x133 (DPC_WATCHDOG_VIOLATION) - Module nvlddmkm.sys - Driver timestamp 2026-03-04\n2026-07-21 10:21:28 - Blue screen: driver timeout - Code 0x133 (DPC_WATCHDOG_VIOLATION) - Module nvlddmkm.sys - Driver timestamp 2026-03-04\n2026-07-24 14:04:46 - Freeze without blue screen - Code 0x0 - No dump module - No dump available\n2026-10-23 20:45:23 - Blue screen: display driver - Code 0x116 (VIDEO_TDR_FAILURE) - Module nvlddmkm.sys - Driver timestamp 2026-02-14\n\nTechnical Details:\n- Responsible module in all dumps: nvlddmkm.sys\n- Error codes observed: 0x133 DPC_WATCHDOG_VIOLATION (0x1, 0x1E00) and 0x116 VIDEO_TDR_FAILURE, plus 0x0 freezes\n- The three 0x133 dumps share the same failure category (same FAILURE_ID_HASH and FAILURE_BUCKET_ID 0x133_ISR_nvlddmkm!unknown_function). The 0x116 dump has a different category but same module. Same failure category does not by itself prove same defect as other machines.\n- Driver versions: failure occurred with driver timestamp 2026-03-04 (2 dumps) and 2026-02-14 (1 dump). Fourth dump had null timestamp but same category as 2026-03-04 group. Persistence across versions suggests issue not fixed by driver update.\n- Power transition observation: 3 of 6 incidents occurred with SleepInProgress indicator, 3 did not. This suggests a possible power-management trigger but sample is split and this is hypothesis only, not proven.\n- Root cause not proven from dumps alone: could be GPU hardware (VRAM/VRM), GPU firmware/VBIOS, driver compatibility with Windows power management, or power/thermal under load.\n\nSteps Already Taken / Observed:\n- System has already seen different NVIDIA driver timestamps (2026-02-14, 2026-03-04) and failure persists.\n- No disk, WHEA, or CPU thermal throttling errors logged in provided data.\n\nRequest:\nPlease perform full diagnosis. We request VRAM diagnostics (e.g., MATS), GPU thermal and power checks, VBIOS/BIOS version verification, and review of Lenovo-certified driver. Given recurrence across driver versions and 4 dumps with same module over 6 months, please evaluate for warranty repair or replacement if hardware fault is confirmed.\n\nAttachments: minidumps available upon request.",
+        "body_es": "Equipo: Model: Legion Pro 7 16IAX10H (Machine Type 83F5)\nNúmero de serie: {{SERIAL}}\nFecha de compra: 2026-01\nGPU: NVIDIA - Módulo nvlddmkm.sys\n\nResumen de la incidencia:\nInestabilidad recurrente del subsistema gráfico con 6 incidentes en 6 meses (primero 2026-04-22, último 2026-10-23). 4 incidentes generaron minidumps, todos apuntando a nvlddmkm.sys. 2 incidentes fueron bloqueos sin pantalla azul (código 0x0). Windows muestra Kernel-Power 41 + EventLog 6008 en todos los casos, sin errores WHEA de memoria o CPU, sin errores de disco y sin limitación térmica de CPU registrada.\n\nLínea de tiempo de incidentes (zona horaria America/Managua - cada incidente en línea independiente):\n2026-04-22 20:38:54 - Blue screen: driver timeout - Código 0x133 (DPC_WATCHDOG_VIOLATION) - Módulo nvlddmkm.sys - Versión de controlador no disponible\n2026-04-30 17:34:39 - Freeze without blue screen - Código 0x0 - Sin módulo de dump - Sin dump disponible\n2026-07-17 11:00:57 - Blue screen: driver timeout - Código 0x133 (DPC_WATCHDOG_VIOLATION) - Módulo nvlddmkm.sys - Versión de controlador 2026-03-04\n2026-07-21 10:21:28 - Blue screen: driver timeout - Código 0x133 (DPC_WATCHDOG_VIOLATION) - Módulo nvlddmkm.sys - Versión de controlador 2026-03-04\n2026-07-24 14:04:46 - Freeze without blue screen - Código 0x0 - Sin módulo de dump - Sin dump disponible\n2026-10-23 20:45:23 - Blue screen: display driver - Código 0x116 (VIDEO_TDR_FAILURE) - Módulo nvlddmkm.sys - Versión de controlador 2026-02-14\n\nDetalles técnicos:\n- Módulo responsable en todos los dumps: nvlddmkm.sys\n- Códigos observados: 0x133 DPC_WATCHDOG_VIOLATION y 0x116 VIDEO_TDR_FAILURE, además de 0x0 en bloqueos sin dump\n- Los tres dumps con 0x133 comparten la misma categoría de fallo. El dump con 0x116 tiene categoría diferente pero mismo módulo. La misma categoría de fallo no demuestra por sí misma el mismo defecto que en otros equipos.\n- Versiones de controlador: el fallo ocurrió con marca de tiempo 2026-03-04 (2 dumps) y 2026-02-14 (1 dump). La persistencia entre versiones sugiere que no se corrigió con actualización de controlador.\n- Observación de transición de energía: 3 de 6 incidentes ocurrieron durante transición de energía y 3 no. Podría ser un desencadenante de gestión de energía, pero es solo una hipótesis sin confirmación.\n- La causa raíz no está probada solo con los dumps: podría ser hardware de GPU (VRAM/VRM), firmware/VBIOS, compatibilidad del controlador con la gestión de energía de Windows, o alimentación/temperatura bajo carga.\n\nAcciones ya realizadas / observadas:\n- El sistema ya presentó diferentes versiones del controlador NVIDIA y el fallo persistió.\n- No se registraron errores de disco, WHEA ni limitación térmica de CPU en los datos aportados.\n\nSolicitud:\nSolicitamos diagnóstico completo. Pedimos pruebas de VRAM (por ejemplo MATS), control térmico y de alimentación de la GPU, verificación de versiones de VBIOS/BIOS y prueba con controlador certificado por Lenovo. Dada la recurrencia entre versiones de controlador y los 4 dumps con el mismo módulo en 6 meses, rogamos evaluación para reparación o reemplazo en garantía si se confirma fallo de hardware.\n\nAdjuntos: minidumps disponibles bajo solicitud.",
+        "subject": "Lenovo Legion Pro 7 16IAX10H: recurring NVIDIA GPU crashes with nvlddmkm.sys (0x133 / 0x116)"
       },
-      "user_summary": "El equipo ha presentado 6 incidentes en 6 meses con bloqueos y reinicios. El análisis apunta con alta confianza a una inestabilidad de la gráfica NVIDIA que persiste incluso cambiando la versión del controlador. Te recomiendo contactar al soporte de Lenovo para una revisión y posible reparación en garantía, llevando este informe.",
+      "user_summary": "Se han registrado 6 incidentes en 6 meses con pantallas azules y bloqueos relacionados con la tarjeta gráfica. El mismo módulo de vídeo aparece en todos los análisis y el problema persiste tras cambiar de versión del controlador, lo que sugiere un posible fallo de hardware con certeza media pero sin confirmación definitiva. Te recomendamos solicitar al fabricante un diagnóstico completo con pruebas de memoria de vídeo, temperatura y alimentación.",
       "verdict": "likely_hardware_fault"
     },
     "metadata": {
@@ -307,10 +393,10 @@
         "baseten",
         "meta"
       ],
-      "total_latency_ms": 54439,
-      "total_tokens": 15408,
-      "prompt_tokens": 4990,
-      "completion_tokens": 10418
+      "total_latency_ms": 29686,
+      "total_tokens": 15780,
+      "prompt_tokens": 6088,
+      "completion_tokens": 9692
     }
   }
 }

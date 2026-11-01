@@ -11,6 +11,7 @@
       "properties": {
         "manufacturer": {"type": "string"},
         "model": {"type": "string"},
+        "machine_type": {"type": "string"},
         "bios_version": {"type": "string"},
         "gpu": {"type": "string"},
         "gpu_driver_version": {"type": "string"},
