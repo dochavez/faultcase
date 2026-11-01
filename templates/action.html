@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="kicker">{{ t.ac_kicker }}</p>
+<h1>{{ t.ac_report }}</h1>
+<p class="subject">{{ case.manufacturer_report.subject }}</p>
+
+<section class="tabs" aria-label="{{ t.ac_report }}">
+  <input type="radio" id="tab-en" name="report-lang" checked>
+  <input type="radio" id="tab-es" name="report-lang">
+  <div class="tab-labels" role="tablist">
+    <label for="tab-en" role="tab">{{ t.ac_tab_en }}</label>
+    <label for="tab-es" role="tab">{{ t.ac_tab_es }}</label>
+  </div>
+  <div class="tab-panel" id="panel-en" role="tabpanel">
+    <p><button class="btn btn-secondary btn-small" type="button"
+        data-copy="report-en" data-copied="{{ t.ac_copied }}">{{ t.ac_copy }}</button></p>
+    <pre id="report-en">{{ case.manufacturer_report.body_en }}</pre>
+  </div>
+  <div class="tab-panel" id="panel-es" role="tabpanel">
+    <p><button class="btn btn-secondary btn-small" type="button"
+        data-copy="report-es" data-copied="{{ t.ac_copied }}">{{ t.ac_copy }}</button></p>
+    <pre id="report-es">{{ case.manufacturer_report.body_es }}</pre>
+  </div>
+</section>
+
+<section>
+  <h2>{{ t.ac_checklist }}</h2>
+  <ul class="checklist">
+  {% for item in case.checklist %}
+    <li>
+      <span class="badge badge-{{ item.status }}">{{ t["st_" + item.status] }}</span>
+      {{ item.step }}
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+
+<p class="cta-row">
+  <a class="btn btn-primary btn-big" href="/case/{{ case_id }}/evidence.zip">{{ t.ac_zip }}</a>
+</p>
+<p class="meta">{{ t.ac_zip_note }}</p>
+<p><a href="/case/{{ case_id }}?lang={{ lang }}">&larr; {{ t.ac_back }}</a></p>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach(function (button) {
+  button.addEventListener("click", function () {
+    var text = document.getElementById(button.dataset.copy).textContent;
+    function done() {
+      var original = button.dataset.label || button.textContent;
+      button.dataset.label = original;
+      button.textContent = button.dataset.copied;
+      setTimeout(function () { button.textContent = original; }, 2000);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, done);
+    } else {
+      var area = document.createElement("textarea");
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(area);
+      done();
+    }
+  });
+});
+</script>
+{% endblock %}

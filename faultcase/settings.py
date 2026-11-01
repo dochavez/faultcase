@@ -32,6 +32,7 @@ class Settings:
     baseten_api_key: str | None
     fireworks_api_key: str | None
     baseten_model: str
+    invite_code: str | None = None
 
     def key_status(self) -> dict[str, str]:
         """Masked status of each API key (never the full value)."""
@@ -53,6 +54,7 @@ def load_settings(dotenv_path: str | Path | None = None) -> Settings:
         baseten_api_key=os.environ.get("BASETEN_API_KEY") or None,
         fireworks_api_key=os.environ.get("FIREWORKS_API_KEY") or None,
         baseten_model=os.environ.get("BASETEN_MODEL") or BASETEN_MODEL_DEFAULT,
+        invite_code=os.environ.get("INVITE_CODE") or None,
     )
 
 

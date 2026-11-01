@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://unpkg.com/htmx.org@2/dist/htmx.min.js"></script>
+<title>FaultCase — {{ t.tagline }}</title>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="/?lang={{ lang }}">FaultCase</a>
+    <span class="tagline">{{ t.tagline }}</span>
+    <a class="lang-toggle" href="{{ request.url.path }}?lang={{ t.other_lang_code }}">{{ t.other_lang }}</a>
+  </div>
+</header>
+<main class="wrap">
+{% block content %}{% endblock %}
+</main>
+<footer class="footer">
+  <div class="wrap">{{ t.built_with }}</div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="kicker">{{ t.dg_kicker }}</p>
+<section class="verdict">
+  <h1>{{ t["v_" + case.verdict] }}</h1>
+  <p class="confidence">{{ t.dg_confidence }}: <strong>{{ t["c_" + case.confidence] }}</strong></p>
+  <p class="summary">{{ case.user_summary }}</p>
+</section>
+
+<section>
+  <h2>{{ t.dg_timeline }} ({{ incidents|length }} {{ t.dg_incidents }})</h2>
+  <ol class="timeline">
+  {% for incident in incidents %}
+    <li>
+      <time datetime="{{ incident.date }}">{{ incident.date }}</time>
+      <span class="code">{{ incident.code_hex }}</span>
+      <span>{{ incident.code_name }}</span>
+      {% if incident.dump_module %}
+      <span class="dump">{{ t.dg_dump }}: {{ incident.dump_module }}</span>
+      {% else %}
+      <span class="no-dump">{{ t.dg_no_dump }}</span>
+      {% endif %}
+    </li>
+  {% endfor %}
+  </ol>
+</section>
+
+<section>
+  <h2>{{ t.dg_findings }}</h2>
+  <ul class="findings">
+  {% for finding in case.findings %}
+    <li>
+      <span class="badge badge-{{ finding.type }}">{{ t.fact if finding.type == "fact" else t.hypothesis }}</span>
+      {{ finding.text }}
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+
+<section>
+  <h2>{{ t.dg_healthy }}</h2>
+  <ul class="healthy">
+  {% for item in healthy %}
+    <li>{{ item }}</li>
+  {% endfor %}
+  </ul>
+</section>
+
+<p class="cta-row">
+  <a class="btn btn-primary btn-big" href="/case/{{ case_id }}/action?lang={{ lang }}">{{ t.dg_cta }}</a>
+</p>
+<p class="meta">{{ t.dg_meta.format(providers=metadata.providers_used|join(", "), seconds=(metadata.total_latency_ms // 1000), tokens=metadata.total_tokens) }}</p>
+{% endblock %}
