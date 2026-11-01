@@ -42,6 +42,16 @@ def _unsupported_format(error: Exception) -> bool:
     return "response_format" in text or "json_schema" in text
 
 
+def _cached_tokens(usage) -> int:
+    """Read cached prompt tokens from an OpenAI usage object (0 if absent)."""
+    details = getattr(usage, "prompt_tokens_details", None)
+    if details is None:
+        return 0
+    if isinstance(details, dict):
+        return details.get("cached_tokens") or 0
+    return getattr(details, "cached_tokens", None) or 0
+
+
 class Router:
     """One OpenAI-compatible client per provider, with role-based fallback."""
 
@@ -145,7 +155,7 @@ class Router:
         """
         for attempt in range(self._max_retries + 1):
             start = time.perf_counter()
-            prompt_tokens = completion_tokens = 0
+            prompt_tokens = completion_tokens = cached_tokens = 0
             try:
                 completion = self._create(
                     name, provider["model"], messages, schema
@@ -154,6 +164,7 @@ class Router:
                     usage = completion.usage
                     prompt_tokens = usage.prompt_tokens or 0
                     completion_tokens = usage.completion_tokens or 0
+                    cached_tokens = _cached_tokens(usage)
                 except AttributeError:
                     pass
                 try:
@@ -173,6 +184,7 @@ class Router:
                     "latency_ms": int((time.perf_counter() - start) * 1000),
                     "prompt_tokens": prompt_tokens,
                     "completion_tokens": completion_tokens,
+                    "cached_tokens": cached_tokens,
                     "fallback_used": fallback_used,
                 }
                 self._log({
@@ -187,6 +199,7 @@ class Router:
                     "latency_ms": int((time.perf_counter() - start) * 1000),
                     "prompt_tokens": prompt_tokens,
                     "completion_tokens": completion_tokens,
+                    "cached_tokens": cached_tokens,
                     "success": False, "fallback_used": fallback_used,
                 })
                 if attempt < self._max_retries:
@@ -199,6 +212,7 @@ class Router:
                     "latency_ms": int((time.perf_counter() - start) * 1000),
                     "prompt_tokens": prompt_tokens,
                     "completion_tokens": completion_tokens,
+                    "cached_tokens": cached_tokens,
                     "success": False, "fallback_used": fallback_used,
                 })
                 raise
@@ -229,6 +243,7 @@ class Router:
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "role": role, "provider": name, "model": provider["model"],
                     "latency_ms": 0, "prompt_tokens": 0, "completion_tokens": 0,
+                    "cached_tokens": 0,
                     "success": False, "fallback_used": fallback_used,
                 })
                 continue
@@ -264,6 +279,7 @@ class Router:
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "role": role, "provider": name, "model": provider["model"],
                     "latency_ms": 0, "prompt_tokens": 0, "completion_tokens": 0,
+                    "cached_tokens": 0,
                     "success": False, "fallback_used": False,
                 })
                 return self._failure(role, name, "missing API key")

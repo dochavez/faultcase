@@ -15,6 +15,7 @@ from pathlib import Path
 from jsonschema import validate
 
 from faultcase import redact, rules
+from faultcase.normalize import load_playbooks
 from faultcase.router import RouterError, analysis_mode, call_parallel_with_info, call_with_info
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -42,6 +43,32 @@ ANALYSIS_SCHEMA = {
         "missing": {"type": "array", "items": {"type": "string"}},
     },
 }
+
+
+def _static_reference(schema_keys: list) -> str:
+    """Build the static (cacheable) prefix shared by every request of a role.
+
+    Playbook rules and the expected output shape are identical for all
+    cases, so providers can reuse the cached prefix; case data always
+    comes last in the user message.
+    """
+    lines = ["Static reference (identical for every case).", "", "Playbook rules:"]
+    for playbook in load_playbooks():
+        for rule in playbook.get("rules", []):
+            lines.append(f"- {playbook['id']}: {rule}")
+    lines += [
+        "",
+        "Return a JSON object with exactly these top-level keys: "
+        + ", ".join(schema_keys)
+        + ".",
+    ]
+    return "\n".join(lines)
+
+
+def _user_content(schema_keys: list, case_data: dict) -> str:
+    return (
+        _static_reference(schema_keys) + "\n\nCase data:\n" + json.dumps(case_data)
+    )
 
 
 CONFIDENCE_LEVELS = ["low", "medium", "high"]
@@ -149,9 +176,11 @@ def build_case(
         {"role": "system", "content": system_analysis},
         {
             "role": "user",
-            "content": json.dumps(
+            "content": _user_content(
+                ["verdict", "confidence", "findings", "healthy_components",
+                 "missing"],
                 {"findings": clean_findings, "evidence": clean_evidence,
-                 "timezone": timezone}
+                 "timezone": timezone},
             ),
         },
     ]
@@ -173,13 +202,16 @@ def build_case(
             {"role": "system", "content": system_writer},
             {
                 "role": "user",
-                "content": json.dumps({
-                    "analysis": analysis,
-                    "summary": clean_findings["summary"],
-                    "device": clean_device,
-                    "ui_language": ui_language,
-                    "timezone": timezone,
-                }),
+                "content": _user_content(
+                    sorted(CASE_SCHEMA.get("properties", {})),
+                    {
+                        "analysis": analysis,
+                        "summary": clean_findings["summary"],
+                        "device": clean_device,
+                        "ui_language": ui_language,
+                        "timezone": timezone,
+                    },
+                ),
             },
         ],
         CASE_SCHEMA,

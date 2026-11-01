@@ -61,6 +61,11 @@ EVIDENCE = {
 }
 
 
+def _case_data(content):
+    """Parse the case JSON at the end of a static-first user message."""
+    return json.loads(content.split("Case data:\n", 1)[1])
+
+
 def _stub_factory(captured, case=None):
     def fake_call(role, messages, response_schema):
         captured.append({"role": role, "messages": messages})
@@ -133,7 +138,7 @@ def test_device_with_sources_reaches_case_writer(monkeypatch):
         },
     })
     writer_call = next(c for c in captured if c["role"] == "case_writing")
-    payload = json.loads(writer_call["messages"][1]["content"])
+    payload = _case_data(writer_call["messages"][1]["content"])
     assert payload["device"]["bios_version"] == "LENOVO N3FCN12W"
     assert payload["device"]["sources"] == {
         "manufacturer": "windows_system_information",
@@ -164,7 +169,21 @@ def _stub_second_opinion(monkeypatch, captured, results):
 
 def _writer_analysis(captured):
     writer_call = next(c for c in captured if c["role"] == "case_writing")
-    return json.loads(writer_call["messages"][1]["content"])["analysis"]
+    return _case_data(writer_call["messages"][1]["content"])["analysis"]
+
+
+def test_user_messages_put_static_reference_first(monkeypatch):
+    captured = []
+    monkeypatch.setattr(agent, "call_with_info", _stub_factory(captured))
+    agent.build_case(EVIDENCE)
+    assert len(captured) == 2
+    for call in captured:
+        user_content = call["messages"][1]["content"]
+        assert user_content.startswith("Static reference (identical for every case).")
+        static_end = user_content.index("Case data:\n")
+        assert "bad block" in user_content[:static_end]
+        case_data = json.loads(user_content[static_end + len("Case data:\n"):])
+        assert "findings" in case_data or "analysis" in case_data
 
 
 def test_second_opinion_agreement_keeps_confidence(monkeypatch):

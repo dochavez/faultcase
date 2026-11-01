@@ -17,12 +17,15 @@ SCHEMA = {
 MESSAGES = [{"role": "user", "content": "SECRET-PROMPT-DO-NOT-LOG"}]
 
 
-def _completion(content, prompt_tokens=10, completion_tokens=5):
+def _completion(content, prompt_tokens=10, completion_tokens=5, cached_tokens=None):
+    usage = SimpleNamespace(
+        prompt_tokens=prompt_tokens, completion_tokens=completion_tokens
+    )
+    if cached_tokens is not None:
+        usage.prompt_tokens_details = SimpleNamespace(cached_tokens=cached_tokens)
     return SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
-        usage=SimpleNamespace(
-            prompt_tokens=prompt_tokens, completion_tokens=completion_tokens
-        ),
+        usage=usage,
     )
 
 
@@ -263,6 +266,26 @@ class RendezvousClient:
         self._mine.set()
         assert self._peer.wait(timeout=10), "providers were not called concurrently"
         return self._completion
+
+
+def test_cached_tokens_are_logged_when_reported(tmp_path):
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([_completion('{"ok": true}', cached_tokens=7)]),
+        "fireworks": FakeClient([]),
+    }, route=("baseten",))
+    _, info = router.call_with_info("test_role", MESSAGES, SCHEMA)
+    assert info["cached_tokens"] == 7
+    assert _log_lines(tmp_path)[0]["cached_tokens"] == 7
+
+
+def test_cached_tokens_default_to_zero(tmp_path):
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([_completion('{"ok": true}')]),
+        "fireworks": FakeClient([]),
+    }, route=("baseten",))
+    _, info = router.call_with_info("test_role", MESSAGES, SCHEMA)
+    assert info["cached_tokens"] == 0
+    assert _log_lines(tmp_path)[0]["cached_tokens"] == 0
 
 
 def test_call_parallel_runs_concurrently(tmp_path):
