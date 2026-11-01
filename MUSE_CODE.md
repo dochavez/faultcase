@@ -15,17 +15,23 @@ A web tool that turns repeated failures on a Windows laptop into a warranty case
 ## Layout
 ```
 faultcase/                 # Python package
-  adapters/windows/        # evtx.py, windbg.py, fixture_events.py, msinfo.py, wmi.py, cdb.py (local only)
+  adapters/windows/        # evtx, windbg, fixture_events, msinfo, wmi, cdb (local only)
   app.py                   # FastAPI, 3 screens + /demo
   agent.py                 # findings → analysis (Baseten/Fireworks) → case (Meta)
-  normalize.py             # maps everything to schemas/evidence.schema.json
-  redact.py                # removes user name, computer name, serial, MAC, personal paths
-  rules.py                 # applies playbooks/*.yaml and produces findings
-  router.py                # picks a provider per role with fallback (config/providers.yaml)
-  demo.py / i18n.py        # precomputed demo builders, EN/ES strings
+  normalize.py             # raw events → schemas/evidence.schema.json
+  redact.py                # personal-data removal
+  rules.py                 # playbooks → deterministic findings
+  router.py                # providers with fallback, hedge, usage log
+  demo.py / i18n.py        # precomputed demo, EN/ES strings
 templates/ static/         # Jinja2 pages, CSS
-config/ filters/ playbooks/ prompts/ schemas/ fixtures/ tests/
-scripts/                   # smoke_test.py, build_demo_case.py
+config/                    # providers.yaml (routes, roles, prices)
+filters/ playbooks/        # device-diagnostics.xml; disk/hardware/software/stability/thermal
+prompts/ schemas/          # evidence_analysis.md, case_writer.md; evidence/case schemas
+fixtures/                  # real_case/, synthetic/, msinfo/
+scripts/                   # smoke_test.py, build_demo_case.py, benchmark.py, screenshots.py
+tests/                     # pytest suite (live tests need keys)
+docs/                      # benchmark.md/.json, img/
+.github/workflows/         # CI: pytest on Windows + Linux
 modal_app.py               # Modal deployment
 ```
 
