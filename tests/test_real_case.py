@@ -1,0 +1,132 @@
+"""Golden test: the real case must produce exactly the expected conclusions.
+
+Builds evidence from fixtures/real_case (events_41.json + windbg/*.txt),
+applies the rules engine and checks every field of expected.json except
+acceptable_verdicts, minimum_confidence and must_not_claim, which are
+checked later against the model output. expected.json is never edited to
+make a test pass; a failure here means the code is wrong.
+"""
+
+import json
+from pathlib import Path
+
+from faultcase import normalize, rules
+from faultcase.adapters.windows import fixture_events, windbg
+from faultcase.normalize import normalize_hex
+
+REAL_CASE = Path(__file__).resolve().parent.parent / "fixtures" / "real_case"
+EXPECTED = json.loads((REAL_CASE / "expected.json").read_text(encoding="utf-8"))
+
+
+def _build():
+    events = fixture_events.load_fixture_events()
+    for event in list(events):
+        related = event["fields"].get("related_6008")
+        if related:
+            events.append({
+                "time": related,
+                "log": "System",
+                "source": "EventLog",
+                "event_id": 6008,
+                "fields": {},
+            })
+    dumps = []
+    for path in sorted((REAL_CASE / "windbg").glob("*.txt")):
+        dumps.append({"file": path.name, **windbg.parse_windbg(path)})
+    evidence = normalize.normalize(events, dumps).evidence
+    return evidence, rules.apply_rules(evidence)
+
+
+EVIDENCE, FINDINGS = _build()
+
+
+def test_total_incidents():
+    assert len(FINDINGS["incidents"]) == EXPECTED["total_incidents"]
+
+
+def test_incidents_with_dump():
+    with_dump = [i for i in FINDINGS["incidents"] if i["dump_module"]]
+    assert len(with_dump) == EXPECTED["incidents_with_dump"]
+
+
+def test_freezes_without_dump():
+    freezes = [
+        i for i in FINDINGS["incidents"]
+        if i["code"] == 0 and not i["dump_module"]
+    ]
+    assert len(freezes) == EXPECTED["freezes_without_dump"]
+
+
+def test_codes_by_date():
+    codes = {i["date"]: i["code_hex"] for i in FINDINGS["incidents"]}
+    assert codes == EXPECTED["codes_by_date"]
+    for incident in FINDINGS["incidents"]:
+        assert incident["code_name"], incident["date"]
+        assert incident["explanation"], incident["date"]
+
+
+def test_common_module():
+    assert FINDINGS["common_module"] == EXPECTED["common_module"]
+    assert FINDINGS["dumps_with_common_module"] == EXPECTED["dumps_with_common_module"]
+
+
+def test_distinct_driver_timestamps():
+    assert FINDINGS["distinct_driver_timestamps"] == EXPECTED["distinct_driver_timestamps"]
+
+
+def test_incidents_during_power_transition():
+    transitions = [i for i in FINDINGS["incidents"] if i["power_transition"]]
+    assert len(transitions) == EXPECTED["incidents_during_power_transition"]
+
+
+def test_required_patterns_are_facts():
+    facts = {p["id"] for p in FINDINGS["patterns"] if p["verdict"] == "fact"}
+    for pattern in EXPECTED["required_patterns"]:
+        assert pattern in facts
+
+
+def test_hypothesis_patterns_are_hypotheses():
+    hypotheses = {
+        p["id"] for p in FINDINGS["patterns"] if p["verdict"] == "hypothesis"
+    }
+    for pattern in EXPECTED["hypothesis_patterns"]:
+        assert pattern in hypotheses
+
+
+def test_photo_parameters_match():
+    target = EXPECTED["photo_parameters_match"]
+    incident = next(i for i in FINDINGS["incidents"] if i["date"] == target)
+    dump = next(
+        d for d in EVIDENCE["dumps"]
+        if d.get("incident_id") == incident["incident_id"]
+    )
+    assert incident["params"] is not None
+    assert dump.get("params") is not None
+    assert [normalize_hex(p) for p in incident["params"]] == [
+        normalize_hex(p) for p in dump["params"]
+    ]
+
+
+def test_healthy_components():
+    assert {h["playbook"] for h in FINDINGS["healthy"]} == {
+        "disk", "hardware", "thermal", "software",
+    }
+    for entry in FINDINGS["healthy"]:
+        assert entry["note"]
+
+
+def test_other_playbook_pattern_when_events_exist():
+    events = [{
+        "time": "2026-05-01T10:00:00+00:00",
+        "log": "System",
+        "source": "disk",
+        "event_id": 7,
+        "fields": {},
+    }]
+    evidence = normalize.normalize(events, []).evidence
+    findings = rules.apply_rules(evidence)
+    assert {
+        "id": "bad_block", "playbook": "disk", "verdict": "fact",
+        "detail": "1 bad_block event on 2026-05-01",
+    } in findings["patterns"]
+    assert "disk" not in {h["playbook"] for h in findings["healthy"]}
