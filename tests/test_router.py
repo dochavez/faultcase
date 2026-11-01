@@ -348,6 +348,45 @@ def test_hedge_both_fail_raises_with_both_errors(tmp_path):
     assert "fireworks timed out" in message
 
 
+def test_reasoning_effort_sent_when_configured(tmp_path):
+    baseten = FakeClient([_completion('{"ok": true}')])
+    router, _ = _router(tmp_path, {
+        "baseten": baseten,
+        "fireworks": FakeClient([]),
+    }, route=("baseten",))
+    router._config["roles"] = {"test_role": {"reasoning_effort": "high"}}
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    assert baseten.calls[0]["reasoning_effort"] == "high"
+
+
+def test_reasoning_effort_omitted_when_unset(tmp_path):
+    baseten = FakeClient([_completion('{"ok": true}')])
+    router, _ = _router(tmp_path, {
+        "baseten": baseten,
+        "fireworks": FakeClient([]),
+    }, route=("baseten",))
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    assert "reasoning_effort" not in baseten.calls[0]
+
+
+def test_reasoning_effort_rejected_once_then_remembered(tmp_path):
+    fireworks = FakeClient([
+        Exception("400 unknown parameter: reasoning_effort"),
+        _completion('{"ok": true}'),
+        _completion('{"ok": true}'),
+    ])
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([RuntimeError("baseten is down")]),
+        "fireworks": fireworks,
+    })
+    router._config["roles"] = {"test_role": {"reasoning_effort": "medium"}}
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    assert router.call("test_role", MESSAGES, SCHEMA) == {"ok": True}
+    assert fireworks.calls[0]["reasoning_effort"] == "medium"
+    assert "reasoning_effort" not in fireworks.calls[1]
+    assert "reasoning_effort" not in fireworks.calls[2]
+
+
 def test_call_parallel_runs_concurrently(tmp_path):
     started_baseten = threading.Event()
     started_fireworks = threading.Event()

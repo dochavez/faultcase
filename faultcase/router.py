@@ -47,6 +47,19 @@ def _unsupported_format(error: Exception) -> bool:
     return "response_format" in text or "json_schema" in text
 
 
+def _unsupported_param(error: Exception, param: str) -> bool:
+    text = str(error).lower()
+    if param not in text:
+        return False
+    return any(
+        word in text
+        for word in (
+            "unknown", "unsupported", "invalid", "unexpected",
+            "unrecognized", "not supported", "not allowed",
+        )
+    )
+
+
 def _cached_tokens(usage) -> int:
     """Read cached prompt tokens from an OpenAI usage object (0 if absent)."""
     details = getattr(usage, "prompt_tokens_details", None)
@@ -90,6 +103,7 @@ class Router:
         self._providers: dict[str, dict] = {}
         self._clients: dict[str, object] = {}
         self._json_mode: dict[str, str] = {}
+        self._no_reasoning_effort: set[str] = set()
         for name, spec in config.get("providers", {}).items():
             api_key = env_values.get(spec.get("api_key_env", ""))
             model = spec.get("model") or env_values.get(spec.get("model_env", ""))
@@ -121,12 +135,39 @@ class Router:
         roles = self._config.get("roles", {})
         return roles.get(role, {}).get("analysis_mode", "single")
 
-    def _create(self, name: str, model: str, messages: list, schema: dict):
+    def reasoning_effort(self, role: str):
+        """Return the role's reasoning effort (or None when unset)."""
+        roles = self._config.get("roles", {})
+        return roles.get(role, {}).get("reasoning_effort")
+
+    def _create(
+        self, name: str, model: str, messages: list, schema: dict, role: str
+    ):
+        effort = self.reasoning_effort(role)
+        if name in self._no_reasoning_effort:
+            effort = None
+        try:
+            return self._create_with_format(
+                name, model, messages, schema, effort
+            )
+        except Exception as exc:
+            if effort is not None and _unsupported_param(exc, "reasoning_effort"):
+                self._no_reasoning_effort.add(name)
+                return self._create_with_format(
+                    name, model, messages, schema, None
+                )
+            raise
+
+    def _create_with_format(
+        self, name: str, model: str, messages: list, schema: dict,
+        effort=None,
+    ):
         client = self._clients[name]
+        extra = {"reasoning_effort": effort} if effort is not None else {}
         if self._json_mode[name] == "json_object":
             return client.chat.completions.create(
                 model=model, messages=messages,
-                response_format={"type": "json_object"},
+                response_format={"type": "json_object"}, **extra,
             )
         try:
             return client.chat.completions.create(
@@ -136,13 +177,14 @@ class Router:
                     "type": "json_schema",
                     "json_schema": {"name": "faultcase_response", "schema": schema},
                 },
+                **extra,
             )
         except Exception as exc:
             if _unsupported_format(exc):
                 self._json_mode[name] = "json_object"
                 return client.chat.completions.create(
                     model=model, messages=messages,
-                    response_format={"type": "json_object"},
+                    response_format={"type": "json_object"}, **extra,
                 )
             raise
 
@@ -164,7 +206,7 @@ class Router:
             prompt_tokens = completion_tokens = cached_tokens = 0
             try:
                 completion = self._create(
-                    name, provider["model"], messages, schema
+                    name, provider["model"], messages, schema, role
                 )
                 try:
                     usage = completion.usage

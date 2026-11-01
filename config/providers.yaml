@@ -24,12 +24,15 @@ routes:
 
 # Per-role behavior. analysis_mode: "second_opinion" calls the first two
 # providers of the route concurrently and reconciles their verdicts;
-# "single" uses the classic sequential fallback.
+# "single" uses the classic sequential fallback. reasoning_effort is
+# passed only to providers that accept it.
 roles:
   evidence_analysis:
     analysis_mode: second_opinion
+    reasoning_effort: high
   case_writing:
     analysis_mode: single
+    reasoning_effort: medium
 
 settings:
   timeout_seconds: 90
