@@ -16,6 +16,7 @@ import tempfile
 import uuid
 import zipfile
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
@@ -118,9 +119,11 @@ async def upload(
     invite_code: str = Form(""),
     lang: str = Form("en"),
     local_dumps: str = Form(""),
+    tz: str = Form("UTC"),
 ):
     lang = get_lang(lang)
     t = STRINGS[lang]
+    tz = _safe_tz(tz)
     if settings.invite_code and invite_code.strip() != settings.invite_code:
         return _error(request, lang, t["err_invite"])
     name = (file.filename or "").lower()
@@ -156,11 +159,11 @@ async def upload(
     if not evidence["events"]:
         return _error(request, lang, t["err_no_events"])
     try:
-        built = await run_in_threadpool(build_case, evidence, lang, None)
+        built = await run_in_threadpool(build_case, evidence, lang, None, tz)
     except (RouterError, ValueError) as exc:
         return _error(request, lang, f"{t['err_agent']}: {exc}")
-    findings = apply_rules(evidence)
-    case_id = _store_case(findings, built, summaries, local_stats)
+    findings = apply_rules(evidence, tz=tz)
+    case_id = _store_case(findings, built, summaries, local_stats, timezone=tz)
     url = f"/case/{case_id}?lang={lang}"
     if _is_htmx(request):
         return Response(status_code=200, headers={"HX-Redirect": url})
@@ -208,7 +211,9 @@ async def regenerate(
         return _error(request, lang, t["err_invite"], page="error.html")
     evidence, summaries = build_demo_evidence()
     try:
-        built = await run_in_threadpool(build_case, evidence, lang, DEMO_DEVICE)
+        built = await run_in_threadpool(
+            build_case, evidence, lang, DEMO_DEVICE, stored.get("timezone", "UTC")
+        )
     except (RouterError, ValueError) as exc:
         return _error(request, lang, f"{t['err_agent']}: {exc}", page="error.html")
     stored["case"] = built["case"]
@@ -222,6 +227,14 @@ async def regenerate(
 
 def _get_case(case_id: str) -> dict | None:
     return CASES.get(case_id)
+
+
+def _safe_tz(value: str | None) -> str:
+    try:
+        ZoneInfo(value or "UTC")
+        return value or "UTC"
+    except (ZoneInfoNotFoundError, ValueError, TypeError):
+        return "UTC"
 
 
 def _expired(request: Request, lang: str):
@@ -247,7 +260,8 @@ def diagnosis(request: Request, case_id: str):
              incidents=stored["findings"]["incidents"],
              healthy=healthy, metadata=stored["metadata"],
              local_dumps=stored.get("local_dumps"),
-             is_demo=stored.get("is_demo", False)),
+             is_demo=stored.get("is_demo", False),
+             timezone=stored.get("timezone", "UTC")),
     )
 
 

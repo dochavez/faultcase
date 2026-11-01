@@ -115,6 +115,29 @@ def test_healthy_components():
         assert entry["note"]
 
 
+def test_incident_date_converts_to_user_timezone():
+    evidence = {
+        "os": "windows",
+        "collected_at": "2026-04-23T00:00:00+00:00",
+        "events": [{
+            "time": "2026-04-23T02:38:54+00:00",
+            "source": "Microsoft-Windows-Kernel-Power",
+            "event_id": 41,
+            "kind": "unexpected_reboot",
+            "playbook": "stability",
+            "code": 307,
+            "params": ["0x1", "0x1e00", "0x0", "0x0"],
+            "fields": {"BugcheckCode": 307},
+            "incident_id": "inc-001",
+        }],
+        "dumps": [],
+    }
+    local = rules.apply_rules(evidence, tz="America/Managua")
+    assert local["incidents"][0]["date"] == "2026-04-22"
+    utc = rules.apply_rules(evidence, tz="UTC")
+    assert utc["incidents"][0]["date"] == "2026-04-23"
+
+
 def test_other_playbook_pattern_when_events_exist():
     events = [{
         "time": "2026-05-01T10:00:00+00:00",

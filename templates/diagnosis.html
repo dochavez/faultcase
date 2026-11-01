@@ -8,7 +8,7 @@
 </section>
 
 <section>
-  <h2>{{ t.dg_timeline }} ({{ incidents|length }} {{ t.dg_incidents }})</h2>
+  <h2>{{ t.dg_timeline }} ({{ incidents|length }} {{ t.dg_incidents }}) · {{ timezone }}</h2>
   <ol class="timeline">
   {% for incident in incidents %}
     <li>

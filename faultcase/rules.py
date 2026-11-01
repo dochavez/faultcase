@@ -9,8 +9,9 @@ labeled "fact" or "hypothesis"; power_transition is always a hypothesis.
 from __future__ import annotations
 
 from collections import Counter
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from faultcase.normalize import load_playbooks
 
@@ -27,7 +28,15 @@ def _sleep_in_progress(event: dict) -> bool:
         return False
 
 
-def _build_incidents(events: list[dict], dumps: list[dict], codes: dict) -> list[dict]:
+def _incident_date(time_str: str, tz: str | None) -> str:
+    if not tz:
+        return time_str[:10]
+    return datetime.fromisoformat(time_str).astimezone(ZoneInfo(tz)).date().isoformat()
+
+
+def _build_incidents(
+    events: list[dict], dumps: list[dict], codes: dict, tz: str | None
+) -> list[dict]:
     dumps_by_incident = {}
     for dump in sorted(dumps, key=lambda d: d.get("file") or ""):
         incident_id = dump.get("incident_id")
@@ -46,7 +55,7 @@ def _build_incidents(events: list[dict], dumps: list[dict], codes: dict) -> list
         dump = dumps_by_incident.get(incident_id, {})
         incidents.append({
             "incident_id": incident_id,
-            "date": main["time"][:10],
+            "date": _incident_date(main["time"], tz),
             "code": code,
             "code_hex": hex(code) if isinstance(code, int) else None,
             "code_name": info.get("name"),
@@ -126,13 +135,21 @@ def _other_playbook_patterns(events: list[dict]) -> list[dict]:
     return patterns
 
 
-def apply_rules(evidence: dict, playbooks_dir: str | Path | None = None) -> dict:
-    """Apply every playbook to normalized evidence and return findings."""
+def apply_rules(
+    evidence: dict,
+    playbooks_dir: str | Path | None = None,
+    tz: str | None = None,
+) -> dict:
+    """Apply every playbook to normalized evidence and return findings.
+
+    Incident dates are expressed in the ``tz`` IANA timezone; without one
+    the event wall-clock date is kept as-is.
+    """
     playbooks = {p["id"]: p for p in load_playbooks(playbooks_dir)}
     events = evidence.get("events", [])
     dumps = evidence.get("dumps", [])
     codes = (playbooks.get(STABILITY, {}).get("interpretation") or {}).get("codes", {})
-    incidents = _build_incidents(events, dumps, codes)
+    incidents = _build_incidents(events, dumps, codes, tz)
     patterns = _stability_patterns(incidents, dumps) + _other_playbook_patterns(events)
     matched = {e.get("playbook") for e in events}
     healthy = [

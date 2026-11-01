@@ -35,6 +35,7 @@
             hx-indicator="#upload-loading" hx-disabled-elt="#upload-btn"
             enctype="multipart/form-data" method="post" action="/upload">
         <input type="hidden" name="lang" value="{{ lang }}">
+        <input type="hidden" name="tz" class="tz-field" value="UTC">
         <p>
           <label for="evtx">{{ t.file_label }}</label>
           <input type="file" id="evtx" name="file" accept=".evtx" required>
@@ -70,6 +71,7 @@
             hx-indicator="#demo-loading" hx-disabled-elt="#demo-btn"
             method="post" action="/demo">
         <input type="hidden" name="lang" value="{{ lang }}">
+        <input type="hidden" name="tz" class="tz-field" value="UTC">
         <p><button class="btn btn-demo" id="demo-btn" type="submit">{{ t.demo_btn }}</button></p>
       </form>
       <div id="demo-loading" class="loading" aria-live="polite">
@@ -79,4 +81,10 @@
     </div>
   </li>
 </ol>
+<script>
+try {
+  var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  document.querySelectorAll(".tz-field").forEach(function (el) { el.value = tz; });
+} catch (e) {}
+</script>
 {% endblock %}

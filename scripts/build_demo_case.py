@@ -1,10 +1,11 @@
 """Build the precomputed demo case (calls live models for en and es).
 
-Usage: python scripts/build_demo_case.py
+Usage: python scripts/build_demo_case.py [--timezone America/Managua]
 Writes fixtures/real_case/demo_case.json. Rerun after prompt or model
 changes so /demo serves fresh output.
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -23,14 +24,20 @@ from faultcase.demo import (  # noqa: E402
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--timezone", default=DEMO_TIMEZONE)
+    args = parser.parse_args()
     evidence, _summaries = build_demo_evidence()
     data: dict = {
-        "timezone": DEMO_TIMEZONE,
-        "findings": rules.apply_rules(evidence),
+        "timezone": args.timezone,
+        "findings": rules.apply_rules(evidence, tz=args.timezone),
     }
     for lang in ("en", "es"):
         print(f"building {lang} ...", flush=True)
-        result = build_case(evidence, ui_language=lang, device=DEMO_DEVICE)
+        result = build_case(
+            evidence, ui_language=lang, device=DEMO_DEVICE,
+            timezone=args.timezone,
+        )
         data[lang] = {"case": result["case"], "metadata": result["metadata"]}
     DEMO_CASE_PATH.write_text(
         json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"

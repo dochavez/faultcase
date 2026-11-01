@@ -38,7 +38,7 @@ OPEN_SETTINGS = Settings(
 )
 
 
-def _stub_build_case(evidence, ui_language="en", device=None):
+def _stub_build_case(evidence, ui_language="en", device=None, timezone=None):
     return {
         "case": CASE,
         "metadata": {
@@ -67,6 +67,12 @@ def test_collect_page_spanish():
 
 def test_i18n_key_parity():
     assert set(EN) == set(ES)
+
+
+def test_collect_posts_browser_timezone():
+    response = client.get("/")
+    assert 'name="tz"' in response.text
+    assert "resolvedOptions" in response.text
 
 
 def test_filter_download():

@@ -57,10 +57,13 @@ def _replace_serial(obj: object, serial: str) -> object:
 
 
 def build_case(
-    evidence: dict, ui_language: str = "en", device: dict | None = None
+    evidence: dict,
+    ui_language: str = "en",
+    device: dict | None = None,
+    timezone: str | None = None,
 ) -> dict:
     """Build the warranty case for normalized evidence. Returns case + metadata."""
-    findings = rules.apply_rules(evidence)
+    findings = rules.apply_rules(evidence, tz=timezone)
     clean_findings = redact.redact_obj(findings)
     clean_evidence = redact.redact_obj(evidence)
     clean_device = redact.redact_obj(dict(device or {}))
@@ -74,7 +77,8 @@ def build_case(
             {
                 "role": "user",
                 "content": json.dumps(
-                    {"findings": clean_findings, "evidence": clean_evidence}
+                    {"findings": clean_findings, "evidence": clean_evidence,
+                     "timezone": timezone}
                 ),
             },
         ],
@@ -92,6 +96,7 @@ def build_case(
                     "analysis": analysis,
                     "device": clean_device,
                     "ui_language": ui_language,
+                    "timezone": timezone,
                 }),
             },
         ],
