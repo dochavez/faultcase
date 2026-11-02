@@ -128,12 +128,38 @@ def _stability_patterns(incidents: list[dict], dumps: list[dict]) -> list[dict]:
 
 
 WIFI = "wifi"
+USB = "usb"
 WIFI_DROP_KINDS = ("wifi_disconnected", "wifi_connect_failed")
 WIFI_DRIVER_KINDS = ("wifi_driver_error", "wifi_driver_warning")
 RESUME_AFTER_SECONDS = 600
 
 # Playbooks with dedicated pattern functions (skipped by the generic counter).
-DEDICATED_PATTERNS = {WIFI}
+DEDICATED_PATTERNS = {WIFI, USB}
+
+
+def _resume_times(events: list[dict]) -> list:
+    return sorted(
+        datetime.fromisoformat(e["time"])
+        for e in events if e.get("kind") == "resume_from_sleep"
+    )
+
+
+def _soon_after_resume(events: list[dict], resumes: list) -> list[dict]:
+    return [
+        event for event in events
+        if any(
+            0 <= (datetime.fromisoformat(event["time"]) - woke).total_seconds()
+            <= RESUME_AFTER_SECONDS
+            for woke in resumes
+        )
+    ]
+
+
+def _device_key(value: object) -> str:
+    """Group device IDs by model part, dropping the per-machine suffix."""
+    text = str(value or "")
+    head, sep, _tail = text.rpartition("\\")
+    return head if sep else text
 
 
 def _wifi_patterns(events: list[dict]) -> list[dict]:
@@ -171,25 +197,77 @@ def _wifi_patterns(events: list[dict]) -> list[dict]:
             "detail": f"{len(driver)} Wi-Fi driver warnings or errors "
                       f"(events {', '.join(map(str, ids))})",
         })
-    resumes = sorted(
-        datetime.fromisoformat(e["time"])
-        for e in events if e.get("kind") == "resume_from_sleep"
-    )
+    resumes = _resume_times(events)
     if resumes and drops:
-        hits = [
-            drop for drop in drops
-            if any(
-                0 <= (datetime.fromisoformat(drop["time"]) - woke).total_seconds()
-                <= RESUME_AFTER_SECONDS
-                for woke in resumes
-            )
-        ]
+        hits = _soon_after_resume(drops, resumes)
         if hits:
             patterns.append({
                 "id": "wifi_after_resume",
                 "playbook": WIFI,
                 "verdict": "hypothesis",
                 "detail": f"{len(hits)}/{len(drops)} Wi-Fi disconnections within "
+                          "10 minutes after resume from sleep",
+            })
+    return patterns
+
+
+def _usb_patterns(events: list[dict]) -> list[dict]:
+    usb = [e for e in events if e.get("playbook") == USB]
+    if not usb:
+        return []
+    patterns = []
+    failed = [e for e in usb if e.get("kind") == "usb_device_failed"]
+    drivers = [e for e in usb if e.get("kind") == "usb_driver_failed"]
+    patterns.append({
+        "id": "usb_events",
+        "playbook": USB,
+        "verdict": "fact",
+        "detail": f"{len(failed)} device start failures, "
+                  f"{len(drivers)} drivers failed to load",
+    })
+    by_device: dict = {}
+    for event in failed:
+        key = _device_key(event.get("fields", {}).get("DeviceInstanceId"))
+        by_device.setdefault(key or "unknown device", []).append(event)
+    for key in sorted(by_device, key=lambda k: (-len(by_device[k]), k)):
+        group = by_device[key]
+        if len(group) < 2:
+            continue
+        problems = sorted({
+            str(e.get("fields", {}).get("Problem"))
+            for e in group if e.get("fields", {}).get("Problem") is not None
+        })
+        detail = f"Device {key} failed {len(group)} times"
+        if problems:
+            detail += f" (problem {', '.join(problems)})"
+        patterns.append({
+            "id": "usb_same_device_repeats",
+            "playbook": USB,
+            "verdict": "fact",
+            "detail": detail,
+        })
+    if drivers:
+        names = sorted({
+            str(e.get("fields", {}).get("FailureName", "unknown driver"))
+            for e in drivers
+        })
+        patterns.append({
+            "id": "usb_driver_failed",
+            "playbook": USB,
+            "verdict": "fact",
+            "detail": f"{len(drivers)} drivers failed to load "
+                      f"({', '.join(names)})",
+        })
+    resumes = _resume_times(events)
+    failures = failed + drivers
+    if resumes and failures:
+        hits = _soon_after_resume(failures, resumes)
+        if hits:
+            patterns.append({
+                "id": "usb_after_resume",
+                "playbook": USB,
+                "verdict": "hypothesis",
+                "detail": f"{len(hits)}/{len(failures)} USB failures within "
                           "10 minutes after resume from sleep",
             })
     return patterns
@@ -233,6 +311,7 @@ def apply_rules(
     patterns = (
         _stability_patterns(incidents, dumps)
         + _wifi_patterns(events)
+        + _usb_patterns(events)
         + _other_playbook_patterns(events)
     )
     matched = {e.get("playbook") for e in events}

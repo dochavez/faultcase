@@ -1,0 +1,53 @@
+id: usb
+name: USB and device start failures
+component: usb
+
+# Collection: Kernel-PnP driver failures in the System log plus device
+# start problems from the Kernel-PnP/Configuration channel. The device
+# instance suffix is per-machine: rules group by the model part only and
+# redact.py masks the instance segment.
+evidence:
+  - {id: usb_device_failed, event_id: 411,
+     provider_contains: Kernel-PnP,
+     fields: [DeviceInstanceId, DriverName, Problem, Status]}
+  - {id: usb_driver_failed, event_id: 219,
+     provider_contains: Kernel-PnP,
+     fields: [FailureName, Status]}
+
+# Verified Nov 2026 on live logs and fixtures/real_case/failures.evtx
+# (12 events, all 41/6008: no USB content, so the real case is unaffected).
+verification:
+  usb_device_failed: "411 seen 7x in Kernel-PnP/Configuration, Level Error
+    (device had a problem starting)"
+  usb_driver_failed: "219 seen 22x in System, Level Warning (driver failed
+    to load)"
+  not_observed: "USBHUB3/USBXHCI hub-controller errors: absent from a
+    4000-event System sample, so no hub-specific IDs are used; controller
+    trouble is covered through driver failures and repeats"
+
+rules:
+  - "Group 411 events by device model (instance suffix ignored): the same device failing repeatedly matters."
+  - "219 names the driver that failed to load, not always a USB device; report it as what it is."
+  - "Failures within 10 minutes after a resume event are only a hypothesis about sleep/wake."
+
+patterns:
+  - id: usb_same_device_repeats
+    condition: "the same device model fails 2 or more times"
+    severity: medium
+  - id: usb_driver_failed
+    condition: "any driver failed to load (event 219)"
+    severity: medium
+  - id: usb_after_resume
+    condition: "failure within 10 minutes after resume from sleep"
+    severity: low
+    meaning: "Hypothesis: device failure related to sleep/wake."
+
+safe_fixes:
+  - "Try a different port."
+  - "Update chipset and USB drivers from the laptop manufacturer's site."
+  - "Test the device on another computer."
+
+escalate_if:
+  - "usb_same_device_repeats and the device is under warranty"
+
+no_findings: "No USB or device start failures were logged."

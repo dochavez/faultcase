@@ -94,3 +94,77 @@ def test_wifi_playbook_documents_verification():
     playbook = next(p for p in load_playbooks() if p["id"] == "wifi")
     assert playbook["verification"]["wifi_driver_warning"]
     assert "Netwtw" in playbook["verification"]["providers"]
+
+
+USB_ID = "USB\\VID_046D&PID_C52B\\6&2a1f3c4d&0&2"
+
+
+def test_usb_playbook_matches_and_limits_fields():
+    events = [
+        _raw("2026-05-01T10:00:00+00:00", "Microsoft-Windows-Kernel-PnP",
+             411, {"DeviceInstanceId": USB_ID, "DriverName": "usb.inf",
+                   "Problem": "0xa", "Status": "0x0",
+                   "ClassGuid": "{12345678-1234-1234-1234-123456789abc}",
+                   "ServiceName": "USB"}),
+        _raw("2026-05-01T10:05:00+00:00", "Microsoft-Windows-Kernel-PnP",
+             219, {"FailureName": "\\Driver\\WUDFRd", "Status": 3221226341,
+                   "DriverName": "PCI\\VEN_8086&DEV_AD03\\3&11583659&0&B0"}),
+    ]
+    result = normalize.normalize(events)
+    assert result.noise == 0
+    by_kind = {e["kind"]: e for e in result.evidence["events"]}
+    assert by_kind["usb_device_failed"]["playbook"] == "usb"
+    assert by_kind["usb_driver_failed"]["playbook"] == "usb"
+    kept = by_kind["usb_device_failed"]["fields"]
+    assert "ClassGuid" not in kept and "ServiceName" not in kept
+    assert kept["DeviceInstanceId"] == USB_ID
+    assert "DriverName" not in by_kind["usb_driver_failed"]["fields"]
+
+
+def test_usb_same_device_repeats_groups_by_model_part():
+    events = [
+        _raw("2026-05-01T10:00:00+00:00", "Microsoft-Windows-Kernel-PnP",
+             411, {"DeviceInstanceId": USB_ID, "Problem": "0xa"}),
+        _raw("2026-05-02T10:00:00+00:00", "Microsoft-Windows-Kernel-PnP",
+             411, {"DeviceInstanceId": USB_ID, "Problem": "0xa"}),
+    ]
+    findings = rules.apply_rules(normalize.normalize(events).evidence)
+    patterns = {(p["playbook"], p["id"]): p for p in findings["patterns"]}
+    repeat = patterns[("usb", "usb_same_device_repeats")]
+    assert repeat["verdict"] == "fact"
+    assert "USB\\VID_046D&PID_C52B" in repeat["detail"]
+    assert "6&2a1f3c4d&0&2" not in repeat["detail"]
+    assert "0xa" in repeat["detail"]
+
+
+def test_usb_driver_failed_and_after_resume_patterns():
+    events = [
+        _raw("2026-05-01T09:00:00+00:00", "Microsoft-Windows-Power-Troubleshooter",
+             1, {}),
+        _raw("2026-05-01T09:05:00+00:00", "Microsoft-Windows-Kernel-PnP",
+             219, {"FailureName": "\\Driver\\WUDFRd"}),
+    ]
+    findings = rules.apply_rules(normalize.normalize(events).evidence)
+    patterns = {(p["playbook"], p["id"]): p for p in findings["patterns"]}
+    assert patterns[("usb", "usb_driver_failed")]["verdict"] == "fact"
+    assert "WUDFRd" in patterns[("usb", "usb_driver_failed")]["detail"]
+    assert patterns[("usb", "usb_after_resume")]["verdict"] == "hypothesis"
+    assert ("usb", "usb_same_device_repeats") not in patterns
+
+
+def test_filter_covers_usb_channel_and_ids():
+    xml = ET.parse(ROOT / "filters" / "device-diagnostics.xml")
+    selects = {
+        select.get("Path"): select.text
+        for select in xml.getroot().iter("Select")
+    }
+    assert "Microsoft-Windows-Kernel-PnP/Configuration" in selects
+    pnp = selects["Microsoft-Windows-Kernel-PnP/Configuration"]
+    assert "EventID=411" in pnp
+    assert "EventID=219" in selects["System"]
+
+
+def test_usb_playbook_documents_verification():
+    playbook = next(p for p in load_playbooks() if p["id"] == "usb")
+    assert playbook["verification"]["usb_driver_failed"]
+    assert "USBHUB3" in playbook["verification"]["not_observed"]

@@ -1,9 +1,10 @@
 """Remove personal data before anything reaches a model.
 
 Replaces Windows user names in paths, computer names, serial numbers, MAC
-addresses and email addresses with placeholders. Serial numbers are only
-redacted when labeled (``SerialNumber: ...``); unlabeled bare values that
-merely look like serials are left alone to avoid destroying real evidence.
+addresses, email addresses, GUIDs and per-machine device instance IDs with
+placeholders. Serial numbers are only redacted when labeled
+(``SerialNumber: ...``); unlabeled bare values that merely look like
+serials are left alone to avoid destroying real evidence.
 """
 
 from __future__ import annotations
@@ -18,6 +19,18 @@ SERIAL_RE = re.compile(
 )
 MAC_RE = re.compile(r"\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b")
 EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
+GUID_RE = re.compile(
+    r"\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}"
+)
+DEVICE_ID_RE = re.compile(r"\b((?:PCI|USB|ACPI|ROOT|SWD|HID|SCSI)\\[^\s\"']+)")
+
+
+def _mask_device_id(match: re.Match) -> str:
+    text = match.group(1)
+    head, sep, _tail = text.rpartition("\\")
+    if not sep or ("_" not in head and "&" not in head):
+        return text
+    return head + "\\<ID>"
 
 
 def redact_text(text: str) -> str:
@@ -27,6 +40,8 @@ def redact_text(text: str) -> str:
     text = SERIAL_RE.sub(r"\1<SERIAL>", text)
     text = COMPUTER_RE.sub("<COMPUTER>", text)
     text = USER_PATH_RE.sub(r"\1<USER>", text)
+    text = GUID_RE.sub("<GUID>", text)
+    text = DEVICE_ID_RE.sub(_mask_device_id, text)
     return text
 
 
