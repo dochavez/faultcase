@@ -73,6 +73,25 @@
           <label for="msinfo">{{ t.msinfo_label }}</label>
           <input type="file" id="msinfo" name="msinfo_file" accept=".txt">
         </p>
+        <h3>{{ t.battery_title }}</h3>
+        <ol class="substeps">
+          <li>{{ t.battery_a }}</li>
+          <li>{{ t.battery_b }}</li>
+          <li>{{ t.battery_c }}</li>
+        </ol>
+        <p>
+          <label for="battery">{{ t.battery_label }}</label>
+          <input type="file" id="battery" name="battery_file" accept=".html,.htm">
+        </p>
+        {% if local_battery %}
+        <p class="check">
+          <label for="local-battery">
+            <input type="checkbox" id="local-battery" name="local_battery" value="yes">
+            {{ t.battery_local_label }}
+          </label>
+          <small>{{ t.battery_local_note }}</small>
+        </p>
+        {% endif %}
         <h3>{{ t.manual_title }}</h3>
         <p>
           <label for="dev-manufacturer">{{ t.manufacturer_label }}</label>

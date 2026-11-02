@@ -5,9 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from faultcase.adapters.windows import evtx, fixture_events, windbg
+from faultcase.adapters.windows import battery_report, evtx, fixture_events, windbg
 
 REAL_CASE = Path(__file__).resolve().parent.parent / "fixtures" / "real_case"
+SYNTHETIC = Path(__file__).resolve().parent.parent / "fixtures" / "synthetic"
 
 WINDBG_EXPECTED = {
     "042226-15687-01.txt": {
@@ -54,6 +55,44 @@ def test_evtx_returns_event_41():
     assert first["log"] == "System"
     assert datetime.fromisoformat(first["time"]).tzinfo is not None
     assert "BugcheckCode" in first["fields"]
+
+
+def test_battery_report_parses_synthetic_fixture():
+    parsed = battery_report.parse_battery_report(
+        SYNTHETIC / "battery_report.html"
+    )
+    assert parsed["design_capacity_mwh"] == 80000
+    assert parsed["full_charge_capacity_mwh"] == 52000
+    assert parsed["cycle_count"] == 231
+    assert parsed["wear_percent"] == 35.0
+    assert parsed["report_date"] == "2026-10-01"
+    assert parsed["manufacture_date"] is None
+    history = parsed["capacity_history"]
+    assert len(history) == 4
+    assert history[0]["period_start"] == "2025-12-01"
+    assert history[-1]["full_charge_mwh"] == 52000
+    assert "FAKELAPTOP-123" not in str(parsed)
+    assert "SN-0000-SECRET" not in str(parsed)
+
+
+def test_battery_report_missing_fields_are_none():
+    parsed = battery_report.parse_battery_report_text("<html><body>nope</body></html>")
+    assert parsed["design_capacity_mwh"] is None
+    assert parsed["full_charge_capacity_mwh"] is None
+    assert parsed["cycle_count"] is None
+    assert parsed["capacity_history"] == []
+    assert parsed["wear_percent"] is None
+
+
+def test_battery_report_accepts_wh_units():
+    html = (
+        "<table><tr><td>DESIGN CAPACITY</td><td>99.9 Wh</td></tr>"
+        "<tr><td>FULL CHARGE CAPACITY</td><td>50 Wh</td></tr></table>"
+    )
+    parsed = battery_report.parse_battery_report_text(html)
+    assert parsed["design_capacity_mwh"] == 99900
+    assert parsed["full_charge_capacity_mwh"] == 50000
+    assert parsed["wear_percent"] == 49.9
 
 
 def test_fixture_events_match_evtx_format():

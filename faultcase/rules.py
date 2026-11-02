@@ -129,6 +129,7 @@ def _stability_patterns(incidents: list[dict], dumps: list[dict]) -> list[dict]:
 
 WIFI = "wifi"
 USB = "usb"
+BATTERY = "battery"
 WIFI_DROP_KINDS = ("wifi_disconnected", "wifi_connect_failed")
 WIFI_DRIVER_KINDS = ("wifi_driver_error", "wifi_driver_warning")
 RESUME_AFTER_SECONDS = 600
@@ -273,6 +274,99 @@ def _usb_patterns(events: list[dict]) -> list[dict]:
     return patterns
 
 
+def _battery_age_months(battery: dict) -> float | None:
+    manufacture = battery.get("manufacture_date")
+    report = battery.get("report_date")
+    if manufacture and report:
+        try:
+            days = (
+                date.fromisoformat(report) - date.fromisoformat(manufacture)
+            ).days
+            if days >= 0:
+                return days / 30.44
+        except ValueError:
+            pass
+    starts = [
+        h["period_start"] for h in battery.get("capacity_history", [])
+        if h.get("period_start")
+    ]
+    if not starts:
+        return None
+    ends = [
+        h["period_end"] for h in battery.get("capacity_history", [])
+        if h.get("period_end")
+    ] or starts
+    try:
+        days = (date.fromisoformat(max(ends)) - date.fromisoformat(min(starts))).days
+    except ValueError:
+        return None
+    return days / 30.44 if days >= 0 else None
+
+
+def _battery_patterns(evidence: dict) -> list[dict]:
+    battery = evidence.get("battery") or {}
+    if not battery:
+        return []
+    wear = battery.get("wear_percent")
+    design = battery.get("design_capacity_mwh")
+    full = battery.get("full_charge_capacity_mwh")
+    cycles = battery.get("cycle_count")
+    history = [
+        h for h in battery.get("capacity_history", [])
+        if h.get("full_charge_mwh") is not None
+    ]
+    if wear is None and not history:
+        return [{
+            "id": "battery_no_data",
+            "playbook": BATTERY,
+            "verdict": "fact",
+            "detail": "Battery report provided but has no usable capacity numbers",
+        }]
+    patterns = []
+    months = _battery_age_months(battery)
+    if wear is not None:
+        detail = f"Battery wear {wear:g}%"
+        if design is not None and full is not None:
+            detail += f" ({full:,} of {design:,} mWh)"
+        if cycles is not None:
+            detail += f", {cycles} cycles"
+        if months is not None:
+            detail += f", after {months:.0f} months"
+        patterns.append({
+            "id": "battery_wear", "playbook": BATTERY, "verdict": "fact",
+            "detail": detail,
+        })
+        if months is not None and months < 12 and wear > 20:
+            patterns.append({
+                "id": "battery_early_wear",
+                "playbook": BATTERY,
+                "verdict": "fact",
+                "detail": f"Battery wear {wear:g}% within the first year "
+                          f"({months:.0f} months)",
+            })
+    if len(history) >= 2:
+        first = history[0]["full_charge_mwh"]
+        last = history[-1]["full_charge_mwh"]
+        span = None
+        try:
+            start = history[0].get("period_start") or ""
+            end = history[-1].get("period_end") or history[-1].get("period_start") or ""
+            span = (date.fromisoformat(end) - date.fromisoformat(start)).days
+        except ValueError:
+            span = None
+        if span is not None and span >= 30 and first > 0:
+            drop = 100 * (first - last) / first
+            if drop >= 15:
+                patterns.append({
+                    "id": "battery_rapid_decline",
+                    "playbook": BATTERY,
+                    "verdict": "fact",
+                    "detail": f"Full charge fell {drop:.0f}% in {span} days "
+                              f"({first:,} to {last:,} mWh)",
+                })
+    return patterns
+
+
 def _other_playbook_patterns(events: list[dict]) -> list[dict]:
     grouped: dict = {}
     for event in events:
@@ -312,9 +406,12 @@ def apply_rules(
         _stability_patterns(incidents, dumps)
         + _wifi_patterns(events)
         + _usb_patterns(events)
+        + _battery_patterns(evidence)
         + _other_playbook_patterns(events)
     )
     matched = {e.get("playbook") for e in events}
+    if evidence.get("battery"):
+        matched.add(BATTERY)
     healthy = [
         {
             "playbook": playbook_id,

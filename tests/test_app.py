@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from faultcase import app as app_module
+from faultcase.adapters.windows import battery_report as battery_report_module
 from faultcase.app import app
 from faultcase.i18n import EN, ES
 from faultcase.settings import Settings
@@ -201,6 +202,92 @@ def test_upload_with_msinfo_sends_device_to_agent(monkeypatch):
     assert seen["device"]["purchase_date"] == "2026-01"
     assert "FAKE123" not in str(seen["device"])
     assert "fakeuser" not in str(seen["device"])
+
+
+def test_upload_with_battery_report_sends_numbers(monkeypatch):
+    evtx_path = (
+        Path(__file__).resolve().parent.parent
+        / "fixtures" / "real_case" / "failures.evtx"
+    )
+    battery_path = (
+        Path(__file__).resolve().parent.parent
+        / "fixtures" / "synthetic" / "battery_report.html"
+    )
+    if not evtx_path.exists():
+        pytest.skip("failures.evtx not present")
+    seen = {}
+
+    def spy(evidence, ui_language="en", device=None, timezone=None):
+        seen["battery"] = evidence.get("battery")
+        return _stub_build_case(evidence, ui_language, device, timezone)
+
+    monkeypatch.setattr(app_module, "build_case", spy)
+    monkeypatch.setattr(app_module, "settings", OPEN_SETTINGS)
+    response = client.post(
+        "/upload",
+        files={
+            "file": ("failures.evtx", evtx_path.read_bytes()),
+            "battery_file": ("battery-report.html", battery_path.read_bytes()),
+        },
+        data={"lang": "en"},
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 200
+    assert response.headers["HX-Redirect"].startswith("/case/")
+    assert seen["battery"]["wear_percent"] == 35.0
+    assert seen["battery"]["cycle_count"] == 231
+    assert "FAKELAPTOP-123" not in str(seen["battery"])
+    assert "SN-0000-SECRET" not in str(seen["battery"])
+
+
+def test_upload_rejects_non_html_battery(monkeypatch):
+    evtx_path = (
+        Path(__file__).resolve().parent.parent
+        / "fixtures" / "real_case" / "failures.evtx"
+    )
+    if not evtx_path.exists():
+        pytest.skip("failures.evtx not present")
+    monkeypatch.setattr(app_module, "settings", OPEN_SETTINGS)
+    response = client.post(
+        "/upload",
+        files={
+            "file": ("failures.evtx", evtx_path.read_bytes()),
+            "battery_file": ("battery-report.txt", b"not html"),
+        },
+        data={"lang": "en"},
+        headers={"HX-Request": "true"},
+    )
+    assert "must be an .html" in response.text
+
+
+def test_upload_with_local_battery_generates_report(monkeypatch):
+    evtx_path = (
+        Path(__file__).resolve().parent.parent
+        / "fixtures" / "real_case" / "failures.evtx"
+    )
+    if not evtx_path.exists():
+        pytest.skip("failures.evtx not present")
+    seen = {}
+
+    def spy(evidence, ui_language="en", device=None, timezone=None):
+        seen["battery"] = evidence.get("battery")
+        return _stub_build_case(evidence, ui_language, device, timezone)
+
+    monkeypatch.setattr(app_module, "build_case", spy)
+    monkeypatch.setattr(app_module, "settings", OPEN_SETTINGS)
+    monkeypatch.setattr(app_module, "LOCAL_BATTERY_AVAILABLE", True)
+    monkeypatch.setattr(
+        battery_report_module, "generate_local_report",
+        lambda: {"wear_percent": 12.5, "capacity_history": []},
+    )
+    response = client.post(
+        "/upload",
+        files={"file": ("failures.evtx", evtx_path.read_bytes())},
+        data={"lang": "en", "local_battery": "yes"},
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 200
+    assert seen["battery"]["wear_percent"] == 12.5
 
 
 def test_filter_download():

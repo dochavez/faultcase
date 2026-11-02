@@ -25,7 +25,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from faultcase.adapters.windows import evtx as evtx_adapter
-from faultcase.adapters.windows import cdb, msinfo, wmi
+from faultcase.adapters.windows import battery_report, cdb, msinfo, wmi
 from faultcase.agent import build_case
 from faultcase.demo import DEMO_CASE_PATH, DEMO_DEVICE, build_demo_evidence
 from faultcase.demo import load_demo_summaries
@@ -39,6 +39,7 @@ from faultcase.settings import load_settings
 ROOT = Path(__file__).resolve().parent.parent
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_MSINFO_BYTES = 5 * 1024 * 1024
+MAX_BATTERY_BYTES = 5 * 1024 * 1024
 
 
 _DEVICE_KEYS = (
@@ -103,6 +104,7 @@ settings = load_settings()
 
 LOCAL_DUMPS_AVAILABLE = cdb.find_cdb() is not None
 LOCAL_WMI_AVAILABLE = wmi.is_available()
+LOCAL_BATTERY_AVAILABLE = battery_report.is_available()
 
 app = FastAPI(title="FaultCase")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
@@ -126,7 +128,8 @@ def _error(request: Request, lang: str, message: str, page: str = "collect.html"
         )
     ctx = _ctx(lang, error=message, message=message,
                local_dumps=LOCAL_DUMPS_AVAILABLE,
-               local_wmi=LOCAL_WMI_AVAILABLE)
+               local_wmi=LOCAL_WMI_AVAILABLE,
+               local_battery=LOCAL_BATTERY_AVAILABLE)
     return templates.TemplateResponse(request, page, ctx, status_code=400)
 
 
@@ -164,7 +167,8 @@ def collect(request: Request):
     return templates.TemplateResponse(
         request, "collect.html",
         _ctx(lang, local_dumps=LOCAL_DUMPS_AVAILABLE,
-             local_wmi=LOCAL_WMI_AVAILABLE),
+             local_wmi=LOCAL_WMI_AVAILABLE,
+             local_battery=LOCAL_BATTERY_AVAILABLE),
     )
 
 
@@ -182,6 +186,7 @@ async def upload(
     request: Request,
     file: UploadFile = File(...),
     msinfo_file: UploadFile | None = File(None),
+    battery_file: UploadFile | None = File(None),
     invite_code: str = Form(""),
     lang: str = Form("en"),
     local_dumps: str = Form(""),
@@ -190,6 +195,7 @@ async def upload(
     dev_model: str = Form(""),
     dev_purchase: str = Form(""),
     local_wmi: str = Form(""),
+    local_battery: str = Form(""),
 ):
     lang = get_lang(lang)
     t = STRINGS[lang]
@@ -228,6 +234,25 @@ async def upload(
             wmi_data = wmi.read_device_info()
         except Exception as exc:
             return _error(request, lang, f"{t['err_wmi']} ({exc})")
+    battery_data = None
+    if battery_file is not None and battery_file.filename:
+        if not battery_file.filename.lower().endswith((".html", ".htm")):
+            return _error(request, lang, t["err_battery_type"])
+        battery_bytes = await battery_file.read(MAX_BATTERY_BYTES + 1)
+        if len(battery_bytes) > MAX_BATTERY_BYTES:
+            return _error(request, lang, t["err_battery_big"])
+        try:
+            battery_data = battery_report.parse_battery_report_bytes(battery_bytes)
+        except Exception:
+            return _error(request, lang, t["err_battery"])
+        if battery_data.get("wear_percent") is None \
+                and not battery_data.get("capacity_history"):
+            return _error(request, lang, t["err_battery"])
+    elif local_battery and LOCAL_BATTERY_AVAILABLE:
+        try:
+            battery_data = battery_report.generate_local_report()
+        except Exception as exc:
+            return _error(request, lang, f"{t['err_battery_gen']} ({exc})")
     device = _build_device(msinfo_data, {
         "manufacturer": dev_manufacturer,
         "model": dev_model,
@@ -251,6 +276,8 @@ async def upload(
                 failed += 1
         local_stats = {"ok": ok, "failed": failed}
     evidence = normalize(raw_events, dump_inputs).evidence
+    if battery_data:
+        evidence["battery"] = battery_data
     if not evidence["events"]:
         return _error(request, lang, t["err_no_events"])
     try:

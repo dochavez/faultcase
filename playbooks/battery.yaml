@@ -1,0 +1,43 @@
+id: battery
+name: Battery wear and capacity decline
+component: battery
+
+# Report-based playbook: no events. Evidence comes from the
+# powercfg /batteryreport HTML (uploaded or generated locally on Windows)
+# parsed by adapters/windows/battery_report.py into numbers only.
+evidence: []
+
+# Parser built Nov 2026 against a real powercfg report (99,900 mWh
+# design, capacity history table); test fixtures are synthetic.
+verification:
+  parser: "real report: design/full/cycles/history/report date parsed"
+  privacy: "computer name and battery serial never extracted"
+
+rules:
+  - "Wear is 100 * (1 - full charge / design), computed, never guessed."
+  - "Battery age is the manufacture date when present, else the span of the capacity history."
+  - "Wear above 20% within the first 12 months is abnormal; later wear is normal aging."
+  - "A 15% or larger drop across 30 or more days of history is a fast decline."
+
+patterns:
+  - id: battery_wear
+    condition: "wear known from design and full charge capacities"
+    severity: low
+  - id: battery_early_wear
+    condition: "wear above 20% within the first 12 months"
+    severity: high
+  - id: battery_rapid_decline
+    condition: "full charge drops 15% or more across 30 or more days"
+    severity: medium
+  - id: battery_no_data
+    condition: "a report was provided but has no usable capacity numbers"
+    severity: low
+
+safe_fixes:
+  - "Check the manufacturer's battery settings (such as conservation mode)."
+  - "Run the manufacturer's battery diagnostic."
+
+escalate_if:
+  - "battery_early_wear and the device is under warranty"
+
+no_findings: "No battery report was uploaded."

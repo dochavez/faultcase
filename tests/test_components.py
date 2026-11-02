@@ -168,3 +168,65 @@ def test_usb_playbook_documents_verification():
     playbook = next(p for p in load_playbooks() if p["id"] == "usb")
     assert playbook["verification"]["usb_driver_failed"]
     assert "USBHUB3" in playbook["verification"]["not_observed"]
+
+
+def _battery_evidence(**overrides):
+    battery = {
+        "design_capacity_mwh": 80000,
+        "full_charge_capacity_mwh": 52000,
+        "cycle_count": 231,
+        "manufacture_date": None,
+        "report_date": "2026-10-01",
+        "capacity_history": [
+            {"period_start": "2025-12-01", "period_end": "2025-12-29",
+             "full_charge_mwh": 78500, "design_mwh": 80000},
+            {"period_start": "2026-09-01", "period_end": "2026-10-01",
+             "full_charge_mwh": 52000, "design_mwh": 80000},
+        ],
+        "wear_percent": 35.0,
+    }
+    battery.update(overrides)
+    return {"os": "windows", "events": [], "dumps": [], "battery": battery}
+
+
+def test_battery_early_wear_reports_numbers():
+    findings = rules.apply_rules(_battery_evidence())
+    patterns = {(p["playbook"], p["id"]): p for p in findings["patterns"]}
+    assert patterns[("battery", "battery_wear")]["verdict"] == "fact"
+    early = patterns[("battery", "battery_early_wear")]
+    assert early["verdict"] == "fact"
+    assert "35%" in early["detail"]
+    assert "10 months" in early["detail"]
+    assert "battery" not in {h["playbook"] for h in findings["healthy"]}
+
+
+def test_battery_rapid_decline_needs_span_and_drop():
+    findings = rules.apply_rules(_battery_evidence())
+    patterns = {(p["playbook"], p["id"]): p for p in findings["patterns"]}
+    decline = patterns[("battery", "battery_rapid_decline")]
+    assert decline["verdict"] == "fact"
+    assert "78,500 to 52,000 mWh" in decline["detail"]
+    flat = _battery_evidence(capacity_history=[
+        {"period_start": "2026-09-01", "period_end": "2026-09-10",
+         "full_charge_mwh": 52000, "design_mwh": 80000},
+    ])
+    flat_findings = rules.apply_rules(flat)
+    assert ("battery", "battery_rapid_decline") not in {
+        (p["playbook"], p["id"]) for p in flat_findings["patterns"]
+    }
+
+
+def test_battery_missing_numbers_reports_no_data():
+    empty = _battery_evidence(
+        design_capacity_mwh=None, full_charge_capacity_mwh=None,
+        cycle_count=None, capacity_history=[], wear_percent=None,
+    )
+    findings = rules.apply_rules(empty)
+    patterns = {(p["playbook"], p["id"]): p for p in findings["patterns"]}
+    assert ("battery", "battery_no_data") in patterns
+
+
+def test_battery_without_report_stays_honest():
+    findings = rules.apply_rules({"os": "windows", "events": [], "dumps": []})
+    healthy = {h["playbook"]: h["note"] for h in findings["healthy"]}
+    assert healthy["battery"] == "No battery report was uploaded."
