@@ -27,6 +27,9 @@ ALLOWED_CAPS_WORDS = {
     "ISR",
     "DDU",
     "TDR",
+    "DPC",
+    "USB",
+    "VBIOS",
 }
 
 

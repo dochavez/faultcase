@@ -91,7 +91,7 @@ Después abre http://127.0.0.1:8000 y haz clic en **Try a sample case**.
 1. Abre la aplicación y haz clic en **Download device-diagnostics.xml** (paso 1 de la pantalla de recopilación).
 2. En tu laptop: Visor de eventos → Acción → **Import Custom View…** → selecciona el archivo descargado.
 3. Acción → **Save All Events in Custom View As…** → guarda el archivo `.evtx`.
-4. De vuelta en la aplicación, sube el `.evtx` (máx. 20 MB) con tu código de invitación. Opcionalmente añade una exportación de msinfo32 (Windows + R → `msinfo32` → Archivo → Exportar), marca **Also analyze my memory dumps** si tienes `cdb.exe` y derechos de administrador, o deja que la aplicación lea los datos del equipo directamente en una ejecución local en Windows.
+4. De vuelta en la aplicación, sube el `.evtx` (máx. 20 MB) con tu código de invitación. Opcionalmente añade una exportación de msinfo32 (Windows + R → `msinfo32` → Archivo → Exportar), un informe de batería (`powercfg /batteryreport` en el Terminal), marca **Also analyze my memory dumps** si tienes `cdb.exe` y derechos de administrador, o deja que la aplicación lea los datos del equipo directamente en una ejecución local en Windows.
 5. Lee el diagnóstico y abre la pantalla de acción para ver el informe para el fabricante (inglés/español), la lista de verificación previa al reclamo y el paquete de evidencias.
 
 </details>
@@ -174,17 +174,17 @@ Las rutas viven en `config/providers.yaml`: `evidence_analysis: [baseten, firewo
 - **Esfuerzo de razonamiento por rol.** `medium` en ambos roles (omitido para el análisis en Baseten, cuya generación restringida se bloquea con él); los parámetros rechazados se reintentan una vez sin ellos y se recuerdan durante la sesión.
 - **Límites de completado.** `max_tokens` por rol (16384 análisis, 24576 redacción, medidos desde los completados exitosos más grandes más un margen). `finish_reason == "length"` se registra como `truncated` y se reintenta una vez.
 
-### Benchmark (medido el 2026-11-01)
+### Benchmark (medido el 2026-11-02)
 
-`scripts/benchmark.py` ejecuta `build_case` 3 veces en el caso real más 3 casos sintéticos (`fixtures/synthetic/`: laptop sana, fallo de disco, fallo aislado). Resultados completos: [docs/benchmark.md](docs/benchmark.md).
+`scripts/benchmark.py` ejecuta `build_case` 3 veces en el caso real más 6 casos sintéticos (`fixtures/synthetic/`: laptop sana, fallo de disco, fallo aislado, Wi-Fi, USB, batería). Resultados completos: [docs/benchmark.md](docs/benchmark.md).
 
 | Provider | Role | Calls ok/total | Correct | p50 ms | p95 ms | Prompt | Compl | Cached | Est. cost | Fallbacks | Hedge wins |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| baseten | evidence_analysis | 12/12 | 100% (12/12) | 19728 | 26194 | 22998 | 32767 | 12928 | $0.2887 | 0 | 0 |
-| fireworks | evidence_analysis | 12/12 | 100% (12/12) | 14718 | 23649 | 22986 | 19019 | 16192 | $0.1738 | 0 | 0 |
-| meta | case_writing | 12/12 | 100% (12/12) | 12296 | 17566 | 24351 | 47280 | 13644 | $0.6097 | 0 | 0 |
+| baseten | evidence_analysis | 21/21 | 100% (21/21) | 19975 | 26104 | 46611 | 59619 | 28928 | $0.5268 | 0 | 0 |
+| fireworks | evidence_analysis | 21/21 | 100% (21/21) | 16465 | 31516 | 46590 | 36432 | 32128 | $0.3364 | 0 | 0 |
+| meta | case_writing | 21/21 | 100% (21/21) | 12347 | 16926 | 50314 | 80466 | 26467 | $1.0570 | 0 | 0 |
 
-Tasa de acuerdo de la segunda opinión: **100%** (12/12 ejecuciones con dos opiniones). Totales: 12 ejecuciones, 0 coberturas, $1.0722 estimados (precios de ejemplo en `config/providers.yaml`).
+Tasa de acuerdo de la segunda opinión: **71%** (15/21 ejecuciones con dos opiniones). Totales: 21 ejecuciones, 0 coberturas, $1.9202 estimados (precios de ejemplo en `config/providers.yaml`).
 
 <details>
 <summary>Cómo se juzga la corrección</summary>
@@ -254,6 +254,8 @@ Además: solo lectura (el producto nunca modifica el sistema del usuario), carga
 
 - Evidencia solo de Windows por hoy (`faultcase/adapters/` solo tiene `windows/`; la estructura está lista para Linux y macOS).
 - Un `.evtx` sin volcados de memoria da un caso más débil (los congelamientos sin volcado se reportan como tales).
+- Los hallazgos de Wi-Fi y USB necesitan una exportación hecha con el filtro actual (canales WLAN-AutoConfig y Kernel-PnP); las exportaciones antiguas simplemente muestran esos componentes como sanos.
+- Los hallazgos de batería necesitan el HTML de `powercfg /batteryreport` (subido, o generado localmente en Windows); sin él, el informe lo dice.
 - El mismo cubo o hash de fallo significa la misma *categoría* de fallo; no prueba el mismo defecto que en otras máquinas (una prueba en vivo afirma que el texto nunca dice eso).
 - La salida en vivo de los modelos varía entre ejecuciones; la demo está precalculada para ser instantánea, gratis y estable.
 
@@ -271,7 +273,7 @@ faultcase/                 # Paquete Python
   demo.py / i18n.py        # demo precalculada, cadenas EN/ES
 templates/ static/         # páginas Jinja2, CSS
 config/                    # providers.yaml (rutas, roles, precios)
-filters/ playbooks/        # device-diagnostics.xml; disk/hardware/software/stability/thermal
+filters/ playbooks/        # device-diagnostics.xml; disk/hardware/software/stability/thermal/wifi/usb/battery
 prompts/ schemas/          # evidence_analysis.md, case_writer.md; esquemas evidence/case
 fixtures/                  # real_case/, synthetic/, msinfo/
 scripts/                   # smoke_test.py, build_demo_case.py, benchmark.py, screenshots.py
@@ -283,7 +285,7 @@ modal_app.py               # despliegue en Modal
 ## Ejecutar las pruebas
 
 ```bash
-pytest            # suite completa: 126 pruebas, sin red ni claves de API
+pytest            # suite completa: 155 pruebas, sin red ni claves de API
 pytest -m live    # construye el caso real con modelos reales (necesita claves en .env)
 ```
 
@@ -303,7 +305,7 @@ pytest -m live    # construye el caso real con modelos reales (necesita claves e
 
 ## Hoja de ruta
 
-- Más playbooks (batería, Wi-Fi, dispositivos USB).
+- Más playbooks (Bluetooth, impresoras).
 - Adaptadores para Linux y macOS.
 - Ejecuciones de benchmark más grandes con más casos sintéticos.
 
@@ -316,10 +318,10 @@ No para la demo (`/demo` sirve un caso precalculado). Sí en `.env` para nuevos 
 Solo hallazgos redactados: conteos, códigos, fechas, nombres de controladores. Los volcados de memoria nunca salen de la máquina, y el número de serie se inserta solo en el navegador.
 
 **¿Por qué dos modelos para un análisis?**
-Baseten y Fireworks analizan la misma evidencia de forma independiente; el acuerdo conserva la confianza, el desacuerdo la baja y lo dice. El benchmark mide a ambos (actualmente 100% de acuerdo, 12/12).
+Baseten y Fireworks analizan la misma evidencia de forma independiente; el acuerdo conserva la confianza, el desacuerdo la baja y lo dice. El benchmark mide a ambos (actualmente 71% de acuerdo, 15/21).
 
 **¿Solo Windows?**
-La recopilación de evidencia es Windows (`.evtx`, WinDbg, msinfo32, CIM), pero el análisis de `.evtx` funciona en cualquier sistema: el servidor y CI también corren en Linux.
+La recopilación de evidencia es Windows (`.evtx`, WinDbg, msinfo32, CIM, `powercfg`), pero el análisis de `.evtx` funciona en cualquier sistema: el servidor y CI también corren en Linux.
 
 **¿Quién envía el informe al fabricante?**
 Tú. FaultCase prepara el paquete de evidencias y el borrador bilingüe; no actúa en tu nombre.

@@ -25,7 +25,7 @@ faultcase/                 # Python package
   demo.py / i18n.py        # precomputed demo, EN/ES strings
 templates/ static/         # Jinja2 pages, CSS
 config/                    # providers.yaml (routes, roles, prices)
-filters/ playbooks/        # device-diagnostics.xml; disk/hardware/software/stability/thermal
+filters/ playbooks/        # device-diagnostics.xml; disk/hardware/software/stability/thermal/wifi/usb/battery
 prompts/ schemas/          # evidence_analysis.md, case_writer.md; evidence/case schemas
 fixtures/                  # real_case/, synthetic/, msinfo/
 scripts/                   # smoke_test.py, build_demo_case.py, benchmark.py, screenshots.py

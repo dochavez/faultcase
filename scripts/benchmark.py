@@ -277,10 +277,10 @@ def render_markdown(data):
             for name, model in sorted(data["config"]["models"].items())
         ),
         "",
-        "Correctness: real-case final verdict must be in expected.json "
-        "acceptable_verdicts; every other verdict matches when it contains "
-        "an expected keyword (case-insensitive). Costs use the example "
-        "prices in config/providers.yaml.",
+        "Correctness: final verdicts match against the case's acceptable "
+        "list when present (real case: expected.json acceptable_verdicts), "
+        "else against expected keywords (case-insensitive). Costs use the "
+        "example prices in config/providers.yaml.",
         "",
         "## By provider and role",
         "",

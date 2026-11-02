@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-01T23:31:07.659293+00:00",
+  "generated_at": "2026-11-02T00:45:44.395881+00:00",
   "runs_per_case": 3,
   "config": {
     "roles": {
@@ -30,6 +30,10 @@
       "description": "Real case: 6 incidents, NVIDIA display crashes."
     },
     {
+      "id": "battery",
+      "description": "Battery case: 35% wear after 10 months with a fast capacity decline."
+    },
+    {
       "id": "disk_failure",
       "description": "Disk failure: repeated bad blocks over two weeks."
     },
@@ -40,6 +44,14 @@
     {
       "id": "single_crash",
       "description": "Single isolated unexpected reboot, no memory dump."
+    },
+    {
+      "id": "usb",
+      "description": "USB case: the same device failing repeatedly plus a driver load failure."
+    },
+    {
+      "id": "wifi",
+      "description": "Wi-Fi case: repeated disconnections in one day plus a driver warning."
     }
   ],
   "records": [
@@ -66,6 +78,28 @@
       ]
     },
     {
+      "case": "battery",
+      "run": 1,
+      "final_verdict": "likely_hardware_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": true,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "likely_hardware_fault",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "likely_hardware_fault",
+          "correct": true
+        }
+      ]
+    },
+    {
       "case": "disk_failure",
       "run": 1,
       "final_verdict": "likely_hardware_fault",
@@ -93,7 +127,7 @@
       "final_verdict": "no_relevant_issues",
       "final_correct": true,
       "final_provider": "meta",
-      "agreement": true,
+      "agreement": false,
       "opinions": [
         {
           "provider": "baseten",
@@ -127,6 +161,50 @@
           "provider": "fireworks",
           "success": true,
           "verdict": "instability_unclear_cause",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "usb",
+      "run": 1,
+      "final_verdict": "instability_unclear_cause",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "instability_unclear_cause",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "instability_unclear_cause",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "wifi",
+      "run": 1,
+      "final_verdict": "likely_driver_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": true,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "likely_driver_fault",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "likely_driver_fault",
           "correct": true
         }
       ]
@@ -154,6 +232,28 @@
       ]
     },
     {
+      "case": "battery",
+      "run": 2,
+      "final_verdict": "likely_hardware_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": true,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "likely_hardware_fault",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "likely_hardware_fault",
+          "correct": true
+        }
+      ]
+    },
+    {
       "case": "disk_failure",
       "run": 2,
       "final_verdict": "likely_hardware_fault",
@@ -215,6 +315,50 @@
           "provider": "fireworks",
           "success": true,
           "verdict": "instability_unclear_cause",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "usb",
+      "run": 2,
+      "final_verdict": "instability_unclear_cause",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "instability_unclear_cause",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "instability_unclear_cause",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "wifi",
+      "run": 2,
+      "final_verdict": "likely_driver_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "likely_driver_fault",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "likely_driver_fault",
           "correct": true
         }
       ]
@@ -225,6 +369,28 @@
       "final_verdict": "likely_hardware_fault",
       "final_correct": true,
       "final_provider": "meta",
+      "agreement": false,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "likely_hardware_fault",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "likely_hardware_fault",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "battery",
+      "run": 3,
+      "final_verdict": "likely_hardware_fault",
+      "final_correct": true,
+      "final_provider": "meta",
       "agreement": true,
       "opinions": [
         {
@@ -269,7 +435,7 @@
       "final_verdict": "no_relevant_issues",
       "final_correct": true,
       "final_provider": "meta",
-      "agreement": true,
+      "agreement": false,
       "opinions": [
         {
           "provider": "baseten",
@@ -303,6 +469,50 @@
           "provider": "fireworks",
           "success": true,
           "verdict": "instability_unclear_cause",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "usb",
+      "run": 3,
+      "final_verdict": "instability_unclear_cause",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": true,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "instability_unclear_cause",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "instability_unclear_cause",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "case": "wifi",
+      "run": 3,
+      "final_verdict": "likely_driver_fault",
+      "final_correct": true,
+      "final_provider": "meta",
+      "agreement": true,
+      "opinions": [
+        {
+          "provider": "baseten",
+          "success": true,
+          "verdict": "likely_driver_fault",
+          "correct": true
+        },
+        {
+          "provider": "fireworks",
+          "success": true,
+          "verdict": "likely_driver_fault",
           "correct": true
         }
       ]
@@ -313,56 +523,63 @@
       {
         "provider": "baseten",
         "role": "evidence_analysis",
-        "calls_ok": 12,
-        "calls_total": 12,
-        "correct": 12,
-        "judged": 12,
+        "calls_ok": 21,
+        "calls_total": 21,
+        "correct": 21,
+        "judged": 21,
         "accuracy": 1.0,
-        "latency_p50_ms": 19728.0,
-        "latency_p95_ms": 26193.65,
-        "prompt_tokens": 22998,
-        "completion_tokens": 32767,
-        "cached_tokens": 12928,
-        "estimated_cost_usd": 0.2887,
+        "latency_p50_ms": 19975.0,
+        "latency_p95_ms": 26104.0,
+        "prompt_tokens": 46611,
+        "completion_tokens": 59619,
+        "cached_tokens": 28928,
+        "estimated_cost_usd": 0.5268,
         "fallbacks": 0,
         "hedge_wins": 0
       },
       {
         "provider": "fireworks",
         "role": "evidence_analysis",
-        "calls_ok": 12,
-        "calls_total": 12,
-        "correct": 12,
-        "judged": 12,
+        "calls_ok": 21,
+        "calls_total": 21,
+        "correct": 21,
+        "judged": 21,
         "accuracy": 1.0,
-        "latency_p50_ms": 14718.0,
-        "latency_p95_ms": 23649.499999999996,
-        "prompt_tokens": 22986,
-        "completion_tokens": 19019,
-        "cached_tokens": 16192,
-        "estimated_cost_usd": 0.1738,
+        "latency_p50_ms": 16465.0,
+        "latency_p95_ms": 31516.0,
+        "prompt_tokens": 46590,
+        "completion_tokens": 36432,
+        "cached_tokens": 32128,
+        "estimated_cost_usd": 0.3364,
         "fallbacks": 0,
         "hedge_wins": 0
       },
       {
         "provider": "meta",
         "role": "case_writing",
-        "calls_ok": 12,
-        "calls_total": 12,
-        "correct": 12,
-        "judged": 12,
+        "calls_ok": 21,
+        "calls_total": 21,
+        "correct": 21,
+        "judged": 21,
         "accuracy": 1.0,
-        "latency_p50_ms": 12296.5,
-        "latency_p95_ms": 17565.799999999996,
-        "prompt_tokens": 24351,
-        "completion_tokens": 47280,
-        "cached_tokens": 13644,
-        "estimated_cost_usd": 0.6097,
+        "latency_p50_ms": 12347.0,
+        "latency_p95_ms": 16926.0,
+        "prompt_tokens": 50314,
+        "completion_tokens": 80466,
+        "cached_tokens": 26467,
+        "estimated_cost_usd": 1.057,
         "fallbacks": 0,
         "hedge_wins": 0
       }
     ],
     "agreement_by_case": [
+      {
+        "case": "battery",
+        "runs": 3,
+        "agreed": 3,
+        "disagreed": 0,
+        "single": 0
+      },
       {
         "case": "disk_failure",
         "runs": 3,
@@ -373,15 +590,15 @@
       {
         "case": "healthy",
         "runs": 3,
-        "agreed": 3,
-        "disagreed": 0,
+        "agreed": 1,
+        "disagreed": 2,
         "single": 0
       },
       {
         "case": "real_case",
         "runs": 3,
-        "agreed": 3,
-        "disagreed": 0,
+        "agreed": 2,
+        "disagreed": 1,
         "single": 0
       },
       {
@@ -390,14 +607,28 @@
         "agreed": 3,
         "disagreed": 0,
         "single": 0
+      },
+      {
+        "case": "usb",
+        "runs": 3,
+        "agreed": 1,
+        "disagreed": 2,
+        "single": 0
+      },
+      {
+        "case": "wifi",
+        "runs": 3,
+        "agreed": 2,
+        "disagreed": 1,
+        "single": 0
       }
     ],
-    "second_opinion_agreement_rate": 1.0,
+    "second_opinion_agreement_rate": 0.7142857142857143,
     "totals": {
-      "runs": 12,
+      "runs": 21,
       "failed_runs": 0,
       "hedges": 0,
-      "estimated_cost_usd": 1.0722
+      "estimated_cost_usd": 1.9202
     }
   }
 }
