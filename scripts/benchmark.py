@@ -76,7 +76,7 @@ def load_cases():
             "device": SYNTHETIC_DEVICE,
             "evidence": case["evidence"],
             "keywords": case["expected_verdict_contains"],
-            "acceptable_final": None,
+            "acceptable_final": case.get("acceptable_final"),
         })
     return config, cases
 

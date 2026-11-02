@@ -17,6 +17,9 @@ EXPECTED_INCIDENTS = {
     "healthy": 0,
     "disk_failure": 3,
     "single_crash": 1,
+    "wifi": 6,
+    "usb": 5,
+    "battery": 0,
 }
 
 
@@ -42,3 +45,42 @@ def test_disk_fixture_reports_bad_blocks():
     assert ("disk", "bad_block") in [
         (p["playbook"], p["id"]) for p in findings["patterns"]
     ]
+
+
+def _patterns(name):
+    case = _load(name)
+    findings = rules.apply_rules(case["evidence"], tz=case["timezone"])
+    return {(p["playbook"], p["id"]): p for p in findings["patterns"]}
+
+
+def test_wifi_fixture_golden_findings():
+    patterns = _patterns("wifi")
+    assert patterns[("wifi", "wifi_events")]["verdict"] == "fact"
+    frequent = patterns[("wifi", "wifi_frequent_disconnects")]
+    assert frequent["verdict"] == "fact"
+    assert "5 Wi-Fi disconnections on 2026-05-01" in frequent["detail"]
+    assert patterns[("wifi", "wifi_driver_issues")]["verdict"] == "fact"
+    assert patterns[("wifi", "wifi_after_resume")]["verdict"] == "hypothesis"
+
+
+def test_usb_fixture_golden_findings():
+    patterns = _patterns("usb")
+    assert patterns[("usb", "usb_events")]["verdict"] == "fact"
+    repeat = patterns[("usb", "usb_same_device_repeats")]
+    assert repeat["verdict"] == "fact"
+    assert "VID_1234&PID_ABCD" in repeat["detail"]
+    assert "failed 3 times" in repeat["detail"]
+    assert patterns[("usb", "usb_driver_failed")]["verdict"] == "fact"
+    assert patterns[("usb", "usb_after_resume")]["verdict"] == "hypothesis"
+
+
+def test_battery_fixture_golden_findings():
+    patterns = _patterns("battery")
+    assert set(patterns) == {
+        ("battery", "battery_wear"),
+        ("battery", "battery_early_wear"),
+        ("battery", "battery_rapid_decline"),
+    }
+    assert "35%" in patterns[("battery", "battery_early_wear")]["detail"]
+    assert "10 months" in patterns[("battery", "battery_early_wear")]["detail"]
+    assert all(p["verdict"] == "fact" for p in patterns.values())

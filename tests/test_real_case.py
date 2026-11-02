@@ -229,6 +229,11 @@ def test_healthy_components():
         assert entry["note"]
 
 
+def test_no_invented_wifi_usb_battery_findings():
+    playbooks = {p["playbook"] for p in FINDINGS["patterns"]}
+    assert playbooks.isdisjoint({"wifi", "usb", "battery"})
+
+
 def test_incident_date_converts_to_user_timezone():
     evidence = {
         "os": "windows",
