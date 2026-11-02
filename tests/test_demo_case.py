@@ -43,6 +43,20 @@ def test_demo_bodies_contain_all_incident_dates():
             assert day in body, (lang, key, day)
 
 
+def test_demo_bodies_have_only_affected_component_sections():
+    for lang, key, body in _bodies():
+        if key == "body_en":
+            assert "Stability:" in body
+            for section in ("Wi-Fi:", "USB:", "Battery:", "Storage:",
+                            "Temperature:", "Software:"):
+                assert section not in body, (lang, key, section)
+        else:
+            assert "Estabilidad:" in body
+            for section in ("Wi-Fi:", "USB:", "Batería:", "Almacenamiento:",
+                            "Temperatura:", "Software:"):
+                assert section not in body, (lang, key, section)
+
+
 def test_demo_bodies_use_plain_professional_language():
     for lang, key, body in _bodies():
         text = body.replace("{{SERIAL}}", "")

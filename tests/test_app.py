@@ -335,6 +335,28 @@ def test_demo_flow_uses_precomputed_file(monkeypatch):
     assert not any(n.endswith(".evtx") or n.endswith(".dmp") for n in names)
 
 
+def test_group_by_component_orders_and_keeps_unknowns():
+    items = [
+        {"playbook": "wifi", "detail": "w"},
+        {"playbook": "stability", "detail": "s"},
+        {"playbook": "future", "detail": "f"},
+    ]
+    groups = app_module._group_by_component(items)
+    assert [pid for pid, _ in groups] == ["stability", "wifi", "future"]
+    assert groups[0][1] == [{"playbook": "stability", "detail": "s"}]
+
+
+def test_diagnosis_groups_findings_by_component():
+    target = client.post(
+        "/demo", data={"lang": "en"}, headers={"HX-Request": "true"}
+    ).headers["HX-Redirect"]
+    diagnosis = client.get(target)
+    assert "<h3>Stability</h3>" in diagnosis.text
+    assert "4 dumps with nvlddmkm.sys" in diagnosis.text
+    assert "<h3>Storage</h3>" in diagnosis.text
+    assert "No disk errors were logged." in diagnosis.text
+
+
 def test_timeline_plain_language_labels():
     target = client.post(
         "/demo", data={"lang": "en"}, headers={"HX-Request": "true"}

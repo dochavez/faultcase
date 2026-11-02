@@ -28,23 +28,29 @@
 
 <section>
   <h2>{{ t.dg_findings }}</h2>
+  {% for pid, patterns in pattern_groups %}
+  <h3>{{ t.get("comp_" + pid, pid) }}</h3>
   <ul class="findings">
-  {% for finding in case.findings %}
+  {% for pattern in patterns %}
     <li>
-      <span class="badge badge-{{ finding.type }}">{{ t.fact if finding.type == "fact" else t.hypothesis }}</span>
-      {{ finding.text }}
+      <span class="badge badge-{{ pattern.verdict }}">{{ t.fact if pattern.verdict == "fact" else t.hypothesis }}</span>
+      {{ pattern.detail }}
     </li>
   {% endfor %}
   </ul>
+  {% endfor %}
 </section>
 
 <section>
   <h2>{{ t.dg_healthy }}</h2>
+  {% for pid, entries in healthy_groups %}
+  <h3>{{ t.get("comp_" + pid, pid) }}</h3>
   <ul class="healthy">
-  {% for item in healthy %}
-    <li>{{ item }}</li>
+  {% for entry in entries %}
+    <li>{{ entry.note }}</li>
   {% endfor %}
   </ul>
+  {% endfor %}
 </section>
 
 <p class="cta-row">

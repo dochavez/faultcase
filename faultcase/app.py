@@ -359,6 +359,21 @@ def _safe_tz(value: str | None) -> str:
         return "UTC"
 
 
+COMPONENT_ORDER = [
+    "stability", "disk", "hardware", "thermal",
+    "wifi", "usb", "battery", "software",
+]
+
+
+def _group_by_component(items: list) -> list:
+    """Group rules items by playbook in canonical component order."""
+    grouped: dict = {}
+    for item in items:
+        grouped.setdefault(item.get("playbook"), []).append(item)
+    order = COMPONENT_ORDER + sorted(p for p in grouped if p not in COMPONENT_ORDER)
+    return [(pid, grouped[pid]) for pid in order if pid in grouped]
+
+
 def _expired(request: Request, lang: str):
     return templates.TemplateResponse(
         request, "error.html",
@@ -373,14 +388,15 @@ def diagnosis(request: Request, case_id: str):
     if stored is None:
         return _expired(request, lang)
     case = stored["case"]
-    healthy = case.get("healthy_components") or [
-        entry["note"] for entry in stored["findings"]["healthy"]
-    ]
+    findings = stored["findings"]
+    pattern_groups = _group_by_component(findings["patterns"])
+    healthy_groups = _group_by_component(findings["healthy"])
     return templates.TemplateResponse(
         request, "diagnosis.html",
         _ctx(lang, case_id=case_id, case=case,
-             incidents=stored["findings"]["incidents"],
-             healthy=healthy, metadata=stored["metadata"],
+             incidents=findings["incidents"],
+             pattern_groups=pattern_groups, healthy_groups=healthy_groups,
+             metadata=stored["metadata"],
              local_dumps=stored.get("local_dumps"),
              is_demo=stored.get("is_demo", False),
              timezone=stored.get("timezone", "UTC"),
