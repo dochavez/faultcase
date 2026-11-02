@@ -25,6 +25,7 @@ DEFAULT_SCHEMA_PATH = ROOT / "schemas" / "evidence.schema.json"
 
 REBOOT_KIND = "unexpected_reboot"
 SHUTDOWN_KIND = "unexpected_shutdown"
+RESUME_KIND = "resume_from_sleep"
 INCIDENT_WINDOW_SECONDS = 60
 
 DUMP_FIELDS = (
@@ -102,6 +103,8 @@ def _assign_incidents(events: list[dict]) -> None:
         if event["kind"] == REBOOT_KIND:
             event["incident_id"] = new_incident()
             reboots.append((moment, event["incident_id"]))
+        elif event["kind"] == RESUME_KIND:
+            event["incident_id"] = None
         elif event["kind"] == SHUTDOWN_KIND:
             candidates = [
                 (abs((moment - reboot_time).total_seconds()), incident_id)

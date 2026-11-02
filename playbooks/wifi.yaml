@@ -1,0 +1,58 @@
+id: wifi
+name: Wi-Fi disconnections and driver warnings
+component: wifi
+
+# Collection: WLAN-AutoConfig/Operational channel plus the Intel driver
+# events in the System log. SSID and profile names are personal data and
+# are never collected: the fields lists below keep only reasons and codes.
+evidence:
+  - {id: wifi_disconnected, event_id: 8003,
+     provider_contains: WLAN-AutoConfig, fields: [Reason, ReasonCode]}
+  - {id: wifi_connect_failed, event_id: 8002,
+     provider_contains: WLAN-AutoConfig, fields: [FailureReason, ReasonCode]}
+  - {id: wifi_driver_error, event_id: 5002,
+     provider_contains_any: [Netwaw, Netwtw], fields: []}
+  - {id: wifi_driver_error, event_id: 5005,
+     provider_contains_any: [Netwaw, Netwtw], fields: []}
+  - {id: wifi_driver_error, event_id: 5007,
+     provider_contains_any: [Netwaw, Netwtw], fields: []}
+  - {id: wifi_driver_warning, event_id: 6062,
+     provider_contains_any: [Netwaw, Netwtw], fields: []}
+
+# Verified Nov 2026 on live logs (Intel Wi-Fi 7 BE200, provider Netwaw18)
+# and fixtures/real_case/failures.evtx (12 events, all 41/6008: no Wi-Fi
+# content, so the real case is unaffected).
+verification:
+  wifi_disconnected: "8003 seen 109x, Level Information (disconnect)"
+  wifi_connect_failed: "8002 seen 34x, Level Error (failed to connect)"
+  wifi_driver_error: "5002/5005/5007 seen 1-2x each, Level Error"
+  wifi_driver_warning: "6062 seen 87x, Level Warning"
+  providers: "Netwaw18 verified live; Netwtw* (older Intel drivers) not
+    observed on the reference machine"
+
+rules:
+  - "Count disconnections and failures per day; one roaming event is normal."
+  - "Driver errors (5002/5005/5007) and warnings (6062) point at the Wi-Fi driver itself."
+  - "Failures within 10 minutes after a resume event are only a hypothesis about sleep/wake."
+
+patterns:
+  - id: wifi_frequent_disconnects
+    condition: "3 or more disconnections or failures on one day"
+    severity: medium
+  - id: wifi_driver_issues
+    condition: "any Wi-Fi driver error or warning"
+    severity: medium
+  - id: wifi_after_resume
+    condition: "disconnect or failure within 10 minutes after resume from sleep"
+    severity: low
+    meaning: "Hypothesis: Wi-Fi instability related to sleep/wake."
+
+safe_fixes:
+  - "Update the Wi-Fi driver from the laptop manufacturer's support page."
+  - "Forget the network and reconnect."
+  - "Test with a different network (for example phone tethering)."
+
+escalate_if:
+  - "wifi_frequent_disconnects on several days and the device is under warranty"
+
+no_findings: "No Wi-Fi disconnections or driver warnings were logged."

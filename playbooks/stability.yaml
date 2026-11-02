@@ -17,6 +17,13 @@ evidence:
   - id: tdr_recovered
     event_id: 4101
     provider_contains: Display
+  # Sleep/wake marker used by the wifi/usb after-resume patterns. Verified
+  # Nov 2026 on the live System log ("The system has returned from a low
+  # power state"). Not a failure: normalize() gives it no incident.
+  - id: resume_from_sleep
+    event_id: 1
+    provider_contains: Power-Troubleshooter
+    fields: []
 
 interpretation:
   # BugcheckCode is DECIMAL in event 41.

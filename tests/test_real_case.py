@@ -223,7 +223,7 @@ def test_photo_parameters_match():
 
 def test_healthy_components():
     assert {h["playbook"] for h in FINDINGS["healthy"]} == {
-        "disk", "hardware", "thermal", "software",
+        "disk", "hardware", "thermal", "software", "wifi",
     }
     for entry in FINDINGS["healthy"]:
         assert entry["note"]

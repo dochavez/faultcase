@@ -53,6 +53,8 @@ def _build_incidents(
             dumps_by_incident[incident_id] = dump
     grouped: dict = {}
     for event in events:
+        if event.get("incident_id") is None:
+            continue
         grouped.setdefault(event.get("incident_id"), []).append(event)
     incidents = []
     for incident_id in sorted(grouped):
@@ -125,11 +127,79 @@ def _stability_patterns(incidents: list[dict], dumps: list[dict]) -> list[dict]:
     return patterns
 
 
+WIFI = "wifi"
+WIFI_DROP_KINDS = ("wifi_disconnected", "wifi_connect_failed")
+WIFI_DRIVER_KINDS = ("wifi_driver_error", "wifi_driver_warning")
+RESUME_AFTER_SECONDS = 600
+
+# Playbooks with dedicated pattern functions (skipped by the generic counter).
+DEDICATED_PATTERNS = {WIFI}
+
+
+def _wifi_patterns(events: list[dict]) -> list[dict]:
+    wifi = [e for e in events if e.get("playbook") == WIFI]
+    if not wifi:
+        return []
+    patterns = []
+    drops = [e for e in wifi if e.get("kind") in WIFI_DROP_KINDS]
+    driver = [e for e in wifi if e.get("kind") in WIFI_DRIVER_KINDS]
+    patterns.append({
+        "id": "wifi_events",
+        "playbook": WIFI,
+        "verdict": "fact",
+        "detail": f"{len(drops)} Wi-Fi disconnections or failures, "
+                  f"{len(driver)} driver warnings or errors",
+    })
+    by_day: dict = {}
+    for event in drops:
+        by_day.setdefault(event["time"][:10], 0)
+        by_day[event["time"][:10]] += 1
+    worst = max(by_day.items(), key=lambda kv: (kv[1], kv[0])) if by_day else None
+    if worst is not None and worst[1] >= 3:
+        patterns.append({
+            "id": "wifi_frequent_disconnects",
+            "playbook": WIFI,
+            "verdict": "fact",
+            "detail": f"{worst[1]} Wi-Fi disconnections on {worst[0]}",
+        })
+    if driver:
+        ids = sorted({e["event_id"] for e in driver})
+        patterns.append({
+            "id": "wifi_driver_issues",
+            "playbook": WIFI,
+            "verdict": "fact",
+            "detail": f"{len(driver)} Wi-Fi driver warnings or errors "
+                      f"(events {', '.join(map(str, ids))})",
+        })
+    resumes = sorted(
+        datetime.fromisoformat(e["time"])
+        for e in events if e.get("kind") == "resume_from_sleep"
+    )
+    if resumes and drops:
+        hits = [
+            drop for drop in drops
+            if any(
+                0 <= (datetime.fromisoformat(drop["time"]) - woke).total_seconds()
+                <= RESUME_AFTER_SECONDS
+                for woke in resumes
+            )
+        ]
+        if hits:
+            patterns.append({
+                "id": "wifi_after_resume",
+                "playbook": WIFI,
+                "verdict": "hypothesis",
+                "detail": f"{len(hits)}/{len(drops)} Wi-Fi disconnections within "
+                          "10 minutes after resume from sleep",
+            })
+    return patterns
+
+
 def _other_playbook_patterns(events: list[dict]) -> list[dict]:
     grouped: dict = {}
     for event in events:
         playbook = event.get("playbook")
-        if not playbook or playbook == STABILITY:
+        if not playbook or playbook == STABILITY or playbook in DEDICATED_PATTERNS:
             continue
         grouped.setdefault((playbook, event.get("kind")), []).append(event["time"][:10])
     patterns = []
@@ -160,7 +230,11 @@ def apply_rules(
     dumps = evidence.get("dumps", [])
     codes = (playbooks.get(STABILITY, {}).get("interpretation") or {}).get("codes", {})
     incidents = _build_incidents(events, dumps, codes, tz)
-    patterns = _stability_patterns(incidents, dumps) + _other_playbook_patterns(events)
+    patterns = (
+        _stability_patterns(incidents, dumps)
+        + _wifi_patterns(events)
+        + _other_playbook_patterns(events)
+    )
     matched = {e.get("playbook") for e in events}
     healthy = [
         {
