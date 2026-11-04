@@ -5,12 +5,17 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Tests](https://github.com/dochavez/faultcase/actions/workflows/tests.yml/badge.svg)](https://github.com/dochavez/faultcase/actions)
 [![Built with Muse Spark Open](https://img.shields.io/badge/Built_with-Muse_Spark_Open-purple)](https://www.meta.ai/)
+[![Powered by Muse Spark](https://img.shields.io/badge/Powered_by-Muse_Spark-7c3aed)](https://www.meta.ai/)
+[![Built with Muse Code](https://img.shields.io/badge/Built_with-Muse_Code-5b21b6)](https://www.meta.ai/)
 
 [Read in English](README.md)
 
 **FaultCase es una herramienta web gratuita que lee el historial de errores que Windows ya guarda, te explica en palabras sencillas qué está fallando en tu computadora y por qué, te ayuda a probar primero las soluciones seguras y, si el problema sigue, prepara la evidencia y el informe que necesita el soporte del fabricante.**
 
-No hay que instalar nada: exportas un archivo, lo subes y obtienes la respuesta que te brinda Muse sobre lo que encontró, cómo poder solucionarlo y, finalmente, te prepara toda la información para que se la envíes al fabricante.
+No hay que instalar nada: exportas un archivo, lo subes y obtienes la respuesta que te brinda **Muse** sobre lo que encontró, cómo poder solucionarlo y, finalmente, te prepara toda la información para que se la envíes al fabricante.
+
+> [!NOTE]
+> **Impulsado por Muse.** Cada paso que necesita inteligencia funciona con los modelos Muse de Meta: **Muse Spark Open** (en Baseten y Fireworks) analiza la evidencia dos veces como segunda opinión, **Muse Spark** la explica, planifica los arreglos y redacta el caso para el fabricante, y **Muse Code** construyó el núcleo de este repositorio.
 
 > **Funciona con cualquier marca.** FaultCase lee lo que Windows 10 y 11 ya registran, así que funciona en cualquier portátil o equipo de escritorio: Lenovo, HP, Dell, ASUS, Acer, MSI, Microsoft Surface, Samsung o un PC armado. El caso real de este proyecto son dos equipos Lenovo, pero nada del análisis depende de la marca; el fabricante solo cambia el enlace de soporte en la pantalla de Acción.
 
@@ -21,13 +26,13 @@ No hay que instalar nada: exportas un archivo, lo subes y obtienes la respuesta 
 - [Qué es FaultCase (y qué no es)](#qué-es-faultcase-y-qué-no-es)
 - [Una noche frente a un minuto](#una-noche-frente-a-un-minuto)
 - [Inspiración](#inspiración)
-- [Por qué ayuda Muse](#por-qué-ayuda-muse)
+- [Por qué ayuda **Muse**](#por-qué-ayuda-muse)
 - [Pruébalo en 1 minuto](#pruébalo-en-1-minuto)
 - [Capturas de pantalla](#capturas-de-pantalla)
 - [Cómo funciona](#cómo-funciona)
 - [Modelos y proveedores](#modelos-y-proveedores)
-- [Cómo trabajan juntos Muse, Baseten y Fireworks](#cómo-trabajan-juntos-muse-baseten-y-fireworks)
-- [Cómo se construyó con Muse Code](#cómo-se-construyó-con-muse-code)
+- [Cómo trabajan juntos **Muse**, Baseten y Fireworks](#cómo-trabajan-juntos-muse-baseten-y-fireworks)
+- [Cómo se construyó con **Muse Code**](#cómo-se-construyó-con-muse-code)
 - [Privacidad y seguridad](#privacidad-y-seguridad)
 - [Decisiones de diseño](#decisiones-de-diseño)
 - [Limitaciones](#limitaciones)
@@ -83,7 +88,7 @@ Llegar a la conclusión del caso de demostración a mano tomó una noche entera.
 | Comparar cubos de fallo y marcas de tiempo de controladores entre volcados | `rules.py`: `same_module`, `persists_across_driver_versions` |
 | Contar incidentes, congelamientos y meses de historial | Bloque de resumen de `rules.py` (determinista, con pruebas) |
 | Averiguar el modelo exacto de la laptop y la BIOS | Exportación de msinfo32 o lectura CIM local |
-| Redactar el informe para el fabricante en dos idiomas | Redactor de casos con Muse Spark, EN + ES |
+| Redactar el informe para el fabricante en dos idiomas | Redactor de casos con **Muse Spark**, EN + ES |
 
 ## Inspiración
 
@@ -110,14 +115,14 @@ La misma herramienta, dos conclusiones distintas, cada una respaldada por su pro
 
 ## Por qué ayuda Muse
 
-La computadora es el equipo que la mayoría usa todos los días para trabajar y estudiar, así que cuando falla el costo es real: horas perdidas, archivos en riesgo y un proceso de soporte que pocos saben recorrer. El Visor de eventos ya guarda la evidencia, pero está escrito para ingenieros. Muse la convierte en decisiones:
+La computadora es el equipo que la mayoría usa todos los días para trabajar y estudiar, así que cuando falla el costo es real: horas perdidas, archivos en riesgo y un proceso de soporte que pocos saben recorrer. El Visor de eventos ya guarda la evidencia, pero está escrito para ingenieros. **Muse** la convierte en decisiones:
 
-| Beneficio | Cómo lo logra Muse | Qué gana el usuario |
+| Beneficio | Cómo lo logra **Muse** | Qué gana el usuario |
 |---|---|---|
 | **Entender** | *Explicar con Muse* convierte los hechos contados en palabras sencillas, por componente, con un glosario de los términos técnicos | Sabe qué pasa sin leer códigos de error |
 | **Decidir** | *Intentar solucionarlo primero* arma un plan solo con soluciones seguras y dice con honestidad cuándo lo probable es la garantía | No pierde días con arreglos que no pueden funcionar, ni manda a reparar un equipo cuando bastaba actualizar un controlador |
-| **Actuar** | Muse Spark redacta un informe profesional para el fabricante en inglés y español, con cada incidente, código, controlador y paso ya intentado | Un solo mensaje con el que soporte puede actuar, en vez de idas y vueltas o un hilo anónimo en un foro |
-| **Confiar** | Dos análisis independientes de Muse Spark Open (Baseten y Fireworks) deben coincidir; cada hallazgo se etiqueta como hecho o hipótesis; los conteos los hace Python, no el modelo | Una confianza ganada, nunca números inventados |
+| **Actuar** | **Muse Spark** redacta un informe profesional para el fabricante en inglés y español, con cada incidente, código, controlador y paso ya intentado | Un solo mensaje con el que soporte puede actuar, en vez de idas y vueltas o un hilo anónimo en un foro |
+| **Confiar** | Dos análisis independientes de **Muse Spark Open** (Baseten y Fireworks) deben coincidir; cada hallazgo se etiqueta como hecho o hipótesis; los conteos los hace Python, no el modelo | Una confianza ganada, nunca números inventados |
 | **Rapidez** | Todo el proceso sale de una sola subida | Alrededor de un minuto en vez de una noche con el Visor de eventos y WinDbg |
 | **Privacidad** | Los datos personales se eliminan antes de llamar a un modelo, los volcados de memoria nunca salen del equipo y los casos solo viven en memoria | Recibe ayuda de IA sin entregar datos personales |
 | **Bajo costo** | Carga compacta y anonimizada (unos 9,5k tokens por análisis) y prompts en caché | El benchmark completo de 21 ejecuciones costó unos 1,92 USD, unos 9 centavos por caso |
@@ -178,15 +183,15 @@ Después abre http://127.0.0.1:8000 y haz clic en **Try a sample case**.
 
 ![Pantalla de diagnóstico](docs/img/diagnosis-es.png)
 
-**Explicar con Muse**: a petición, Muse Spark convierte los hechos contados en palabras sencillas: qué significa cada hallazgo, qué hacer, próximos pasos y un glosario:
+**Explicar con Muse**: a petición, **Muse Spark** convierte los hechos contados en palabras sencillas: qué significa cada hallazgo, qué hacer, próximos pasos y un glosario:
 
 ![Explicar con Muse](docs/img/explain-es.png)
 
-**Intentar solucionarlo primero**: a petición, Muse Spark convierte las soluciones seguras de los playbooks para los componentes con problemas en un plan ordenado (por qué, cómo, minutos, riesgo, cómo comprobar, cuándo parar). Cada paso trae un botón que abre la página exacta de Configuración de Windows o el sitio de soporte del fabricante. Cuando FaultCase se ejecuta localmente en el equipo, tres pasos además tienen **Aplicar en este equipo** (ver abajo). Los pasos marcados se añaden al informe para el fabricante en el navegador:
+**Intentar solucionarlo primero**: a petición, **Muse Spark** convierte las soluciones seguras de los playbooks para los componentes con problemas en un plan ordenado (por qué, cómo, minutos, riesgo, cómo comprobar, cuándo parar). Cada paso trae un botón que abre la página exacta de Configuración de Windows o el sitio de soporte del fabricante. Cuando FaultCase se ejecuta localmente en el equipo, tres pasos además tienen **Aplicar en este equipo** (ver abajo). Los pasos marcados se añaden al informe para el fabricante en el navegador:
 
 ![Intentar solucionarlo primero](docs/img/fix-es.png)
 
-**Arreglos con un clic (solo en modo local).** La versión web nunca puede cambiar un equipo: un sitio web no tiene acceso a la configuración de Windows. Cuando FaultCase está instalado y se ejecuta localmente en el equipo con Windows (sigue usando Muse a través de la API), el plan agrega **Aplicar en este equipo** a tres ajustes seguros y reversibles:
+**Arreglos con un clic (solo en modo local).** La versión web nunca puede cambiar un equipo: un sitio web no tiene acceso a la configuración de Windows. Cuando FaultCase está instalado y se ejecuta localmente en el equipo con Windows (sigue usando **Muse** a través de la API), el plan agrega **Aplicar en este equipo** a tres ajustes seguros y reversibles:
 
 | Arreglo | Qué cambia | Deshacer | Permisos |
 |---|---|---|---|
@@ -194,7 +199,7 @@ Después abre http://127.0.0.1:8000 y haz clic en **Try a sample case**.
 | Volcados de memoria pequeños | `CrashDumpEnabled = 3`, para que el próximo fallo deje evidencia | Restaura el valor anterior | Administrador |
 | Ahorro de energía del Wi-Fi desactivado | Windows ya no puede apagar el adaptador Wi-Fi (`Set-NetAdapterPowerManagement`) | Restaura el estado anterior | Administrador |
 
-Los comandos están fijos en `faultcase/adapters/windows/fixes.py`: Muse solo elige qué paso corresponde, nunca escribe ni ejecuta un comando. Cada cambio pide confirmación, guarda el valor anterior en `%LOCALAPPDATA%\FaultCase\fix-backup.json` y se puede deshacer. Las peticiones deben venir de `127.0.0.1` con un token secreto por ejecución, para que otros sitios web no puedan activar un arreglo. Los controladores y la BIOS nunca se instalan automáticamente: esos botones abren la página del fabricante.
+Los comandos están fijos en `faultcase/adapters/windows/fixes.py`: **Muse** solo elige qué paso corresponde, nunca escribe ni ejecuta un comando. Cada cambio pide confirmación, guarda el valor anterior en `%LOCALAPPDATA%\FaultCase\fix-backup.json` y se puede deshacer. Las peticiones deben venir de `127.0.0.1` con un token secreto por ejecución, para que otros sitios web no puedan activar un arreglo. Los controladores y la BIOS nunca se instalan automáticamente: esos botones abren la página del fabricante.
 
 **Acción**: qué hacer ahora (con el enlace de soporte del fabricante), informe EN/ES, lista previa, ZIP de evidencias y número de serie rellenado solo en el navegador:
 
@@ -228,11 +233,11 @@ Una subida, de principio a fin:
 
 | Rol | Modelo | Proveedor |
 |---|---|---|
-| Análisis técnico de la evidencia | Muse Spark Open | Baseten y Fireworks en paralelo (segunda opinión) |
-| Redacción del caso EN/ES y resumen para el usuario | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks de respaldo) |
-| *Explicar con Muse*: explicación sencilla a petición | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks de respaldo) |
-| *Intentar solucionarlo primero*: plan de autoayuda con las soluciones seguras de los playbooks, a petición | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks de respaldo) |
-| Construcción de este proyecto | Muse Code | Terminal |
+| Análisis técnico de la evidencia | **Muse Spark Open** | Baseten y Fireworks en paralelo (segunda opinión) |
+| Redacción del caso EN/ES y resumen para el usuario | **Muse Spark** (`muse-spark-1.1`) | Meta Model API (Fireworks de respaldo) |
+| *Explicar con Muse*: explicación sencilla a petición | **Muse Spark** (`muse-spark-1.1`) | Meta Model API (Fireworks de respaldo) |
+| *Intentar solucionarlo primero*: plan de autoayuda con las soluciones seguras de los playbooks, a petición | **Muse Spark** (`muse-spark-1.1`) | Meta Model API (Fireworks de respaldo) |
+| Construcción de este proyecto | **Muse Code** | Terminal |
 
 Las rutas viven en `config/providers.yaml`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`, `fix_plan: [meta, fireworks]`.
 
@@ -277,7 +282,7 @@ Fuentes de los diagramas: `docs/diagrams/` (se regeneran con `python docs/diagra
 
 ## Cómo se construyó con Muse Code
 
-Muse Code (el agente de terminal impulsado por Muse Spark, modelo `muse-spark-1.3-contributor`) construyó el núcleo de FaultCase. Su propio registro de sesión guarda **31 ejecuciones** (26 completadas), **1.009 llamadas a herramientas**, unas **5,3 horas** de trabajo del agente y **50 de los 63 commits**. Todos los números salen de ese registro (`~/.local/share/muse/sessions/.../session.jsonl`), extraídos con `docs/diagrams/build_muse_evidence.py`.
+**Muse Code** (el agente de terminal impulsado por **Muse Spark**, modelo `muse-spark-1.3-contributor`) construyó el núcleo de FaultCase. Su propio registro de sesión guarda **31 ejecuciones** (26 completadas), **1.009 llamadas a herramientas**, unas **5,3 horas** de trabajo del agente y **50 de los 63 commits**. Todos los números salen de ese registro (`~/.local/share/muse/sessions/.../session.jsonl`), extraídos con `docs/diagrams/build_muse_evidence.py`.
 
 ### Cómo se conectan los archivos y llaman a las APIs
 
@@ -285,7 +290,7 @@ Muse Code (el agente de terminal impulsado por Muse Spark, modelo `muse-spark-1.
 
 ### Ocho prompts reales y las respuestas de Muse Code
 
-| # | Tarea dada a Muse Code | Respuesta de Muse Code (primera línea) | Duración | Llamadas a herramientas |
+| # | Tarea dada a **Muse Code** | Respuesta de **Muse Code** (primera línea) | Duración | Llamadas a herramientas |
 |---|---|---|---|---|
 | 1 | [Entorno y esqueleto del paquete](docs/img/muse-code/run-1.png) | Done. Environment is set up and committed as `bf8c73d` ("Set up environment and package skeleton"). | 11.5 min | 28 |
 | 2 | [Adaptador de Windows: parsers de evtx y WinDbg](docs/img/muse-code/run-2.png) | Done — `pytest` passes (6/6) and committed as `c8b765c`. | 2.7 min | 36 |
@@ -296,7 +301,7 @@ Muse Code (el agente de terminal impulsado por Muse Spark, modelo `muse-spark-1.
 | 7 | [Segunda opinión, caché, hedge y benchmark](docs/img/muse-code/run-7.png) | All five items done, 116 tests green, pushed (`f597b9d..aaf89fd`), one commit per item. | 23.6 min | 102 |
 | 8 | [Playbooks de Wi-Fi, USB y batería](docs/img/muse-code/run-8.png) | All six items done, 155 tests green, pushed (`60d9e45..c52fbf0`), one commit per item. | 50.5 min | 214 |
 
-Cada tarjeta muestra el prompt exacto, la respuesta final de Muse Code, el modelo, la duración, las llamadas a herramientas y los tokens, generada desde el registro de sesión (no reescrita). Los prompts y respuestas completos están en [docs/muse-code/EVIDENCE.md](docs/muse-code/EVIDENCE.md) (en inglés, como se escribieron) y el extracto en [docs/muse-code/runs.json](docs/muse-code/runs.json).
+Cada tarjeta muestra el prompt exacto, la respuesta final de **Muse Code**, el modelo, la duración, las llamadas a herramientas y los tokens, generada desde el registro de sesión (no reescrita). Los prompts y respuestas completos están en [docs/muse-code/EVIDENCE.md](docs/muse-code/EVIDENCE.md) (en inglés, como se escribieron) y el extracto en [docs/muse-code/runs.json](docs/muse-code/runs.json).
 
 <details>
 <summary>Evidencia: las ocho ejecuciones tal como las registró Muse Code</summary>
@@ -339,12 +344,12 @@ La **regla de la prueba dorada** mantuvo honesto al agente: `fixtures/real_case/
 
 ### Historial de commits
 
-El repositorio es público, así que cualquiera puede revisar cada commit, sus cambios y su fecha en GitHub: [github.com/dochavez/faultcase/commits/main](https://github.com/dochavez/faultcase/commits/main). ✓ marca los commits que hizo el propio Muse Code (sus llamadas a `git commit` están en el registro de sesión); los que no tienen marca se hicieron fuera de Muse Code.
+El repositorio es público, así que cualquiera puede revisar cada commit, sus cambios y su fecha en GitHub: [github.com/dochavez/faultcase/commits/main](https://github.com/dochavez/faultcase/commits/main). ✓ marca los commits que hizo el propio **Muse Code** (sus llamadas a `git commit` están en el registro de sesión); los que no tienen marca se hicieron fuera de **Muse Code**.
 
 <details>
 <summary>Los 63 commits al momento de escribir esto</summary>
 
-| # | Commit | Mensaje | Muse Code |
+| # | Commit | Mensaje | **Muse Code** |
 |---|---|---|---|
 | 1 | [`baa30dd`](https://github.com/dochavez/faultcase/commit/baa30dd) | Initial FaultCase kit |  |
 | 2 | [`bf8c73d`](https://github.com/dochavez/faultcase/commit/bf8c73d) | Set up environment and package skeleton | ✓ |
@@ -523,14 +528,14 @@ Sí: equipos con Windows 10 y 11, portátiles y de escritorio (el informe de bat
 Sí: *Intentar solucionarlo primero* da un plan ordenado construido solo con las soluciones seguras de FaultCase para tus hallazgos (controlador del fabricante, BIOS, diagnóstico de hardware, prueba sin suspensión, ajuste de energía del Wi-Fi…), con cuánto tarda cada paso y cómo saber si funcionó. Tú haces cada paso; FaultCase nunca cambia tu equipo. Si la evidencia apunta a hardware lo dice, y los pasos que marcaste pasan al informe de garantía.
 
 **¿Qué hace "Explicar con Muse"?**
-A petición, Muse Spark lee los hechos contados (nunca el registro crudo) y los explica con palabras sencillas: qué significa cada hallazgo, qué hacer, los próximos pasos y un glosario para los detalles técnicos. Se ejecuta una vez por caso e idioma y se guarda; el caso de ejemplo la trae precalculada.
+A petición, **Muse Spark** lee los hechos contados (nunca el registro crudo) y los explica con palabras sencillas: qué significa cada hallazgo, qué hacer, los próximos pasos y un glosario para los detalles técnicos. Se ejecuta una vez por caso e idioma y se guarda; el caso de ejemplo la trae precalculada.
 
 **¿Quién envía el informe al fabricante?**
 Tú. FaultCase prepara el paquete de evidencias y el borrador bilingüe; no actúa en tu nombre.
 
 ## Aviso
 
-FaultCase se creó con fines demostrativos. Su objetivo es mostrar cómo Muse puede ser una herramienta útil que ayude a las personas a detectar, comprender y resolver incidencias con el equipo que usan a diario, ya que ese dispositivo debe mantenerse en las mejores condiciones de funcionamiento.
+FaultCase se creó con fines demostrativos. Su objetivo es mostrar cómo **Muse** puede ser una herramienta útil que ayude a las personas a detectar, comprender y resolver incidencias con el equipo que usan a diario, ya que ese dispositivo debe mantenerse en las mejores condiciones de funcionamiento.
 
 - No está afiliado ni respaldado por Microsoft, NVIDIA, Lenovo ni ningún otro fabricante.
 - No sustituye al soporte oficial del fabricante, a un técnico ni a la evaluación de garantía. Un veredicto es "probable", nunca un defecto confirmado.
@@ -540,9 +545,9 @@ FaultCase se creó con fines demostrativos. Su objetivo es mostrar cómo Muse pu
 
 ## Licencia
 
-Código: MIT (ver [LICENSE](LICENSE)). Muse Spark Open se usa bajo la Muse Model License, que exige mostrar "Built with Muse Spark Open" en el producto.
+Código: MIT (ver [LICENSE](LICENSE)). **Muse Spark Open** se usa bajo la Muse Model License, que exige mostrar "Built with **Muse Spark Open**" en el producto.
 
 ## Agradecimientos
 
-A Meta por los modelos Muse y el acceso API del hackathon, a Baseten y Fireworks por servir Muse Spark Open, y a los mantenedores de `python-evtx` por el análisis multiplataforma de registros de eventos.
+A Meta por los modelos **Muse** y el acceso API del hackathon, a Baseten y Fireworks por servir **Muse Spark Open**, y a los mantenedores de `python-evtx` por el análisis multiplataforma de registros de eventos.
 
