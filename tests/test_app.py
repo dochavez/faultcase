@@ -351,9 +351,9 @@ def test_diagnosis_groups_findings_by_component():
         "/demo", data={"lang": "en"}, headers={"HX-Request": "true"}
     ).headers["HX-Redirect"]
     diagnosis = client.get(target)
-    assert "<h3>Stability</h3>" in diagnosis.text
+    assert "<h4>Stability</h4>" in diagnosis.text
     assert "4 dumps with nvlddmkm.sys" in diagnosis.text
-    assert "<h3>Storage</h3>" in diagnosis.text
+    assert "<h4>Storage</h4>" in diagnosis.text
     assert "No disk errors were logged." in diagnosis.text
 
 
@@ -577,3 +577,40 @@ def test_upload_with_local_dumps(monkeypatch):
     archive = client.get(base + "/evidence.zip")
     names = zipfile.ZipFile(io.BytesIO(archive.content)).namelist()
     assert "windbg/071726-15718-01.dmp.txt" in names
+
+
+def test_diagnosis_is_visual_and_bilingual():
+    for lang, title, status in (
+        ("en", "Unexpected restarts per month", "Problem"),
+        ("es", "Reinicios inesperados por mes", "Problema"),
+    ):
+        target = client.post(
+            "/demo", data={"lang": lang}, headers={"HX-Request": "true"}
+        ).headers["HX-Redirect"]
+        page = client.get(target).text
+        assert title in page
+        assert "<svg" in page and 'class="chart-bar"' in page
+        assert 'class="health-card status-problem"' in page
+        assert status in page
+        assert "<details" in page
+        assert "None None" not in page
+        # The primary action is inside the top verdict card.
+        top = page.split('class="verdict-card', 1)[1].split("</section>", 1)[0]
+        assert "/action?lang=" + lang in top
+
+
+def test_monthly_chart_fills_empty_months():
+    chart = app_module._monthly_chart(
+        [{"date": "2026-01-05"}, {"date": "2026-01-20"}, {"date": "2026-04-02"}], "en"
+    )
+    assert [b["value"] for b in chart["bars"]] == [2, 0, 0, 1]
+    assert chart["bars"][0]["label"] == "Jan 26"
+    assert app_module._monthly_chart([], "en") is None
+
+
+def test_components_fallback_for_old_findings():
+    old = {"incidents": [{}, {}], "patterns": [], "healthy": [{"playbook": "disk"}]}
+    status = {c["id"]: c["status"] for c in app_module._components(old)}
+    assert status["stability"] == "problem"
+    assert status["disk"] == "ok"
+    assert status["battery"] == "no_data"

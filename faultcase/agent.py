@@ -84,6 +84,110 @@ def _user_content(schema_keys: list, case_data: dict) -> str:
     )
 
 
+# Models never see the raw event list: a real System log export can hold
+# tens of thousands of events (hundreds of thousands of tokens). They get
+# the deterministic findings, per-component counts and a small spread of
+# representative events per component.
+MAX_EVENTS_PER_COMPONENT = 20
+MAX_PROMPT_TOKENS = 30_000
+MAX_FIELD_CHARS = 200
+MAX_LIST_ITEMS = 24
+
+
+class PayloadTooLargeError(ValueError):
+    """The compact case data still exceeds the prompt token budget."""
+
+
+def estimate_tokens(text: str) -> int:
+    """Conservative token estimate for JSON-heavy text (~3.5 chars/token)."""
+    return int(len(text) / 3.5) + 1
+
+
+def _spread(items: list, limit: int) -> list:
+    """Pick up to ``limit`` items evenly across the list (first and last kept)."""
+    if len(items) <= limit:
+        return list(items)
+    if limit == 1:
+        return [items[0]]
+    step = (len(items) - 1) / (limit - 1)
+    return [items[round(i * step)] for i in range(limit)]
+
+
+def _trim(value: object) -> object:
+    if isinstance(value, str):
+        return value if len(value) <= MAX_FIELD_CHARS else value[:MAX_FIELD_CHARS] + "..."
+    if isinstance(value, list):
+        return [_trim(v) for v in value[-MAX_LIST_ITEMS:]]
+    if isinstance(value, dict):
+        return {k: _trim(v) for k, v in value.items()}
+    return value
+
+
+def compact_evidence(evidence: dict, per_component: int = MAX_EVENTS_PER_COMPONENT) -> dict:
+    """Summarize normalized evidence for the models.
+
+    Per component: total events, counts per kind, first/last time and up to
+    ``per_component`` representative events. Stability events that form an
+    incident are always preferred as representatives.
+    """
+    by_playbook: dict = {}
+    for event in sorted(evidence.get("events", []), key=lambda e: e["time"]):
+        by_playbook.setdefault(event.get("playbook") or "other", []).append(event)
+    components = {}
+    for playbook, events in sorted(by_playbook.items()):
+        kinds: dict = {}
+        for event in events:
+            kinds[event.get("kind")] = kinds.get(event.get("kind"), 0) + 1
+        preferred = [e for e in events if e.get("incident_id")]
+        rest = [e for e in events if not e.get("incident_id")]
+        sample = _spread(preferred, per_component)
+        if len(sample) < per_component:
+            sample += _spread(rest, per_component - len(sample))
+        sample.sort(key=lambda e: e["time"])
+        components[playbook] = {
+            "event_count": len(events),
+            "kinds": kinds,
+            "first_time": events[0]["time"],
+            "last_time": events[-1]["time"],
+            "sample_events": [
+                {
+                    key: _trim(event[key])
+                    for key in ("time", "kind", "event_id", "code", "level",
+                                "params", "fields", "incident_id")
+                    if event.get(key) not in (None, {}, [])
+                }
+                for event in sample
+            ],
+        }
+    compact = {
+        "os": evidence.get("os"),
+        "total_events": len(evidence.get("events", [])),
+        "components": components,
+        "dumps": _trim(evidence.get("dumps", [])),
+    }
+    if evidence.get("battery"):
+        compact["battery"] = _trim(evidence["battery"])
+    return compact
+
+
+def _analysis_case_data(findings: dict, evidence: dict, timezone: str | None) -> dict:
+    """Case data for evidence_analysis, shrunk until it fits the budget."""
+    for per_component in (MAX_EVENTS_PER_COMPONENT, 10, 5, 0):
+        data = {
+            "findings": findings,
+            "evidence": compact_evidence(evidence, per_component),
+            "timezone": timezone,
+        }
+        tokens = estimate_tokens(json.dumps(data))
+        if tokens <= MAX_PROMPT_TOKENS:
+            return data
+    raise PayloadTooLargeError(
+        f"the evidence is too large to analyze (about {tokens:,} tokens; "
+        f"limit {MAX_PROMPT_TOKENS:,}). Export a shorter period or use the "
+        "FaultCase filter so only device events are included"
+    )
+
+
 CONFIDENCE_LEVELS = ["low", "medium", "high"]
 
 
@@ -215,6 +319,10 @@ def build_case(
     findings = rules.apply_rules(evidence, tz=timezone)
     clean_findings = redact.redact_obj(findings)
     clean_evidence = redact.redact_obj(evidence)
+    # Component statuses are for the UI only; models get the findings.
+    model_findings = {
+        k: v for k, v in clean_findings.items() if k not in ("components",)
+    }
     clean_device = redact.redact_obj(dict(device or {}))
     serial = clean_device.pop("serial", None)
 
@@ -226,8 +334,7 @@ def build_case(
             "content": _user_content(
                 ["verdict", "confidence", "findings", "healthy_components",
                  "missing"],
-                {"findings": clean_findings, "evidence": clean_evidence,
-                 "timezone": timezone},
+                _analysis_case_data(model_findings, clean_evidence, timezone),
             ),
         },
     ]

@@ -49,6 +49,7 @@
           "code": {"type": ["integer", "null"]},
           "params": {"type": "array", "items": {"type": "string"}},
           "fields": {"type": "object"},
+          "level": {"type": ["integer", "null"], "description": "Windows event level: 1 critical, 2 error, 3 warning, 4 or 0 information"},
           "incident_id": {"type": ["string", "null"], "description": "groups events of the same incident (41 + 6008 + dump)"}
         }
       }

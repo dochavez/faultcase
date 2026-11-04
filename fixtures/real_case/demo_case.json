@@ -167,6 +167,56 @@
         "note": "No Wi-Fi disconnections or driver warnings were logged."
       }
     ],
+    "components": [
+      {
+        "id": "stability",
+        "status": "problem",
+        "count": 6,
+        "ignored": 0
+      },
+      {
+        "id": "disk",
+        "status": "ok",
+        "count": 0,
+        "ignored": 0
+      },
+      {
+        "id": "hardware",
+        "status": "ok",
+        "count": 0,
+        "ignored": 0
+      },
+      {
+        "id": "thermal",
+        "status": "ok",
+        "count": 0,
+        "ignored": 0
+      },
+      {
+        "id": "wifi",
+        "status": "ok",
+        "count": 0,
+        "ignored": 0
+      },
+      {
+        "id": "usb",
+        "status": "ok",
+        "count": 0,
+        "ignored": 0
+      },
+      {
+        "id": "battery",
+        "status": "no_data",
+        "count": 0,
+        "ignored": 0
+      },
+      {
+        "id": "software",
+        "status": "ok",
+        "count": 0,
+        "ignored": 0
+      }
+    ],
     "common_module": "nvlddmkm.sys",
     "dumps_with_common_module": 4,
     "distinct_driver_timestamps": [

@@ -1,21 +1,68 @@
 {% extends "base.html" %}
+{% set icons = {"problem": "✕", "attention": "!", "ok": "✓", "no_data": "–"} %}
 {% block content %}
 <p class="kicker">{{ t.dg_kicker }}</p>
-<section class="verdict">
+
+<section class="verdict-card status-{{ main_component.status if main_component else 'ok' }}">
+  {% if main_component %}
+  <p class="eyebrow">{{ t.dg_main_problem }}: {{ t.get("comp_" + main_component.id, main_component.id) }}</p>
+  {% endif %}
   <h1>{{ t["v_" + case.verdict] }}</h1>
-  <p class="confidence">{{ t.dg_confidence }}: <strong>{{ t["c_" + case.confidence] }}</strong></p>
+  {% if summary.total_incidents %}
+  <p class="key-fact">
+    {% if summary.total_incidents == 1 %}{{ t.dg_key_fact_one.format(first=summary.first_incident_date) }}
+    {% else %}{{ t.dg_key_fact.format(n=summary.total_incidents, first=summary.first_incident_date, last=summary.last_incident_date) }}{% endif %}
+  </p>
+  {% endif %}
   <p class="summary">{{ case.user_summary }}</p>
+  <p class="confidence">{{ t.dg_confidence }}: <strong>{{ t["c_" + case.confidence] }}</strong></p>
+  <p class="cta-row">
+    <a class="btn btn-primary btn-big" href="/case/{{ case_id }}/action?lang={{ lang }}">{{ t.dg_cta }}</a>
+  </p>
 </section>
 
-<section>
-  <h2>{{ t.dg_timeline }} ({{ incidents|length }} {{ t.dg_incidents }}) · {{ timezone }}</h2>
+<section aria-labelledby="health-title">
+  <h2 id="health-title">{{ t.dg_health }}</h2>
+  <ul class="health-grid">
+  {% for c in components %}
+    <li class="health-card status-{{ c.status }}">
+      <span class="health-icon" aria-hidden="true">{{ icons[c.status] }}</span>
+      <span class="health-name">{{ t.get("comp_" + c.id, c.id) }}</span>
+      <span class="health-status">{{ t["status_" + c.status] }}</span>
+      <span class="health-detail">
+        {% if c.id == "stability" and c.count %}{{ t.dg_n_incidents.format(n=c.count) }}
+        {% elif c.id == "battery" and c.status == "no_data" %}{{ t.dg_battery_none }}
+        {% elif c.id == "battery" and patterns_by_component.get("battery") %}{{ patterns_by_component["battery"][0].detail }}
+        {% elif c.count %}{{ t.dg_n_events.format(n=c.count) }}{% endif %}
+        {% if c.ignored %}<small>{{ t.dg_ignored.format(n=c.ignored) }}</small>{% endif %}
+      </span>
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+
+<section aria-labelledby="chart-title">
+  <h2 id="chart-title">{{ t.dg_chart_title }}</h2>
+  {% if chart %}
+  <figure class="chart">
+    <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-labelledby="chart-title chart-text"
+         preserveAspectRatio="xMinYMin meet" style="max-width: {{ chart.width * 1.4 }}px">
+      <line x1="0" y1="{{ chart.baseline }}" x2="{{ chart.width }}" y2="{{ chart.baseline }}" class="chart-axis"/>
+      {% for bar in chart.bars %}
+      <rect x="{{ bar.x }}" y="{{ bar.y }}" width="{{ bar.w }}" height="{{ bar.h }}" rx="3" class="chart-bar"/>
+      {% if bar.value %}<text x="{{ bar.x + bar.w / 2 }}" y="{{ bar.y - 5 }}" class="chart-value">{{ bar.value }}</text>{% endif %}
+      <text x="{{ bar.x + bar.w / 2 }}" y="{{ chart.baseline + 18 }}" class="chart-label">{{ bar.label }}</text>
+      {% endfor %}
+    </svg>
+    <figcaption id="chart-text" class="sr-only">
+      {% for bar in chart.bars %}{{ bar.label }}: {{ bar.value }}{% if not loop.last %}; {% endif %}{% endfor %}
+    </figcaption>
+  </figure>
   <ol class="timeline">
   {% for incident in incidents %}
     <li>
       <time datetime="{{ incident.date }}">{{ incident.date }}</time>
-      <span class="plain">{{ labels.get(incident.code_hex, {}).get(lang, incident.code_name) }}</span>
-      <span class="code">{{ incident.code_hex }}</span>
-      <span>{{ incident.code_name }}</span>
+      <span class="plain">{{ labels.get(incident.code_hex or "", {}).get(lang, incident.code_name or "") }}</span>
       {% if incident.dump_module %}
       <span class="dump">{{ t.dg_dump }}: {{ incident.dump_module }}</span>
       {% else %}
@@ -24,12 +71,17 @@
     </li>
   {% endfor %}
   </ol>
+  {% else %}
+  <p>{{ t.dg_chart_none }}</p>
+  {% endif %}
 </section>
 
-<section>
-  <h2>{{ t.dg_findings }}</h2>
+<details class="tech">
+  <summary>{{ t.dg_details }}</summary>
+  <p class="meta">{{ t.dg_details_note }} · {{ timezone }}</p>
+  <h3>{{ t.dg_findings }}</h3>
   {% for pid, patterns in pattern_groups %}
-  <h3>{{ t.get("comp_" + pid, pid) }}</h3>
+  <h4>{{ t.get("comp_" + pid, pid) }}</h4>
   <ul class="findings">
   {% for pattern in patterns %}
     <li>
@@ -39,27 +91,29 @@
   {% endfor %}
   </ul>
   {% endfor %}
-</section>
-
-<section>
-  <h2>{{ t.dg_healthy }}</h2>
+  {% if incidents %}
+  <h3>{{ t.dg_timeline }} ({{ incidents|length }} {{ t.dg_incidents }})</h3>
+  <ul class="findings">
+  {% for incident in incidents %}
+    <li><span class="code">{{ incident.code_hex }}</span> {{ incident.code_name or "" }} · {{ incident.date }} {{ incident.time }}</li>
+  {% endfor %}
+  </ul>
+  {% endif %}
+  <h3>{{ t.dg_healthy }}</h3>
   {% for pid, entries in healthy_groups %}
-  <h3>{{ t.get("comp_" + pid, pid) }}</h3>
+  <h4>{{ t.get("comp_" + pid, pid) }}</h4>
   <ul class="healthy">
   {% for entry in entries %}
     <li>{{ entry.note }}</li>
   {% endfor %}
   </ul>
   {% endfor %}
-</section>
+  <p class="meta">{{ t.dg_meta.format(providers=metadata.providers_used|join(", "), seconds=(metadata.total_latency_ms // 1000), tokens=metadata.total_tokens) }}</p>
+  {% if local_dumps %}
+  <p class="meta">{{ t.dg_local_dumps.format(ok=local_dumps.ok, failed=local_dumps.failed) }}</p>
+  {% endif %}
+</details>
 
-<p class="cta-row">
-  <a class="btn btn-primary btn-big" href="/case/{{ case_id }}/action?lang={{ lang }}">{{ t.dg_cta }}</a>
-</p>
-<p class="meta">{{ t.dg_meta.format(providers=metadata.providers_used|join(", "), seconds=(metadata.total_latency_ms // 1000), tokens=metadata.total_tokens) }}</p>
-{% if local_dumps %}
-<p class="meta">{{ t.dg_local_dumps.format(ok=local_dumps.ok, failed=local_dumps.failed) }}</p>
-{% endif %}
 {% if is_demo %}
 <section class="regen">
   <form hx-post="/case/{{ case_id }}/regenerate" hx-target="#regen-result" hx-swap="innerHTML"
@@ -71,7 +125,7 @@
     <small>{{ t.regen_note }}</small>
   </form>
   <div id="regen-loading" class="loading" aria-live="polite">
-    <span class="spinner" aria-hidden="true"></span> {{ t.loading }}
+    {% include "loading_steps.html" %}
   </div>
   <div id="regen-result" aria-live="polite"></div>
 </section>

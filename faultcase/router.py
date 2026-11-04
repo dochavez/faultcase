@@ -12,6 +12,7 @@ contents or keys.
 from __future__ import annotations
 
 import json
+import re
 import queue
 import threading
 import time
@@ -75,6 +76,19 @@ def _cached_tokens(usage) -> int:
     if isinstance(details, dict):
         return details.get("cached_tokens") or 0
     return getattr(details, "cached_tokens", None) or 0
+
+
+_SECRET_PATTERN = re.compile(r"(?i)(bearer\s+|api[_-]?key[=:\s]+|sk-|fw_)[A-Za-z0-9._-]{6,}")
+
+
+def _error_fields(exc: Exception) -> dict:
+    """Error type and a short, secret-free message for the usage log."""
+    message = _SECRET_PATTERN.sub("[redacted]", str(exc))
+    status = getattr(exc, "status_code", None)
+    fields = {"error_type": type(exc).__name__, "error_message": message[:300]}
+    if isinstance(status, int):
+        fields["status_code"] = status
+    return fields
 
 
 class Router:
@@ -282,11 +296,12 @@ class Router:
                     "cached_tokens": cached_tokens,
                     "truncated": isinstance(exc, _TruncatedResponse),
                     "success": False, "fallback_used": fallback_used,
+                    **_error_fields(exc),
                 })
                 if attempt < self._max_retries:
                     continue
                 raise
-            except Exception:
+            except Exception as exc:
                 self._log({
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "role": role, "provider": name, "model": provider["model"],
@@ -295,6 +310,7 @@ class Router:
                     "completion_tokens": completion_tokens,
                     "cached_tokens": cached_tokens,
                     "success": False, "fallback_used": fallback_used,
+                    **_error_fields(exc),
                 })
                 raise
 

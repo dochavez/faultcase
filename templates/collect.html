@@ -108,7 +108,7 @@
         <p><button class="btn btn-primary" id="upload-btn" type="submit">{{ t.upload_btn }}</button></p>
       </form>
       <div id="upload-loading" class="loading" aria-live="polite">
-        <span class="spinner" aria-hidden="true"></span> {{ t.loading }}
+        {% include "loading_steps.html" %}
       </div>
       <div id="upload-result" aria-live="polite">{% if error %}{% include "error_box.html" %}{% endif %}</div>
     </div>
@@ -126,7 +126,7 @@
         <p><button class="btn btn-demo" id="demo-btn" type="submit">{{ t.demo_btn }}</button></p>
       </form>
       <div id="demo-loading" class="loading" aria-live="polite">
-        <span class="spinner" aria-hidden="true"></span> {{ t.loading }}
+        {% include "loading_steps.html" %}
       </div>
       <div id="demo-result" aria-live="polite"></div>
     </div>

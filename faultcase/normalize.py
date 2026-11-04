@@ -3,7 +3,9 @@
 Each raw event is matched against playbooks/*.yaml by event_id AND provider
 (``provider_contains`` or ``provider_contains_any``, case-insensitive) and
 gets its ``kind`` and ``playbook``. Unmatched events are dropped and counted
-as noise. Events 41 and 6008 less than 60 seconds apart share an incident;
+as noise. Only stability events form incidents: events 41 and 6008 less
+than 60 seconds apart share one, and an event 1001 joins the nearest event 41
+within 15 minutes;
 a dump joins the incident whose event 41 parameters match its bugcheck
 parameters (compared as normalized lowercase hex without leading zeros).
 The output is validated against the evidence schema before it is returned.
@@ -26,7 +28,11 @@ DEFAULT_SCHEMA_PATH = ROOT / "schemas" / "evidence.schema.json"
 REBOOT_KIND = "unexpected_reboot"
 SHUTDOWN_KIND = "unexpected_shutdown"
 RESUME_KIND = "resume_from_sleep"
+BUGCHECK_KIND = "bugcheck_logged"
 INCIDENT_WINDOW_SECONDS = 60
+# WER logs event 1001 after the machine comes back up, often minutes
+# after the event 41 of the same crash.
+BUGCHECK_WINDOW_SECONDS = 15 * 60
 
 DUMP_FIELDS = (
     "file", "time", "bugcheck_code", "params", "image_name", "symbol_name",
@@ -103,20 +109,24 @@ def _assign_incidents(events: list[dict]) -> None:
         if event["kind"] == REBOOT_KIND:
             event["incident_id"] = new_incident()
             reboots.append((moment, event["incident_id"]))
-        elif event["kind"] == RESUME_KIND:
-            event["incident_id"] = None
-        elif event["kind"] == SHUTDOWN_KIND:
+        elif event["kind"] in (SHUTDOWN_KIND, BUGCHECK_KIND):
+            window = (
+                INCIDENT_WINDOW_SECONDS if event["kind"] == SHUTDOWN_KIND
+                else BUGCHECK_WINDOW_SECONDS
+            )
             candidates = [
                 (abs((moment - reboot_time).total_seconds()), incident_id)
                 for reboot_time, incident_id in reboots
             ]
             best = min(candidates) if candidates else None
-            if best is not None and best[0] < INCIDENT_WINDOW_SECONDS:
+            if best is not None and best[0] < window:
                 event["incident_id"] = best[1]
             else:
                 event["incident_id"] = new_incident()
         else:
-            event["incident_id"] = new_incident()
+            # Only stability events (41, 6008, 1001) form incidents; Wi-Fi,
+            # USB, disk and other events are counted per component instead.
+            event["incident_id"] = None
 
 
 def _link_dumps(dumps: list[dict], events: list[dict]) -> list[dict]:
@@ -181,6 +191,8 @@ def normalize(
                 if "fields" in entry else dict(fields)
             ),
         }
+        if isinstance(event.get("level"), int):
+            item["level"] = event["level"]
         params = _event_params(fields)
         if params is not None:
             item["params"] = params

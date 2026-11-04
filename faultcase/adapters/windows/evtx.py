@@ -79,13 +79,18 @@ def parse_record_xml(xml: str) -> dict:
         raise ValueError("record has no channel")
     if event_id is None or not (event_id.text or "").strip():
         raise ValueError("record has no event ID")
-    return {
+    event = {
         "time": _event_time(system),
         "log": channel.text.strip(),
         "source": provider.get("Name"),
         "event_id": int(event_id.text.strip()),
         "fields": _event_data(root),
     }
+    level = system.find(f"{NS}Level")
+    if level is not None and (level.text or "").strip().isdigit():
+        # 1 critical, 2 error, 3 warning, 4 or 0 information.
+        event["level"] = int(level.text.strip())
+    return event
 
 
 def parse_evtx(path: str | Path) -> EvtxResult:

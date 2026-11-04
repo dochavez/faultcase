@@ -107,7 +107,7 @@ def test_usb_playbook_matches_and_limits_fields():
                    "ClassGuid": "{12345678-1234-1234-1234-123456789abc}",
                    "ServiceName": "USB"}),
         _raw("2026-05-01T10:05:00+00:00", "Microsoft-Windows-Kernel-PnP",
-             219, {"FailureName": "\\Driver\\WUDFRd", "Status": 3221226341,
+             219, {"FailureName": "\\Driver\\usbccgp", "Status": 3221226341,
                    "DriverName": "PCI\\VEN_8086&DEV_AD03\\3&11583659&0&B0"}),
     ]
     result = normalize.normalize(events)
@@ -142,12 +142,12 @@ def test_usb_driver_failed_and_after_resume_patterns():
         _raw("2026-05-01T09:00:00+00:00", "Microsoft-Windows-Power-Troubleshooter",
              1, {}),
         _raw("2026-05-01T09:05:00+00:00", "Microsoft-Windows-Kernel-PnP",
-             219, {"FailureName": "\\Driver\\WUDFRd"}),
+             219, {"FailureName": "\\Driver\\usbccgp"}),
     ]
     findings = rules.apply_rules(normalize.normalize(events).evidence)
     patterns = {(p["playbook"], p["id"]): p for p in findings["patterns"]}
     assert patterns[("usb", "usb_driver_failed")]["verdict"] == "fact"
-    assert "WUDFRd" in patterns[("usb", "usb_driver_failed")]["detail"]
+    assert "usbccgp" in patterns[("usb", "usb_driver_failed")]["detail"]
     assert patterns[("usb", "usb_after_resume")]["verdict"] == "hypothesis"
     assert ("usb", "usb_same_device_repeats") not in patterns
 

@@ -374,6 +374,77 @@ def _group_by_component(items: list) -> list:
     return [(pid, grouped[pid]) for pid in order if pid in grouped]
 
 
+STATUS_RANK = {"problem": 0, "attention": 1, "ok": 2, "no_data": 3}
+
+
+def _components(findings: dict) -> list:
+    """Component statuses, rebuilt from older findings that lack them."""
+    if findings.get("components"):
+        return findings["components"]
+    flagged = {p.get("playbook") for p in findings.get("patterns", [])}
+    healthy = {h.get("playbook") for h in findings.get("healthy", [])}
+    components = []
+    for pid in COMPONENT_ORDER:
+        if pid == "stability":
+            count = len(findings.get("incidents", []))
+            status = "problem" if count >= 2 else "attention" if count else "ok"
+        elif pid == "battery" and pid not in flagged:
+            count, status = 0, "no_data"
+        elif pid in flagged:
+            count, status = 0, "attention"
+        elif pid in healthy:
+            count, status = 0, "ok"
+        else:
+            continue
+        components.append({"id": pid, "status": status, "count": count, "ignored": 0})
+    return components
+
+
+def _monthly_chart(incidents: list, lang: str) -> dict | None:
+    """Incidents per calendar month, first to last month inclusive.
+
+    Returns bar geometry for a server-rendered inline SVG (no JavaScript)
+    plus the same numbers as text for screen readers.
+    """
+    months = sorted({i["date"][:7] for i in incidents if i.get("date")})
+    if not months:
+        return None
+    year, month = map(int, months[0].split("-"))
+    last = months[-1]
+    keys = []
+    while True:
+        key = f"{year:04d}-{month:02d}"
+        keys.append(key)
+        if key >= last or len(keys) >= 36:
+            break
+        month += 1
+        if month > 12:
+            year, month = year + 1, 1
+    counts = {key: 0 for key in keys}
+    for incident in incidents:
+        key = (incident.get("date") or "")[:7]
+        if key in counts:
+            counts[key] += 1
+    names = STRINGS[lang]["month_names"].split(",")
+    top = max(counts.values()) or 1
+    bar_w, gap, height = 36, 14, 120
+    bars = []
+    for index, key in enumerate(keys):
+        value = counts[key]
+        h = round(height * value / top)
+        bars.append({
+            "x": index * (bar_w + gap) + gap, "y": height - h + 20,
+            "w": bar_w, "h": h, "value": value,
+            "label": names[int(key[5:7]) - 1] + (
+                " " + key[2:4] if index == 0 or key[5:7] == "01" else ""
+            ),
+        })
+    return {
+        "bars": bars, "width": len(keys) * (bar_w + gap) + gap,
+        "height": height + 50, "baseline": height + 20,
+    }
+
+
 def _expired(request: Request, lang: str):
     return templates.TemplateResponse(
         request, "error.html",
@@ -391,10 +462,18 @@ def diagnosis(request: Request, case_id: str):
     findings = stored["findings"]
     pattern_groups = _group_by_component(findings["patterns"])
     healthy_groups = _group_by_component(findings["healthy"])
+    components = _components(findings)
+    patterns_by_component = dict(pattern_groups)
+    worst = sorted(components, key=lambda c: STATUS_RANK.get(c["status"], 9))
     return templates.TemplateResponse(
         request, "diagnosis.html",
         _ctx(lang, case_id=case_id, case=case,
              incidents=findings["incidents"],
+             summary=findings.get("summary", {}),
+             components=components,
+             patterns_by_component=patterns_by_component,
+             main_component=worst[0] if worst and worst[0]["status"] == "problem" else None,
+             chart=_monthly_chart(findings["incidents"], lang),
              pattern_groups=pattern_groups, healthy_groups=healthy_groups,
              metadata=stored["metadata"],
              local_dumps=stored.get("local_dumps"),

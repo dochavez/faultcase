@@ -137,6 +137,114 @@ RESUME_AFTER_SECONDS = 600
 # Playbooks with dedicated pattern functions (skipped by the generic counter).
 DEDICATED_PATTERNS = {WIFI, USB}
 
+DISK = "disk"
+SOFTWARE = "software"
+HARDWARE = "hardware"
+THERMAL = "thermal"
+RESUME_KIND = "resume_from_sleep"
+COMPONENT_ORDER = [
+    STABILITY, DISK, HARDWARE, THERMAL, WIFI, USB, BATTERY, SOFTWARE,
+]
+# Windows levels: 1 critical, 2 error, 3 warning, 4/0/5 information.
+INFO_LEVELS = (0, 4, 5)
+# Virtual devices (Hyper-V, software-enumerated) fail to start on healthy
+# machines all the time; they are not physical USB faults.
+BENIGN_USB_DEVICE_PREFIXES = ("ROOT\\", "SWD\\")
+# User-mode driver framework reflector: logs 219 at boot on healthy PCs.
+BENIGN_USB_DRIVERS = ("wudfrd",)
+# Successful updates are context, never a problem.
+CONTEXT_KINDS = {"update_ok"}
+
+
+def benign_reason(event: dict) -> str | None:
+    """Return why an event is known noise (not counted), or None."""
+    playbook = event.get("playbook")
+    kind = event.get("kind")
+    fields = event.get("fields") or {}
+    level = event.get("level")
+    if kind in CONTEXT_KINDS:
+        return "context"
+    if playbook == USB:
+        device = str(fields.get("DeviceInstanceId") or "").upper()
+        if device.startswith(BENIGN_USB_DEVICE_PREFIXES):
+            return "virtual_device"
+        name = str(fields.get("FailureName") or "").lower()
+        if any(driver in name for driver in BENIGN_USB_DRIVERS):
+            return "benign_driver"
+    if level in INFO_LEVELS and (
+        (playbook == DISK and kind == "volume_needs_repair")
+        or (playbook == WIFI and kind in WIFI_DRIVER_KINDS)
+    ):
+        return "informational"
+    return None
+
+
+def _component_statuses(
+    playbook_ids: list, counted: list[dict], incidents: list[dict],
+    patterns: list[dict], evidence: dict, ignored: Counter,
+) -> list[dict]:
+    """One status per component: problem, attention, ok or no_data."""
+    order = COMPONENT_ORDER + sorted(
+        p for p in playbook_ids if p not in COMPONENT_ORDER
+    )
+    components = []
+    for pid in order:
+        if pid not in playbook_ids:
+            continue
+        events = [
+            e for e in counted
+            if e.get("playbook") == pid and e.get("kind") != RESUME_KIND
+        ]
+        kinds = {e.get("kind") for e in events}
+        ids = {p["id"] for p in patterns if p.get("playbook") == pid}
+        count = len(events)
+        if pid == STABILITY:
+            count = len(incidents)
+            status = "problem" if count >= 2 else "attention" if count else "ok"
+        elif pid == BATTERY:
+            battery = evidence.get("battery") or {}
+            wear = battery.get("wear_percent")
+            count = len(ids - {"battery_wear", "battery_no_data"})
+            if not battery or "battery_no_data" in ids:
+                status = "no_data"
+            elif ids & {"battery_early_wear", "battery_rapid_decline"}:
+                status = "problem"
+            elif isinstance(wear, (int, float)) and wear >= 20:
+                status = "attention"
+            else:
+                status = "ok"
+        elif pid == WIFI:
+            status = (
+                "problem" if "wifi_frequent_disconnects" in ids
+                else "attention" if count else "ok"
+            )
+        elif pid == USB:
+            status = (
+                "problem" if "usb_same_device_repeats" in ids
+                else "attention" if count else "ok"
+            )
+        elif pid == HARDWARE:
+            serious = kinds & {"whea_fatal", "whea_memory"}
+            status = (
+                "problem" if serious or count >= 3
+                else "attention" if count else "ok"
+            )
+        elif pid == DISK:
+            serious = kinds & {"bad_block", "paging_error", "ntfs_corruption"}
+            status = "problem" if serious else "attention" if count else "ok"
+        elif pid == THERMAL:
+            status = (
+                "problem" if count >= 10 else "attention" if count else "ok"
+            )
+        else:
+            # Software crashes are worth a look but are not warranty faults.
+            status = "attention" if count else "ok"
+        components.append({
+            "id": pid, "status": status, "count": count,
+            "ignored": ignored.get(pid, 0),
+        })
+    return components
+
 
 def _resume_times(events: list[dict]) -> list:
     return sorted(
@@ -402,14 +510,18 @@ def apply_rules(
     dumps = evidence.get("dumps", [])
     codes = (playbooks.get(STABILITY, {}).get("interpretation") or {}).get("codes", {})
     incidents = _build_incidents(events, dumps, codes, tz)
+    counted = [e for e in events if benign_reason(e) is None]
+    ignored = Counter(
+        e.get("playbook") for e in events if benign_reason(e) is not None
+    )
     patterns = (
         _stability_patterns(incidents, dumps)
-        + _wifi_patterns(events)
-        + _usb_patterns(events)
+        + _wifi_patterns(counted)
+        + _usb_patterns(counted)
         + _battery_patterns(evidence)
-        + _other_playbook_patterns(events)
+        + _other_playbook_patterns(counted)
     )
-    matched = {e.get("playbook") for e in events}
+    matched = {e.get("playbook") for e in counted}
     if evidence.get("battery"):
         matched.add(BATTERY)
     healthy = [
@@ -445,10 +557,14 @@ def apply_rules(
         months_span = max(1, round(days / 30.44))
     else:
         months_span = 0
+    components = _component_statuses(
+        list(playbooks), counted, incidents, patterns, evidence, ignored
+    )
     return {
         "incidents": incidents,
         "patterns": patterns,
         "healthy": healthy,
+        "components": components,
         "common_module": common,
         "dumps_with_common_module": counts.get(common, 0) if common else 0,
         "distinct_driver_timestamps": timestamps,
