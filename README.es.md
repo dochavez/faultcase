@@ -7,6 +7,7 @@
 [![Built with Muse Spark Open](https://img.shields.io/badge/Built_with-Muse_Spark_Open-purple)](https://www.meta.ai/)
 [![Powered by Muse Spark](https://img.shields.io/badge/Powered_by-Muse_Spark-7c3aed)](https://www.meta.ai/)
 [![Built with Muse Code](https://img.shields.io/badge/Built_with-Muse_Code-5b21b6)](https://www.meta.ai/)
+[![Video de demostración](https://img.shields.io/badge/▶_Video_demo-YouTube-red)](https://youtu.be/Q2-xHFZoMMI)
 
 [Read in English](README.md)
 
@@ -18,6 +19,10 @@ No hay que instalar nada: exportas un archivo, lo subes y obtienes la respuesta 
 > **Impulsado por Muse.** Cada paso que necesita inteligencia funciona con los modelos Muse de Meta: **Muse Spark Open** (en Baseten y Fireworks) analiza la evidencia dos veces como segunda opinión, **Muse Spark** la explica, planifica los arreglos y redacta el caso para el fabricante, y **Muse Code** construyó el núcleo de este repositorio.
 
 > **Funciona con cualquier marca.** FaultCase lee lo que Windows 10 y 11 ya registran, así que funciona en cualquier portátil o equipo de escritorio: Lenovo, HP, Dell, ASUS, Acer, MSI, Microsoft Surface, Samsung o un PC armado. El caso real de este proyecto son dos equipos Lenovo, pero nada del análisis depende de la marca; el fabricante solo cambia el enlace de soporte en la pantalla de Acción.
+
+▶️ **Mira la demo de 2 minutos** (haz clic en la imagen para verla en YouTube)
+
+[![Ver el video de demostración de FaultCase](https://img.youtube.com/vi/Q2-xHFZoMMI/hqdefault.jpg)](https://youtu.be/Q2-xHFZoMMI)
 
 ![Flujo completo: recopilación → diagnóstico → acción](docs/img/flow.gif)
 
@@ -130,7 +135,8 @@ La computadora es el equipo que la mayoría usa todos los días para trabajar y 
 ## Pruébalo en 1 minuto
 
 **Demostración en vivo:** [https://dochavez--faultcase-fastapi-app.us-east.modal.run/](https://dochavez--faultcase-fastapi-app.us-east.modal.run/)  
-**Demostración de respaldo (Render):** [https://faultcase.onrender.com](https://faultcase.onrender.com)
+**Demostración de respaldo (Render):** [https://faultcase.onrender.com](https://faultcase.onrender.com)  
+**Video de demostración (YouTube):** [https://youtu.be/Q2-xHFZoMMI](https://youtu.be/Q2-xHFZoMMI)
 
 Abre la URL de demostración y haz clic en **Try a sample case**: sin cuenta, sin código de invitación, instantáneo y gratis (el caso de demostración está precalculado; ver `scripts/build_demo_case.py`).
 

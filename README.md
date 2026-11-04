@@ -7,6 +7,7 @@
 [![Built with Muse Spark Open](https://img.shields.io/badge/Built_with-Muse_Spark_Open-purple)](https://www.meta.ai/)
 [![Powered by Muse Spark](https://img.shields.io/badge/Powered_by-Muse_Spark-7c3aed)](https://www.meta.ai/)
 [![Built with Muse Code](https://img.shields.io/badge/Built_with-Muse_Code-5b21b6)](https://www.meta.ai/)
+[![Demo video](https://img.shields.io/badge/▶_Demo_video-YouTube-red)](https://youtu.be/Q2-xHFZoMMI)
 
 [Leer en español](README.es.md)
 
@@ -18,6 +19,10 @@ Nothing to install: you export one file, upload it, and get **Muse**'s answer on
 > **Powered by Muse.** Every step that needs intelligence runs on Meta's Muse models: **Muse Spark Open** (on Baseten and Fireworks) analyzes the evidence twice as a second opinion, **Muse Spark** explains it, plans the fixes and writes the manufacturer case, and **Muse Code** built the core of this repository.
 
 > **Works with any brand.** FaultCase reads what Windows 10 and 11 already log, so it works on any laptop or desktop: Lenovo, HP, Dell, ASUS, Acer, MSI, Microsoft Surface, Samsung or a custom-built PC. The real case behind this project happens to be two Lenovo computers, but nothing in the analysis depends on the brand; the manufacturer only changes the support link on the Action screen.
+
+▶️ **Watch the 2-minute demo** (click the image to play it on YouTube)
+
+[![Watch the FaultCase demo video](https://img.youtube.com/vi/Q2-xHFZoMMI/hqdefault.jpg)](https://youtu.be/Q2-xHFZoMMI)
 
 ![Full flow: Collect → Diagnosis → Action](docs/img/flow.gif)
 
@@ -130,7 +135,8 @@ The computer is the device most people use every day for work and study, so when
 ## Try it in 1 minute
 
 **Live demo:** [https://dochavez--faultcase-fastapi-app.us-east.modal.run/](https://dochavez--faultcase-fastapi-app.us-east.modal.run/)  
-**Backup demo (Render):** [https://faultcase.onrender.com](https://faultcase.onrender.com)
+**Backup demo (Render):** [https://faultcase.onrender.com](https://faultcase.onrender.com)  
+**Demo video (YouTube):** [https://youtu.be/Q2-xHFZoMMI](https://youtu.be/Q2-xHFZoMMI)
 
 Open the demo URL and click **Try a sample case** — no account, no invite code, instant and free (the demo case is precomputed; see `scripts/build_demo_case.py`).
 
