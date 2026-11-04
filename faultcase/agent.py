@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from pathlib import Path
 
 from jsonschema import validate
@@ -191,6 +192,19 @@ def _analysis_case_data(findings: dict, evidence: dict, timezone: str | None) ->
 
 CONFIDENCE_LEVELS = ["low", "medium", "high"]
 
+# Optional progress hook for the web app's job polling: set per thread by
+# the caller; build_case reports the stage it is entering.
+PROGRESS = threading.local()
+
+
+def _report(stage: str) -> None:
+    hook = getattr(PROGRESS, "hook", None)
+    if hook is not None:
+        try:
+            hook(stage)
+        except Exception:
+            pass
+
 
 def _normalize_confidence(value) -> str:
     """Map a model confidence (level, number or numeric string) to a level.
@@ -367,6 +381,7 @@ def build_case(
         )
     analysis["confidence"] = _normalize_confidence(analysis.get("confidence"))
 
+    _report("writing")
     system_writer = (PROMPTS_DIR / "case_writer.md").read_text(encoding="utf-8")
     case, case_info = call_with_info(
         "case_writing",

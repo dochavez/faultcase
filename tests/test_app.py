@@ -846,3 +846,55 @@ def test_upload_form_validates_in_the_browser_and_warns_to_keep_open():
     es = client.get("/?lang=es").text
     assert "No cierres ni actualices esta pestaña" in es
     assert "Primero elige tu archivo .evtx" in es
+
+
+def _fixture_raw_events():
+    from faultcase.adapters.windows import fixture_events
+    return fixture_events.load_fixture_events(
+        Path(app_module.ROOT) / "fixtures" / "real_case" / "events_41.json"
+    )
+
+
+def test_slow_upload_becomes_a_polling_job(monkeypatch):
+    import threading as _threading
+    release = _threading.Event()
+
+    def slow_build(evidence, ui_language="en", device=None, timezone=None):
+        release.wait(5)
+        return _stub_build_case(evidence, ui_language, device, timezone)
+
+    monkeypatch.setattr(app_module, "settings", OPEN_SETTINGS)
+    monkeypatch.setattr(app_module, "JOB_INLINE_WAIT_SECONDS", 0.05)
+    monkeypatch.setattr(app_module, "_parse_upload", lambda content: _fixture_raw_events())
+    monkeypatch.setattr(app_module, "build_case", slow_build)
+    first = client.post(
+        "/upload", files={"file": ("failures.evtx", b"not-parsed-in-this-test")},
+        data={"lang": "es"}, headers={"HX-Request": "true"},
+    )
+    assert first.status_code == 200 and "HX-Redirect" not in first.headers
+    assert "data-job-polling" in first.text and "/job/" in first.text
+    assert "No cierres ni actualices" in first.text
+    job_url = first.text.split('hx-get="', 1)[1].split('"', 1)[0].replace("&amp;", "&")
+    release.set()
+    job = next(iter(j for j in app_module.JOBS.values() if j.get("thread")))
+    for j in list(app_module.JOBS.values()):
+        j["thread"].join(5)
+    done = client.get(job_url, headers={"HX-Request": "true"})
+    assert done.headers["HX-Redirect"].startswith("/case/")
+    assert "content" not in job  # uploaded bytes are freed
+
+
+def test_unknown_job_says_case_is_gone():
+    html = client.get("/job/nope?lang=en", headers={"HX-Request": "true"}).text
+    assert "no longer in memory" in html
+
+
+def test_fast_upload_still_redirects_directly(monkeypatch):
+    monkeypatch.setattr(app_module, "settings", OPEN_SETTINGS)
+    monkeypatch.setattr(app_module, "_parse_upload", lambda content: _fixture_raw_events())
+    monkeypatch.setattr(app_module, "build_case", _stub_build_case)
+    response = client.post(
+        "/upload", files={"file": ("failures.evtx", b"x")},
+        data={"lang": "en"}, headers={"HX-Request": "true"},
+    )
+    assert response.headers["HX-Redirect"].startswith("/case/")

@@ -312,6 +312,9 @@ small { color: var(--muted); }
 
 .ld-steps { margin: 0.5rem 0; padding-left: 1.25rem; font-weight: 400; }
 .ld-steps li { opacity: 0.45; }
+.job-steps li { animation: none !important; }
+.job-steps li.done { opacity: 1; color: var(--accent-dark); }
+.job-steps li.active { opacity: 1; font-weight: 700; }
 .loading.htmx-request .ld-steps li { animation: ld-step 1s forwards; }
 .loading.htmx-request .ld-steps li:nth-child(1) { animation-delay: 0s; }
 .loading.htmx-request .ld-steps li:nth-child(2) { animation-delay: 2s; }

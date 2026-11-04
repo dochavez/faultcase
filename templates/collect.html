@@ -192,8 +192,14 @@
       form.addEventListener(name, function () { busy = false; });
     });
   input.addEventListener("change", function () { show(input.files.length ? problem() : ""); });
+  var leaving = false;
+  document.body.addEventListener("htmx:beforeOnLoad", function (event) {
+    var xhr = event.detail && event.detail.xhr;
+    if (xhr && xhr.getResponseHeader("HX-Redirect")) { leaving = true; }
+  });
   window.addEventListener("beforeunload", function (event) {
-    if (busy) { event.preventDefault(); event.returnValue = ""; }
+    var polling = document.querySelector("[data-job-polling]");
+    if (!leaving && (busy || polling)) { event.preventDefault(); event.returnValue = ""; }
   });
 })();
 try {

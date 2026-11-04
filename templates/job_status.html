@@ -1,0 +1,13 @@
+<div class="job" data-job-polling hx-get="/job/{{ job_id }}?lang={{ lang }}"
+     hx-trigger="every 2s" hx-swap="outerHTML" aria-live="polite">
+  <p class="keep-open" role="status">⚠️ {{ t.ld_keep_open }}</p>
+  <p><span class="spinner" aria-hidden="true"></span> <strong>{{ t.ld_title }}</strong>
+     <span class="meta">· {{ t.job_elapsed.format(s=elapsed) }}</span></p>
+  <ol class="ld-steps job-steps">
+  {% for key in ["ld_1", "ld_2", "ld_3", "ld_4"] %}
+    <li class="{{ 'done' if loop.index0 < current else ('active' if loop.index0 == current else '') }}">
+      {{ '✓ ' if loop.index0 < current else '' }}{{ t[key] }}</li>
+  {% endfor %}
+  </ol>
+  <small>{{ t.ld_note }}</small>
+</div>

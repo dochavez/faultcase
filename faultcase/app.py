@@ -30,6 +30,7 @@ from starlette.concurrency import run_in_threadpool
 
 from faultcase.adapters.windows import evtx as evtx_adapter
 from faultcase.adapters.windows import battery_report, cdb, msinfo, wmi
+from faultcase import agent as agent_module
 from faultcase.agent import build_case, explain_case, fix_plan
 from faultcase.demo import DEMO_CASE_PATH, DEMO_DEVICE, build_demo_evidence
 from faultcase.demo import load_demo_summaries
@@ -222,6 +223,153 @@ def download_filter():
     )
 
 
+class _PipelineError(Exception):
+    """A user-facing error from the upload pipeline (already translated)."""
+
+
+JOBS: dict[str, dict] = {}
+JOBS_LOCK = threading.Lock()
+JOB_STAGES = ("reading", "rules", "analysis", "writing")
+# How long the upload request waits for a job before switching to polling.
+JOB_INLINE_WAIT_SECONDS = 1.5
+
+
+def _run_pipeline(job: dict) -> str:
+    """Parse, normalize, analyze and store one upload. Returns the case URL.
+
+    Runs in a worker thread; ``job["stage"]`` is updated for the progress
+    page. Raises _PipelineError with a translated message on bad input.
+    """
+    lang = job["lang"]
+    t = STRINGS[lang]
+    tz = job["tz"]
+
+    def stage(name: str) -> None:
+        job["stage"] = name
+
+    stage("reading")
+    try:
+        raw_events = _parse_upload(job["content"])
+    except Exception:
+        raise _PipelineError(t["err_parse"])
+    msinfo_data = None
+    if job.get("msinfo_bytes") is not None:
+        try:
+            msinfo_data = msinfo.parse_msinfo_bytes(job["msinfo_bytes"])
+        except Exception:
+            raise _PipelineError(t["err_msinfo"])
+        if not any(v for k, v in msinfo_data.items() if k != "gpus") \
+                and not msinfo_data.get("gpus"):
+            raise _PipelineError(t["err_msinfo"])
+    wmi_data = None
+    if job["local_wmi"] and LOCAL_WMI_AVAILABLE:
+        try:
+            wmi_data = wmi.read_device_info()
+        except Exception as exc:
+            raise _PipelineError(f"{t['err_wmi']} ({exc})")
+    battery_data = None
+    if job.get("battery_bytes") is not None:
+        try:
+            battery_data = battery_report.parse_battery_report_bytes(job["battery_bytes"])
+        except Exception:
+            raise _PipelineError(t["err_battery"])
+        if battery_data.get("wear_percent") is None \
+                and not battery_data.get("capacity_history"):
+            raise _PipelineError(t["err_battery"])
+    elif job["local_battery"] and LOCAL_BATTERY_AVAILABLE:
+        try:
+            battery_data = battery_report.generate_local_report()
+        except Exception as exc:
+            raise _PipelineError(f"{t['err_battery_gen']} ({exc})")
+    device = _build_device(msinfo_data, job["manual"], wmi_data)
+    dump_inputs: list[dict] = []
+    summaries: dict[str, str] = {}
+    local_stats: dict | None = None
+    if job["local_dumps"] and LOCAL_DUMPS_AVAILABLE:
+        records = cdb.collect_minidumps()
+        fatal = next((r for r in records if r["file"] is None), None)
+        if fatal is not None:
+            raise _PipelineError(f"{t['err_minidump']} ({fatal['error']})")
+        ok = failed = 0
+        for record in records:
+            if record["dump"] is not None:
+                dump_inputs.append({"file": record["file"], **record["dump"]})
+                summaries[record["file"] + ".txt"] = record["summary"] or ""
+                ok += 1
+            else:
+                failed += 1
+        local_stats = {"ok": ok, "failed": failed}
+    stage("rules")
+    evidence = normalize(raw_events, dump_inputs).evidence
+    if battery_data:
+        evidence["battery"] = battery_data
+    if not evidence["events"]:
+        raise _PipelineError(t["err_no_events"])
+    if not _take_upload_slot(job["client"]):
+        raise _PipelineError(t["err_rate_limit"])
+    stage("analysis")
+    agent_module.PROGRESS.hook = stage
+    try:
+        built = build_case(evidence, lang, device or None, tz)
+    except (RouterError, ValueError) as exc:
+        raise _PipelineError(f"{t['err_agent']}: {exc}")
+    finally:
+        agent_module.PROGRESS.hook = None
+    findings = apply_rules(evidence, tz=tz)
+    case_id = _store_case(
+        findings, built, summaries, local_stats, timezone=tz,
+        manufacturer=(device or {}).get("manufacturer"),
+    )
+    return f"/case/{case_id}?lang={lang}"
+
+
+def _job_worker(job: dict) -> None:
+    try:
+        job["url"] = _run_pipeline(job)
+        job["state"] = "done"
+    except _PipelineError as exc:
+        job["error"], job["state"] = str(exc), "error"
+    except Exception as exc:  # never leave the page polling forever
+        job["error"] = f"{STRINGS[job['lang']]['err_agent']}: {type(exc).__name__}"
+        job["state"] = "error"
+    finally:
+        for key in ("content", "msinfo_bytes", "battery_bytes"):
+            job.pop(key, None)  # uploaded bytes are freed right away
+
+
+def _start_job(job: dict) -> str:
+    job_id = uuid.uuid4().hex[:16]
+    job.update({"state": "running", "stage": "reading", "started": time.time()})
+    with JOBS_LOCK:
+        for old in [k for k, v in JOBS.items() if time.time() - v["started"] > 3600]:
+            JOBS.pop(old, None)
+        JOBS[job_id] = job
+    worker = threading.Thread(target=_job_worker, args=(job,), daemon=True)
+    job["thread"] = worker
+    worker.start()
+    return job_id
+
+
+def _job_response(request: Request, job_id: str, job: dict | None, lang: str):
+    """HTMX answer for a job: redirect when done, error box, or progress."""
+    if job is None:
+        return templates.TemplateResponse(
+            request, "error_box.html", _ctx(lang, message=STRINGS[lang]["err_case_gone"])
+        )
+    if job["state"] == "done":
+        return Response(status_code=200, headers={"HX-Redirect": job["url"]})
+    if job["state"] == "error":
+        return templates.TemplateResponse(
+            request, "error_box.html", _ctx(lang, message=job["error"])
+        )
+    current = JOB_STAGES.index(job.get("stage", "reading"))
+    return templates.TemplateResponse(
+        request, "job_status.html",
+        _ctx(lang, job_id=job_id, current=current,
+             elapsed=int(time.time() - job["started"])),
+    )
+
+
 @app.post("/upload")
 async def upload(
     request: Request,
@@ -238,6 +386,12 @@ async def upload(
     local_wmi: str = Form(""),
     local_battery: str = Form(""),
 ):
+    """Validate and read the files, then analyze them as a background job.
+
+    HTMX requests get either the finished result (fast cases) or a progress
+    fragment that polls /job/{id}: no single HTTP request has to stay open
+    for the whole analysis (Modal cuts web requests after ~150 s).
+    """
     lang = get_lang(lang)
     t = STRINGS[lang]
     tz = _safe_tz(tz)
@@ -251,91 +405,47 @@ async def upload(
         return _error(request, lang, t["err_too_big"])
     if not content:
         return _error(request, lang, t["err_empty"])
-    try:
-        raw_events = _parse_upload(content)
-    except Exception:
-        return _error(request, lang, t["err_parse"])
-    msinfo_data = None
+    msinfo_bytes = None
     if msinfo_file is not None and msinfo_file.filename:
         if not msinfo_file.filename.lower().endswith(".txt"):
             return _error(request, lang, t["err_msinfo_type"])
         msinfo_bytes = await msinfo_file.read(MAX_MSINFO_BYTES + 1)
         if len(msinfo_bytes) > MAX_MSINFO_BYTES:
             return _error(request, lang, t["err_msinfo_big"])
-        try:
-            msinfo_data = msinfo.parse_msinfo_bytes(msinfo_bytes)
-        except Exception:
-            return _error(request, lang, t["err_msinfo"])
-        if not any(v for k, v in msinfo_data.items() if k != "gpus") \
-                and not msinfo_data.get("gpus"):
-            return _error(request, lang, t["err_msinfo"])
-    wmi_data = None
-    if local_wmi and LOCAL_WMI_AVAILABLE:
-        try:
-            wmi_data = wmi.read_device_info()
-        except Exception as exc:
-            return _error(request, lang, f"{t['err_wmi']} ({exc})")
-    battery_data = None
+    battery_bytes = None
     if battery_file is not None and battery_file.filename:
         if not battery_file.filename.lower().endswith((".html", ".htm")):
             return _error(request, lang, t["err_battery_type"])
         battery_bytes = await battery_file.read(MAX_BATTERY_BYTES + 1)
         if len(battery_bytes) > MAX_BATTERY_BYTES:
             return _error(request, lang, t["err_battery_big"])
+    job = {
+        "lang": lang, "tz": tz, "client": _client_id(request),
+        "content": content, "msinfo_bytes": msinfo_bytes,
+        "battery_bytes": battery_bytes,
+        "local_dumps": bool(local_dumps), "local_wmi": bool(local_wmi),
+        "local_battery": bool(local_battery),
+        "manual": {"manufacturer": dev_manufacturer, "model": dev_model,
+                   "purchase": dev_purchase},
+    }
+    if not _is_htmx(request):
+        # No JavaScript: run inline and answer when done.
         try:
-            battery_data = battery_report.parse_battery_report_bytes(battery_bytes)
-        except Exception:
-            return _error(request, lang, t["err_battery"])
-        if battery_data.get("wear_percent") is None \
-                and not battery_data.get("capacity_history"):
-            return _error(request, lang, t["err_battery"])
-    elif local_battery and LOCAL_BATTERY_AVAILABLE:
-        try:
-            battery_data = battery_report.generate_local_report()
-        except Exception as exc:
-            return _error(request, lang, f"{t['err_battery_gen']} ({exc})")
-    device = _build_device(msinfo_data, {
-        "manufacturer": dev_manufacturer,
-        "model": dev_model,
-        "purchase": dev_purchase,
-    }, wmi_data)
-    dump_inputs: list[dict] = []
-    summaries: dict[str, str] = {}
-    local_stats: dict | None = None
-    if local_dumps and LOCAL_DUMPS_AVAILABLE:
-        records = cdb.collect_minidumps()
-        fatal = next((r for r in records if r["file"] is None), None)
-        if fatal is not None:
-            return _error(request, lang, f"{t['err_minidump']} ({fatal['error']})")
-        ok = failed = 0
-        for record in records:
-            if record["dump"] is not None:
-                dump_inputs.append({"file": record["file"], **record["dump"]})
-                summaries[record["file"] + ".txt"] = record["summary"] or ""
-                ok += 1
-            else:
-                failed += 1
-        local_stats = {"ok": ok, "failed": failed}
-    evidence = normalize(raw_events, dump_inputs).evidence
-    if battery_data:
-        evidence["battery"] = battery_data
-    if not evidence["events"]:
-        return _error(request, lang, t["err_no_events"])
-    if not _take_upload_slot(_client_id(request)):
-        return _error(request, lang, t["err_rate_limit"])
-    try:
-        built = await run_in_threadpool(build_case, evidence, lang, device or None, tz)
-    except (RouterError, ValueError) as exc:
-        return _error(request, lang, f"{t['err_agent']}: {exc}")
-    findings = apply_rules(evidence, tz=tz)
-    case_id = _store_case(
-        findings, built, summaries, local_stats, timezone=tz,
-        manufacturer=(device or {}).get("manufacturer"),
-    )
-    url = f"/case/{case_id}?lang={lang}"
-    if _is_htmx(request):
-        return Response(status_code=200, headers={"HX-Redirect": url})
-    return RedirectResponse(url, status_code=303)
+            url = await run_in_threadpool(_run_pipeline, job)
+        except _PipelineError as exc:
+            return _error(request, lang, str(exc))
+        return RedirectResponse(url, status_code=303)
+    job_id = _start_job(job)
+    await run_in_threadpool(job["thread"].join, JOB_INLINE_WAIT_SECONDS)
+    return _job_response(request, job_id, job, lang)
+
+
+@app.get("/job/{job_id}")
+def job_status(request: Request, job_id: str):
+    lang = get_lang(request.query_params.get("lang"))
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+    return _job_response(request, job_id, job, lang)
 
 
 @app.post("/demo")
