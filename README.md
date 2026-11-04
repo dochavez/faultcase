@@ -63,6 +63,12 @@ When a new laptop keeps rebooting on its own, the problem falls between three co
 
 The main case: a Lenovo Legion Pro 7 16IAX10H (machine type 83F5, NVIDIA GPU, bought in January 2026) with 6 incidents in 6 months (2026-04-22 to 2026-10-23). Four crashes left memory dumps, all blaming `nvlddmkm.sys` across two driver builds (2026-03-04 and 2026-02-14); two more freezes left no dump at all. That real anonymized case ships as the one-click demo.
 
+The same two computers, diagnosed by FaultCase on the live demo:
+
+![The two real computers diagnosed by FaultCase](docs/img/inspiration/two-computers-diagnosed.jpg)
+
+*Left: the second computer, "Instability, unclear cause": 40 unexpected shutdowns, most of them without a crash code, plus Wi-Fi driver errors. Right: the main computer, "Likely hardware fault": 6 crashes in 6 months linked to the NVIDIA display driver. Same tool, two different conclusions, each with its own evidence.*
+
 ## Why Muse helps
 
 The computer is the device most people use every day for work and study, so when it fails the cost is real: lost hours, lost files and a support process few people know how to navigate. Event Viewer already holds the evidence, but it is written for engineers. Muse turns it into decisions:

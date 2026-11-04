@@ -63,6 +63,12 @@ Cuando una laptop nueva se reinicia sola una y otra vez, el problema cae entre t
 
 Este proyecto nació de un caso real: una Lenovo Legion Pro 7 16IAX10H (tipo de máquina 83F5, GPU NVIDIA, comprada en enero de 2026) con 6 incidentes en 6 meses (del 2026-04-22 al 2026-10-23). Cuatro fallos dejaron volcados de memoria, todos culpando a `nvlddmkm.sys` en dos compilaciones distintas del controlador (2026-03-04 y 2026-02-14); otros dos congelamientos no dejaron ningún volcado. Ese caso real anonimizado se incluye como la demostración de un clic.
 
+Los mismos dos equipos, diagnosticados por FaultCase en la demo en vivo:
+
+![Los dos equipos reales diagnosticados por FaultCase](docs/img/inspiration/two-computers-diagnosed.jpg)
+
+*Izquierda: el segundo equipo, "Inestabilidad de causa incierta": 40 apagados inesperados, la mayoría sin código de error, más errores del controlador Wi-Fi. Derecha: el equipo principal, "Probable fallo de hardware": 6 fallos en 6 meses relacionados con el controlador de pantalla de NVIDIA. La misma herramienta, dos conclusiones distintas, cada una con su evidencia.*
+
 ## Por qué ayuda Muse
 
 La computadora es el equipo que la mayoría usa todos los días para trabajar y estudiar, así que cuando falla el costo es real: horas perdidas, archivos en riesgo y un proceso de soporte que pocos saben recorrer. El Visor de eventos ya guarda la evidencia, pero está escrito para ingenieros. Muse la convierte en decisiones:
