@@ -840,6 +840,8 @@ def test_upload_form_validates_in_the_browser_and_warns_to_keep_open():
     page = client.get("/?lang=en").text
     assert 'id="evtx-error"' in page and "Choose your .evtx file first" in page
     assert "htmx:beforeRequest" in page and "beforeunload" in page
+    # The guard is released as soon as the response arrives (before HX-Redirect).
+    assert "htmx:beforeOnLoad" in page
     assert "close or refresh this tab" in page
     es = client.get("/?lang=es").text
     assert "No cierres ni actualices esta pestaña" in es

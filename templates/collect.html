@@ -185,7 +185,12 @@
     if (text) { event.preventDefault(); show(text); return; }
     show(""); busy = true;
   });
-  form.addEventListener("htmx:afterRequest", function () { busy = false; });
+  // The answer has arrived: stop guarding before HTMX follows HX-Redirect
+  // to the Diagnosis page, otherwise the browser asks "Leave page?".
+  ["htmx:beforeOnLoad", "htmx:afterRequest", "htmx:responseError", "htmx:sendError"]
+    .forEach(function (name) {
+      form.addEventListener(name, function () { busy = false; });
+    });
   input.addEventListener("change", function () { show(input.files.length ? problem() : ""); });
   window.addEventListener("beforeunload", function (event) {
     if (busy) { event.preventDefault(); event.returnValue = ""; }
