@@ -10,7 +10,7 @@
 
 **FaultCase is a free web tool that reads the error history Windows already keeps, tells you in plain words what is failing on your computer and why, helps you try the safe fixes first, and, if the problem is still there, prepares the evidence and the report your manufacturer's support needs.**
 
-Nothing to install: you export one file from Windows, upload it, and get the answer in about a minute.
+Nothing to install: you export one file, upload it, and get Muse's answer on what it found and how to fix it, and finally it prepares all the information for you to send to the manufacturer.
 
 > **Works with any brand.** FaultCase reads what Windows 10 and 11 already log, so it works on any laptop or desktop: Lenovo, HP, Dell, ASUS, Acer, MSI, Microsoft Surface, Samsung or a custom-built PC. The real case behind this project happens to be two Lenovo computers, but nothing in the analysis depends on the brand; the manufacturer only changes the support link on the Action screen.
 
