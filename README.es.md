@@ -137,7 +137,7 @@ Después abre http://127.0.0.1:8000 y haz clic en **Try a sample case**.
 
 ![Explicar con Muse](docs/img/explain-es.png)
 
-**Intentar solucionarlo primero**: a petición, Muse Spark convierte las soluciones seguras de los playbooks para los componentes con problemas en un plan ordenado (por qué, cómo, minutos, riesgo, cómo comprobar, cuándo parar). Los pasos marcados se añaden al informe para el fabricante en el navegador:
+**Intentar solucionarlo primero**: a petición, Muse Spark convierte las soluciones seguras de los playbooks para los componentes con problemas en un plan ordenado (por qué, cómo, minutos, riesgo, cómo comprobar, cuándo parar). Cada paso trae un botón que abre la página exacta de Configuración de Windows o el sitio de soporte del fabricante (nunca cambia nada por su cuenta). Los pasos marcados se añaden al informe para el fabricante en el navegador:
 
 ![Intentar solucionarlo primero](docs/img/fix-es.png)
 
@@ -447,6 +447,7 @@ pytest -m live    # construye el caso real con modelos reales (necesita claves e
 
 - Más playbooks (Bluetooth, impresoras).
 - Adaptadores para Linux y macOS.
+- Arreglos con un clic en modo local: acciones seguras y reversibles (ahorro de energía del Wi-Fi, volcados de memoria pequeños, suspensión desactivada temporalmente) aplicadas con confirmación del usuario y opción de deshacer, elegidas por Muse de una lista fija.
 - Ejecuciones de benchmark más grandes con más casos sintéticos.
 
 ## Preguntas frecuentes

@@ -217,3 +217,29 @@ def test_shutdown_without_crash_code_gets_a_label():
     assert incident["code_hex"] is None
     assert incident["label_key"] == "unexpected_shutdown"
     assert findings["summary"]["incidents"][0]["label"] == "Unexpected shutdown (no crash code)"
+
+
+
+def _shutdown(minutes, alive_minutes_before):
+    import base64, struct
+    alive = START + timedelta(minutes=minutes - alive_minutes_before)
+    st = struct.pack("<8H", alive.year, alive.month, 0, alive.day,
+                     alive.hour, alive.minute, alive.second, 0)
+    return _raw(minutes, "EventLog", 6008,
+                {"Binary": base64.b64encode(st + st).decode()}, level=2)
+
+
+def test_long_power_off_before_boot_is_a_power_loss_hypothesis():
+    events = [_shutdown(0, 600), _shutdown(3000, 240), _shutdown(9000, 3)]
+    findings = rules.apply_rules(normalize.normalize(events).evidence)
+    offs = sorted(i["off_minutes"] for i in findings["incidents"])
+    assert offs == [3, 240, 600]
+    pattern = next(p for p in findings["patterns"] if p["id"] == "power_loss_shutdowns")
+    assert pattern["verdict"] == "hypothesis" and pattern["detail"].startswith("2/3 ")
+    assert findings["summary"]["shutdowns_after_long_power_off"] == 2
+
+
+def test_bad_6008_binary_is_ignored():
+    events = [_raw(0, "EventLog", 6008, {"Binary": "not-base64"}, level=2)]
+    findings = rules.apply_rules(normalize.normalize(events).evidence)
+    assert findings["incidents"][0]["off_minutes"] is None

@@ -254,6 +254,8 @@ small { color: var(--muted); }
 .fix-check input { width: 1.15rem; height: 1.15rem; }
 .fix-meta { color: var(--muted); font-size: 0.9rem; }
 .fix-ok { color: #14532d; }
+.fix-acts { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem !important; }
+.fix-acts code { font-size: 0.85rem; }
 .fix-stop { border-top: 1px solid var(--line); margin-top: 0.9rem; padding-top: 0.6rem; }
 .fix-stop small { display: block; margin-top: 0.4rem; }
 .tried { border: 1px solid var(--line); border-radius: var(--radius); padding: 0.4rem 1rem 0.8rem; margin: 1rem 0; }

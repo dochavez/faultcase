@@ -44,6 +44,65 @@ def _incident_time(time_str: str, tz: str | None) -> str:
     )
 
 
+SHUTDOWN_KIND = "unexpected_shutdown"
+# Powered off this long before the next boot suggests power loss
+# (battery drained, power cut, power button held), not a crash-reboot.
+POWER_LOSS_MINUTES = 60
+
+
+def last_alive_utc(event: dict):
+    """Last time Windows was known running, from an event 6008.
+
+    Event 6008's binary data holds two SYSTEMTIME structures (local, then
+    UTC) for the last heartbeat before the unexpected shutdown. Returns an
+    aware UTC datetime, or None when the data is missing or malformed.
+    """
+    import base64
+    import struct
+    from datetime import timezone as _tz
+    raw = (event.get("fields") or {}).get("Binary")
+    if not raw:
+        return None
+    try:
+        data = base64.b64decode(str(raw))
+        year, month, _dow, day, hour, minute, second, _ms = struct.unpack("<8H", data[16:32])
+        return datetime(year, month, day, hour, minute, second, tzinfo=_tz.utc)
+    except Exception:
+        return None
+
+
+def _off_minutes(group: list[dict]):
+    for event in group:
+        if event.get("kind") != SHUTDOWN_KIND:
+            continue
+        alive = last_alive_utc(event)
+        if alive is None:
+            continue
+        try:
+            boot = datetime.fromisoformat(event["time"])
+        except (KeyError, ValueError):
+            continue
+        minutes = (boot - alive).total_seconds() / 60
+        if minutes >= 0:
+            return round(minutes)
+    return None
+
+
+def _power_loss_patterns(incidents: list[dict]) -> list[dict]:
+    measured = [i for i in incidents if i.get("off_minutes") is not None]
+    long_off = [i for i in measured if i["off_minutes"] >= POWER_LOSS_MINUTES]
+    if len(long_off) < 2:
+        return []
+    return [{
+        "id": "power_loss_shutdowns",
+        "playbook": STABILITY,
+        "verdict": "hypothesis",
+        "detail": f"{len(long_off)}/{len(measured)} unexpected shutdowns were followed by at least "
+                  f"{POWER_LOSS_MINUTES // 60} hour powered off: possibly power loss (battery drained, "
+                  "power cut or power button held) rather than a crash",
+    }]
+
+
 def _build_incidents(
     events: list[dict], dumps: list[dict], codes: dict, tz: str | None
 ) -> list[dict]:
@@ -77,6 +136,7 @@ def _build_incidents(
             "label_key": hex(code) if isinstance(code, int) else main.get("kind"),
             "explanation": info.get("explanation"),
             "power_transition": any(_sleep_in_progress(e) for e in reboots),
+            "off_minutes": _off_minutes(group),
             "dump_module": dump.get("image_name"),
             "driver_timestamp": dump.get("driver_timestamp"),
             "params": main.get("params"),
@@ -625,6 +685,7 @@ def apply_rules(
     )
     patterns = (
         _stability_patterns(incidents, dumps)
+        + _power_loss_patterns(incidents)
         + _gpu_reset_patterns(counted)
         + _wifi_patterns(counted)
         + _usb_patterns(counted)
@@ -683,6 +744,10 @@ def apply_rules(
             "incidents_with_dump": sum(1 for i in incidents if i["dump_module"]),
             "freezes_without_dump": sum(
                 1 for i in incidents if i["code"] == 0 and not i["dump_module"]
+            ),
+            "shutdowns_after_long_power_off": sum(
+                1 for i in incidents
+                if (i.get("off_minutes") or 0) >= POWER_LOSS_MINUTES
             ),
             "first_incident_date": dates[0] if dates else None,
             "last_incident_date": dates[-1] if dates else None,

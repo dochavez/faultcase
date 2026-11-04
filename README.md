@@ -137,7 +137,7 @@ Then open http://127.0.0.1:8000 and click **Try a sample case**.
 
 ![Explain it with Muse](docs/img/explain-en.png)
 
-**Try to fix it first** — on demand, Muse Spark turns the playbooks' safe fixes for the components that need attention into an ordered plan (why, how, minutes, risk, how to check, when to stop). Ticked steps are added to the manufacturer report in the browser:
+**Try to fix it first** — on demand, Muse Spark turns the playbooks' safe fixes for the components that need attention into an ordered plan (why, how, minutes, risk, how to check, when to stop). Each step has a one-click helper that opens the exact Windows Settings page or the manufacturer's support site (it never changes anything by itself). Ticked steps are added to the manufacturer report in the browser:
 
 ![Try to fix it first](docs/img/fix-en.png)
 
@@ -447,6 +447,7 @@ pytest -m live    # builds the real case with real models (needs API keys in .en
 
 - More playbooks (Bluetooth, printers).
 - Linux and macOS adapters.
+- One-click fixes in local mode: safe, reversible actions (Wi-Fi power saving, small memory dumps, temporary no-sleep) applied with the user's confirmation and an undo, chosen by Muse from a fixed list.
 - Larger benchmark runs across more synthetic cases.
 
 ## FAQ

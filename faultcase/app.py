@@ -655,15 +655,61 @@ MODEL_NAMES = {"meta": "Muse Spark", "baseten": "Muse Spark Open",
                "fireworks": "Muse Spark Open"}
 
 
+# One-click helpers for fix-plan steps. They only OPEN the right Windows
+# Settings page (ms-settings: links), the manufacturer's support site, or
+# copy a read-only command: FaultCase never changes the computer itself.
+# Matched by keywords in the step (English and Spanish), first match wins
+# per action, at most two buttons per step.
+STEP_ACTIONS = [
+    ("support", r"bios|driver|controlador|vantage|hardware diagnostic|diagnóstico de hardware|hardware scan|prueba de hardware|support|soporte", None),
+    ("windows_update", r"windows update|actualizaciones? de windows|pending .*updates|actualizaciones pendientes", "ms-settings:windowsupdate"),
+    ("sleep", r"\bsleep\b|suspensi|hibernat", "ms-settings:powersleep"),
+    ("wifi", r"wi-?fi|wireless|inalámbric", "ms-settings:network-wifi"),
+    ("dumps", r"memory dump|minidump|volcado|startup and recovery|inicio y recuperaci", "ms-settings:about"),
+    ("battery", r"batter|batería|conservation|conservaci", "ms-settings:batterysaver"),
+    ("devices", r"\busb\b|bluetooth|\bport\b|puerto|dock", "ms-settings:connecteddevices"),
+    ("apps", r"reinstall|reinstala|\bapplication\b|aplicaci", "ms-settings:appsfeatures"),
+    ("backup", r"back ?up|copia de seguridad|respaldo", "ms-settings:backup"),
+    ("mdsched", r"mdsched|memory diagnostic|diagnóstico de memoria", "copy:mdsched.exe"),
+    ("chkdsk", r"chkdsk", "copy:chkdsk C:"),
+]
+
+
+def _step_actions(step: dict, support_name: str | None, support_url: str | None) -> list[dict]:
+    text = " ".join(str(step.get(k, "")) for k in ("title", "how")).lower()
+    actions = []
+    for key, pattern, target in STEP_ACTIONS:
+        if not re.search(pattern, text):
+            continue
+        if key == "support":
+            if not support_url:
+                continue
+            actions.append({"key": key, "href": support_url, "external": True,
+                            "name": support_name})
+        elif target.startswith("copy:"):
+            actions.append({"key": key, "command": target[5:]})
+        else:
+            actions.append({"key": key, "href": target})
+        if len(actions) == 2:
+            break
+    return actions
+
+
 def _explain_ctx(stored: dict, lang: str, **extra) -> dict:
     components = _components(stored["findings"])
     # Shown only after the user clicks, even when it is already cached
     # (the sample case ships it precomputed).
     revealed = lang in stored.get("revealed", set())
     fix_shown = lang in stored.get("fix_revealed", set())
+    fix = (stored.get("fix_plans") or {}).get(lang) if fix_shown else None
+    support_name, support_url = _support_site(stored.get("manufacturer"))
+    fix_actions = [
+        _step_actions(step, support_name, support_url)
+        for step in ((fix or {}).get("plan") or {}).get("steps", [])
+    ]
     return dict(
         explanation=(stored.get("explanations") or {}).get(lang) if revealed else None,
-        fix=(stored.get("fix_plans") or {}).get(lang) if fix_shown else None,
+        fix=fix, fix_actions=fix_actions,
         status_by_component={c["id"]: c["status"] for c in components},
         **extra,
     )

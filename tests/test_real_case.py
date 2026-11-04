@@ -54,6 +54,7 @@ def test_rules_summary():
         "last_incident_date": "2026-10-23",
         "months_span": 6,
         "driver_change_direction": "older",
+        "shutdowns_after_long_power_off": 0,
     }
 
 

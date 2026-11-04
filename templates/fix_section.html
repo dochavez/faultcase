@@ -16,9 +16,24 @@
       <p><strong>{{ t.fix_why }}:</strong> {{ step.why }}</p>
       <p><strong>{{ t.fix_how }}:</strong> {{ step.how }}</p>
       <p class="fix-ok"><strong>{{ t.fix_check }}:</strong> {{ step.check }}</p>
+      {% set acts = fix_actions[loop.index0] if fix_actions and loop.index0 < fix_actions|length else [] %}
+      {% if acts %}
+      <p class="fix-acts">
+      {% for a in acts %}
+        {% if a.command %}
+        <button type="button" class="btn btn-secondary btn-small fix-copy" data-cmd="{{ a.command }}"
+                data-done="{{ t.ac_copied }}">⧉ {{ t["act_" + a.key] }} <code>{{ a.command }}</code></button>
+        {% else %}
+        <a class="btn btn-secondary btn-small" href="{{ a.href }}"{% if a.external %} target="_blank" rel="noopener"{% endif %}>
+          {{ t["act_" + a.key].format(manufacturer=a.name) if a.key == "support" else t["act_" + a.key] }} ↗</a>
+        {% endif %}
+      {% endfor %}
+      </p>
+      {% endif %}
     </li>
   {% endfor %}
   </ol>
+  <p class="meta">{{ t.act_note }}</p>
   <div class="fix-stop">
     <p><strong>{{ t.fix_stop }}:</strong> {{ p.stop_when }}</p>
     <a class="btn btn-primary" href="/case/{{ case_id }}/action?lang={{ lang }}">{{ t.dg_cta }}</a>
@@ -26,6 +41,13 @@
   </div>
   <p class="meta">{{ t.fix_by.format(model=fix.model) }}</p>
   <script>
+  document.querySelectorAll(".fix-copy").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var original = button.innerHTML;
+      function done() { button.textContent = "✓ " + button.dataset.done; setTimeout(function () { button.innerHTML = original; }, 2000); }
+      if (navigator.clipboard) { navigator.clipboard.writeText(button.dataset.cmd).then(done, done); } else { done(); }
+    });
+  });
   (function () {
     var list = document.querySelector(".fix-steps");
     if (!list) return;

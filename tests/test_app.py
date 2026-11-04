@@ -898,3 +898,31 @@ def test_fast_upload_still_redirects_directly(monkeypatch):
         data={"lang": "en"}, headers={"HX-Request": "true"},
     )
     assert response.headers["HX-Redirect"].startswith("/case/")
+
+
+
+def test_fix_steps_get_safe_one_click_helpers(monkeypatch):
+    steps = [
+        {"component": "stability", "title": "Install the display driver from Lenovo", "why": "w",
+         "how": "Lenovo support site, Drivers.", "minutes": 10, "risk": "low", "check": "c"},
+        {"component": "stability", "title": "Test with sleep turned off", "why": "w",
+         "how": "Settings > System > Power.", "minutes": 2, "risk": "none", "check": "c"},
+        {"component": "hardware", "title": "Run Windows Memory Diagnostic", "why": "w",
+         "how": "Press Windows + R, type mdsched.exe", "minutes": 20, "risk": "none", "check": "c"},
+    ]
+    plan = dict(FIX_PLAN, steps=steps)
+    monkeypatch.setattr(app_module, "fix_plan",
+                        lambda *a, **k: {"plan": plan, "provider": "meta", "latency_ms": 1})
+    case_id, _ = _demo_case_id()
+    app_module.CASES[case_id]["fix_plans"] = {}
+    html = client.post(f"/case/{case_id}/fix", data={"lang": "en"},
+                       headers={"HX-Request": "true"}).text
+    assert 'href="https://support.lenovo.com"' in html
+    assert 'href="ms-settings:powersleep"' in html
+    assert 'data-cmd="mdsched.exe"' in html
+    assert "never changes anything by itself" in html
+
+
+def test_step_actions_without_known_manufacturer_skip_support():
+    acts = app_module._step_actions({"title": "Update the BIOS", "how": ""}, None, None)
+    assert acts == []
