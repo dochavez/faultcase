@@ -920,9 +920,25 @@ def test_fix_steps_get_safe_one_click_helpers(monkeypatch):
     assert 'href="https://support.lenovo.com"' in html
     assert 'href="ms-settings:powersleep"' in html
     assert 'data-cmd="mdsched.exe"' in html
-    assert "never changes anything by itself" in html
+    assert "only after you confirm" in html
+    assert "installed and running locally" in html  # web: no apply button
 
 
 def test_step_actions_without_known_manufacturer_skip_support():
     acts = app_module._step_actions({"title": "Update the BIOS", "how": ""}, None, None)
     assert acts == []
+
+
+def test_fix_plan_shows_apply_buttons_in_local_mode(monkeypatch):
+    steps = [{"component": "stability", "title": "Test with sleep turned off", "why": "w",
+              "how": "Settings > System > Power.", "minutes": 2, "risk": "none", "check": "c"}]
+    monkeypatch.setattr(app_module, "LOCAL_FIXES_AVAILABLE", True)
+    monkeypatch.setattr(app_module.fixes, "status", lambda: {"sleep_off": False})
+    monkeypatch.setattr(app_module, "fix_plan",
+                        lambda *a, **k: {"plan": dict(FIX_PLAN, steps=steps), "provider": "meta"})
+    case_id, _ = _demo_case_id()
+    app_module.CASES[case_id]["fix_plans"] = {}
+    html = client.post(f"/case/{case_id}/fix", data={"lang": "en"},
+                       headers={"HX-Request": "true"}).text
+    assert 'hx-post="/local/fix/sleep_off"' in html and "Apply on this computer" in html
+    assert app_module.FIX_TOKEN in html and "hx-confirm" in html

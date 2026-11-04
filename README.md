@@ -137,9 +137,19 @@ Then open http://127.0.0.1:8000 and click **Try a sample case**.
 
 ![Explain it with Muse](docs/img/explain-en.png)
 
-**Try to fix it first** — on demand, Muse Spark turns the playbooks' safe fixes for the components that need attention into an ordered plan (why, how, minutes, risk, how to check, when to stop). Each step has a one-click helper that opens the exact Windows Settings page or the manufacturer's support site (it never changes anything by itself). Ticked steps are added to the manufacturer report in the browser:
+**Try to fix it first** — on demand, Muse Spark turns the playbooks' safe fixes for the components that need attention into an ordered plan (why, how, minutes, risk, how to check, when to stop). Each step has a one-click helper that opens the exact Windows Settings page or the manufacturer's support site. When FaultCase runs locally on the computer, three steps also get **Apply on this computer** (see below). Ticked steps are added to the manufacturer report in the browser:
 
 ![Try to fix it first](docs/img/fix-en.png)
+
+**One-click fixes (local mode only).** The web version can never change a computer: a website has no access to Windows settings. When FaultCase is installed and running locally on the Windows computer (it still uses Muse through the API), the fix plan adds **Apply on this computer** to three safe, reversible settings:
+
+| Fix | What it changes | Undo | Rights |
+|---|---|---|---|
+| Sleep off for testing | Sleep after "never", plugged in and on battery (`powercfg /change`) | Restores the previous timeouts | User |
+| Small memory dumps | `CrashDumpEnabled = 3`, so the next crash leaves evidence | Restores the previous value | Administrator |
+| Wi-Fi power saving off | Windows may no longer turn the Wi-Fi adapter off (`Set-NetAdapterPowerManagement`) | Restores the previous state | Administrator |
+
+The commands are fixed in `faultcase/adapters/windows/fixes.py`: Muse only chooses which step fits, it never writes or runs a command. Every change asks for confirmation, saves the previous value to `%LOCALAPPDATA%\FaultCase\fix-backup.json` and can be undone. Requests must come from `127.0.0.1` with a per-run secret token, so other websites cannot trigger a fix. Drivers and BIOS are never installed automatically: those buttons open the manufacturer's page.
 
 **Action** — what to do next (with the manufacturer's support link), EN/ES manufacturer report, checklist, evidence ZIP, serial number filled in the browser only:
 
@@ -377,7 +387,7 @@ Each guarantee is enforced by a test:
 | Only parsed fields leave local dump analysis | `test_analyze_dump_returns_only_parsed_fields` |
 | Usage log never stores prompts or keys | `test_baseten_fails_fireworks_answers` |
 
-Plus: read-only (the product never modifies the user's system), uploads processed in memory or a temp folder and deleted right after, cases kept in memory only (gone after 20 minutes idle), the Modal image ships only the filter file (never a personal `.evtx`), and API keys masked to their last 4 characters anywhere they are shown.
+Plus: the analysis is read-only (only the optional local one-click fixes change a setting, after confirmation and with undo), uploads processed in memory or a temp folder and deleted right after, cases kept in memory only (gone after 20 minutes idle), the Modal image ships only the filter file (never a personal `.evtx`), and API keys masked to their last 4 characters anywhere they are shown.
 
 ## Design decisions
 
@@ -447,7 +457,7 @@ pytest -m live    # builds the real case with real models (needs API keys in .en
 
 - More playbooks (Bluetooth, printers).
 - Linux and macOS adapters.
-- One-click fixes in local mode: safe, reversible actions (Wi-Fi power saving, small memory dumps, temporary no-sleep) applied with the user's confirmation and an undo, chosen by Muse from a fixed list.
+- More local one-click fixes, and a before-and-after check after applying them.
 - Larger benchmark runs across more synthetic cases.
 
 ## FAQ
@@ -480,7 +490,7 @@ FaultCase was created for demonstration purposes. Its goal is to show how Muse c
 - It is not affiliated with or endorsed by Microsoft, NVIDIA, Lenovo or any other manufacturer.
 - It does not replace the manufacturer's official support, a technician or a warranty assessment. A verdict is "likely", never a confirmed defect.
 - Every finding is labeled fact or hypothesis and the counts come from deterministic rules; the user reviews the report before sending it.
-- It is read-only: it never changes the computer. Every fix is performed by the user, who decides whether to apply it.
+- The analysis is read-only. A setting changes only when the user runs FaultCase locally and confirms a one-click fix, which can be undone; drivers and BIOS are never installed automatically.
 - It gives no legal advice. The user decides whether and how to contact the manufacturer.
 
 ## License

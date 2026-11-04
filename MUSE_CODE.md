@@ -37,7 +37,7 @@ modal_app.py               # Modal deployment
 
 ## Mandatory rules
 1. **Privacy**: no data reaches a model without going through `redact.py`. `.dmp` files never leave the machine. A test enforces this.
-2. **Read-only**: the product never modifies the user's system.
+2. **Read-only analysis**: the product never modifies the user's system, except the allowlisted local one-click fixes in `adapters/windows/fixes.py` (local Windows mode only, user confirmation, backup and undo).
 3. **Deterministic logic first**: counts, dates, codes and patterns are computed in Python by `rules.py`. Models interpret and write; they never count or invent data.
 4. **Structured output**: every model response is validated against `schemas/case.schema.json`. On failure, retry once, then move to the next provider.
 5. **Honesty**: always separate `fact` from `hypothesis`. The same FAILURE_BUCKET_ID / FAILURE_ID_HASH means the same failure *category*; it does NOT prove the same defect as other machines.

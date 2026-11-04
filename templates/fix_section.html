@@ -26,6 +26,7 @@
         {% else %}
         <a class="btn btn-secondary btn-small" href="{{ a.href }}"{% if a.external %} target="_blank" rel="noopener"{% endif %}>
           {{ t["act_" + a.key].format(manufacturer=a.name) if a.key == "support" else t["act_" + a.key] }} ↗</a>
+        {% if a.fix %}{% set action = a.fix %}{% set applied = fix_status.get(a.fix, False) %}{% include "local_fix.html" %}{% endif %}
         {% endif %}
       {% endfor %}
       </p>

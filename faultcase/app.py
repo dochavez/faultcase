@@ -14,6 +14,7 @@ import io
 import json
 import os
 import re
+import secrets
 import tempfile
 import threading
 import time
@@ -29,7 +30,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from faultcase.adapters.windows import evtx as evtx_adapter
-from faultcase.adapters.windows import battery_report, cdb, msinfo, wmi
+from faultcase.adapters.windows import battery_report, cdb, fixes, msinfo, wmi
 from faultcase import agent as agent_module
 from faultcase.agent import build_case, explain_case, fix_plan
 from faultcase.demo import DEMO_CASE_PATH, DEMO_DEVICE, build_demo_evidence
@@ -110,6 +111,11 @@ settings = load_settings()
 LOCAL_DUMPS_AVAILABLE = cdb.find_cdb() is not None
 LOCAL_WMI_AVAILABLE = wmi.is_available()
 LOCAL_BATTERY_AVAILABLE = battery_report.is_available()
+LOCAL_FIXES_AVAILABLE = fixes.is_available()
+# Per-process secret: a fix request must come from a page this server
+# rendered (blocks other websites from posting to localhost).
+FIX_TOKEN = secrets.token_urlsafe(24)
+LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
 app = FastAPI(title="FaultCase")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
@@ -153,7 +159,9 @@ def _ctx(lang: str, **extra) -> dict:
     return {
         "lang": lang, "t": STRINGS[lang],
         "invite_required": bool(settings.invite_code),
-        "asset_version": ASSET_VERSION, **extra,
+        "asset_version": ASSET_VERSION,
+        "local_fixes": LOCAL_FIXES_AVAILABLE,
+        "fix_token": FIX_TOKEN if LOCAL_FIXES_AVAILABLE else "", **extra,
     }
 
 
@@ -558,6 +566,42 @@ async def fix(request: Request, case_id: str, lang: str = Form("en")):
     )
 
 
+def _is_local_request(request: Request) -> bool:
+    host = request.client.host if request.client else ""
+    if host not in LOCAL_HOSTS:
+        return False
+    origin = request.headers.get("origin")
+    if origin:
+        from urllib.parse import urlparse
+        if (urlparse(origin).hostname or "") not in LOCAL_HOSTS:
+            return False
+    return True
+
+
+@app.post("/local/fix/{action}")
+async def local_fix(
+    request: Request, action: str,
+    op: str = Form("apply"), token: str = Form(""), lang: str = Form("en"),
+):
+    """Apply or undo one allowlisted fix on THIS computer (local mode only)."""
+    lang = get_lang(lang)
+    t = STRINGS[lang]
+    if not LOCAL_FIXES_AVAILABLE or action not in fixes.ACTIONS:
+        return Response(status_code=404)
+    if not _is_local_request(request) or not secrets.compare_digest(token, FIX_TOKEN):
+        return Response(status_code=403)
+    error = None
+    try:
+        await run_in_threadpool(fixes.undo if op == "undo" else fixes.apply, action)
+    except fixes.FixError as exc:
+        error = t.get(f"lf_err_{exc}", t["lf_err_failed"])
+    applied = fixes.status().get(action, False)
+    return templates.TemplateResponse(
+        request, "local_fix.html",
+        _ctx(lang, action=action, applied=applied, fix_error=error),
+    )
+
+
 @app.post("/case/{case_id}/regenerate")
 async def regenerate(
     request: Request,
@@ -675,6 +719,10 @@ STEP_ACTIONS = [
 ]
 
 
+# Step helpers that also have a local one-click fix (fixes.ACTIONS).
+LOCAL_FIX_FOR = {"sleep": "sleep_off", "dumps": "small_dumps", "wifi": "wifi_power_saving_off"}
+
+
 def _step_actions(step: dict, support_name: str | None, support_url: str | None) -> list[dict]:
     text = " ".join(str(step.get(k, "")) for k in ("title", "how")).lower()
     actions = []
@@ -689,7 +737,7 @@ def _step_actions(step: dict, support_name: str | None, support_url: str | None)
         elif target.startswith("copy:"):
             actions.append({"key": key, "command": target[5:]})
         else:
-            actions.append({"key": key, "href": target})
+            actions.append({"key": key, "href": target, "fix": LOCAL_FIX_FOR.get(key)})
         if len(actions) == 2:
             break
     return actions
@@ -710,6 +758,7 @@ def _explain_ctx(stored: dict, lang: str, **extra) -> dict:
     return dict(
         explanation=(stored.get("explanations") or {}).get(lang) if revealed else None,
         fix=fix, fix_actions=fix_actions,
+        fix_status=fixes.status() if (LOCAL_FIXES_AVAILABLE and fix) else {},
         status_by_component={c["id"]: c["status"] for c in components},
         **extra,
     )

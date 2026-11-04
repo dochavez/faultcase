@@ -137,9 +137,19 @@ Después abre http://127.0.0.1:8000 y haz clic en **Try a sample case**.
 
 ![Explicar con Muse](docs/img/explain-es.png)
 
-**Intentar solucionarlo primero**: a petición, Muse Spark convierte las soluciones seguras de los playbooks para los componentes con problemas en un plan ordenado (por qué, cómo, minutos, riesgo, cómo comprobar, cuándo parar). Cada paso trae un botón que abre la página exacta de Configuración de Windows o el sitio de soporte del fabricante (nunca cambia nada por su cuenta). Los pasos marcados se añaden al informe para el fabricante en el navegador:
+**Intentar solucionarlo primero**: a petición, Muse Spark convierte las soluciones seguras de los playbooks para los componentes con problemas en un plan ordenado (por qué, cómo, minutos, riesgo, cómo comprobar, cuándo parar). Cada paso trae un botón que abre la página exacta de Configuración de Windows o el sitio de soporte del fabricante. Cuando FaultCase se ejecuta localmente en el equipo, tres pasos además tienen **Aplicar en este equipo** (ver abajo). Los pasos marcados se añaden al informe para el fabricante en el navegador:
 
 ![Intentar solucionarlo primero](docs/img/fix-es.png)
+
+**Arreglos con un clic (solo en modo local).** La versión web nunca puede cambiar un equipo: un sitio web no tiene acceso a la configuración de Windows. Cuando FaultCase está instalado y se ejecuta localmente en el equipo con Windows (sigue usando Muse a través de la API), el plan agrega **Aplicar en este equipo** a tres ajustes seguros y reversibles:
+
+| Arreglo | Qué cambia | Deshacer | Permisos |
+|---|---|---|---|
+| Suspensión desactivada para probar | Suspender después de "nunca", conectado y con batería (`powercfg /change`) | Restaura los tiempos anteriores | Usuario |
+| Volcados de memoria pequeños | `CrashDumpEnabled = 3`, para que el próximo fallo deje evidencia | Restaura el valor anterior | Administrador |
+| Ahorro de energía del Wi-Fi desactivado | Windows ya no puede apagar el adaptador Wi-Fi (`Set-NetAdapterPowerManagement`) | Restaura el estado anterior | Administrador |
+
+Los comandos están fijos en `faultcase/adapters/windows/fixes.py`: Muse solo elige qué paso corresponde, nunca escribe ni ejecuta un comando. Cada cambio pide confirmación, guarda el valor anterior en `%LOCALAPPDATA%\FaultCase\fix-backup.json` y se puede deshacer. Las peticiones deben venir de `127.0.0.1` con un token secreto por ejecución, para que otros sitios web no puedan activar un arreglo. Los controladores y la BIOS nunca se instalan automáticamente: esos botones abren la página del fabricante.
 
 **Acción**: qué hacer ahora (con el enlace de soporte del fabricante), informe EN/ES, lista previa, ZIP de evidencias y número de serie rellenado solo en el navegador:
 
@@ -377,7 +387,7 @@ Cada garantía está respaldada por una prueba:
 | Solo los campos analizados salen del análisis local de volcados | `test_analyze_dump_returns_only_parsed_fields` |
 | El registro de uso nunca guarda prompts ni claves | `test_baseten_fails_fireworks_answers` |
 
-Además: solo lectura (el producto nunca modifica el sistema del usuario), cargas procesadas en memoria o en una carpeta temporal y eliminadas justo después, y claves de API enmascaradas a sus últimos 4 caracteres dondequiera que se muestren.
+Además: el análisis es de solo lectura (solo los arreglos opcionales con un clic en modo local cambian un ajuste, con confirmación y opción de deshacer), cargas procesadas en memoria o en una carpeta temporal y eliminadas justo después, y claves de API enmascaradas a sus últimos 4 caracteres dondequiera que se muestren.
 
 ## Decisiones de diseño
 
@@ -447,7 +457,7 @@ pytest -m live    # construye el caso real con modelos reales (necesita claves e
 
 - Más playbooks (Bluetooth, impresoras).
 - Adaptadores para Linux y macOS.
-- Arreglos con un clic en modo local: acciones seguras y reversibles (ahorro de energía del Wi-Fi, volcados de memoria pequeños, suspensión desactivada temporalmente) aplicadas con confirmación del usuario y opción de deshacer, elegidas por Muse de una lista fija.
+- Más arreglos con un clic en modo local y una comparación de antes y después de aplicarlos.
 - Ejecuciones de benchmark más grandes con más casos sintéticos.
 
 ## Preguntas frecuentes
@@ -480,7 +490,7 @@ FaultCase se creó con fines demostrativos. Su objetivo es mostrar cómo Muse pu
 - No está afiliado ni respaldado por Microsoft, NVIDIA, Lenovo ni ningún otro fabricante.
 - No sustituye al soporte oficial del fabricante, a un técnico ni a la evaluación de garantía. Un veredicto es "probable", nunca un defecto confirmado.
 - Cada hallazgo se etiqueta como hecho o hipótesis y los conteos salen de reglas deterministas; el usuario revisa el informe antes de enviarlo.
-- Es de solo lectura: nunca modifica el equipo. Cada arreglo lo hace el usuario, que decide si aplicarlo.
+- El análisis es de solo lectura. Un ajuste solo cambia cuando el usuario ejecuta FaultCase localmente y confirma un arreglo con un clic, que se puede deshacer; los controladores y la BIOS nunca se instalan automáticamente.
 - No da asesoría legal. El usuario decide si contacta al fabricante y cómo.
 
 ## Licencia

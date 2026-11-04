@@ -1,0 +1,19 @@
+<span class="local-fix" id="lf-{{ action }}-{{ uid|default('x') }}">
+{% if local_fixes %}
+  {% if fix_error %}<span class="lf-error">{{ fix_error }}</span>{% endif %}
+  {% if applied %}
+  <span class="lf-done">✓ {{ t.lf_applied }}</span>
+  <button type="button" class="btn btn-secondary btn-small"
+          hx-post="/local/fix/{{ action }}" hx-target="closest .local-fix" hx-swap="outerHTML"
+          hx-vals='{"op": "undo", "token": "{{ fix_token }}", "lang": "{{ lang }}"}'>↶ {{ t.lf_undo }}</button>
+  {% else %}
+  <button type="button" class="btn btn-primary btn-small"
+          hx-post="/local/fix/{{ action }}" hx-target="closest .local-fix" hx-swap="outerHTML"
+          hx-confirm="{{ t['lf_confirm_' + action] }}"
+          hx-vals='{"op": "apply", "token": "{{ fix_token }}", "lang": "{{ lang }}"}'>⚡ {{ t.lf_apply }}</button>
+  {% endif %}
+{% else %}
+  <span class="lf-needs-local">🖥 {{ t.lf_needs_local }}
+    <a href="https://github.com/dochavez/faultcase#try-it-in-1-minute" target="_blank" rel="noopener">{{ t.lf_how }}</a></span>
+{% endif %}
+</span>
