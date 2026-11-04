@@ -38,6 +38,7 @@
         {% if c.id == "stability" and c.count %}{{ t.dg_n_incidents.format(n=c.count) }}
         {% elif c.id == "battery" and c.status == "no_data" %}{{ t.dg_battery_none }}
         {% elif c.id == "battery" and patterns_by_component.get("battery") %}{{ patterns_by_component["battery"][0].detail }}
+        {% elif c.count == 1 %}{{ t.dg_n_event }}
         {% elif c.count %}{{ t.dg_n_events.format(n=c.count) }}{% endif %}
         {% if c.ignored %}<small>{{ t.dg_ignored.format(n=c.ignored) }}</small>{% endif %}
       </span>
@@ -71,7 +72,7 @@
   {% for incident in incidents %}
     <li>
       <time datetime="{{ incident.date }}">{{ incident.date }}</time>
-      <span class="plain">{{ labels.get(incident.code_hex or "", {}).get(lang, incident.code_name or "") }}</span>
+      <span class="plain">{{ labels.get(incident.label_key or incident.code_hex or "", {}).get(lang, incident.code_name or "") }}</span>
       {% if incident.dump_module %}
       <span class="dump">{{ t.dg_dump }}: {{ incident.dump_module }}</span>
       {% else %}
@@ -105,7 +106,7 @@
   <h3>{{ t.dg_timeline }} ({{ incidents|length }} {{ t.dg_incidents }})</h3>
   <ul class="findings">
   {% for incident in incidents %}
-    <li><span class="code">{{ incident.code_hex }}</span> {{ incident.code_name or "" }} · {{ incident.date }} {{ incident.time }}</li>
+    <li>{% if incident.code_hex %}<span class="code">{{ incident.code_hex }}</span> {{ incident.code_name or "" }}{% else %}{{ labels.get(incident.label_key or "", {}).get(lang, "") }}{% endif %} · {{ incident.date }} {{ incident.time }}</li>
   {% endfor %}
   </ul>
   {% endif %}

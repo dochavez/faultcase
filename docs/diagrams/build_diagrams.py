@@ -54,6 +54,12 @@ h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -0.01em; }
 .grid3 { display: grid; grid-template-columns: 300px 40px 1fr 40px 400px; align-items: stretch; row-gap: 16px; }
 .grid3 .arrow { flex: none; }
 .foot { margin-top: 22px; }
+.mgrid { display: grid; grid-template-columns: 1fr 30px 1fr 30px 1fr 30px 1fr 30px 1fr; align-items: start; }
+.mcol { display: flex; flex-direction: column; gap: 10px; }
+.mhead { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: #475569; }
+.mod b { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 16px; }
+.mod .ln { font-size: 14px; color: #334155; line-height: 1.35; }
+.tag2 { font-family: Inter, sans-serif; font-size: 12px; background: #e2e8f0; border-radius: 6px; padding: 1px 6px; }
 .res { display: grid; grid-template-columns: 430px 40px 1fr 40px 300px; margin: 10px 0; align-items: stretch; }
 .res .arrow { flex: none; }
 .res.head { font-weight: 800; color: #475569; font-size: 16px; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
@@ -286,6 +292,62 @@ def resilience(t):
     return html
 
 
+MOD = {
+ "en": {"t": "How the files connect and call the APIs",
+        "s": "Every arrow is a real import or call in the code. Grey = deterministic Python, red = privacy boundary, purple = Meta model APIs.",
+        "c1": "Web and deploy", "c2": "Ingestion (adapters)", "c3": "Deterministic core", "c4": "AI layer", "c5": "Model APIs",
+        "chain": "One upload, call by call",
+        "local": "local Windows only",
+        "apis_note": "OpenAI-compatible <code>chat.completions</code> with <code>response_format</code> = JSON schema"},
+ "es": {"t": "Cómo se conectan los archivos y llaman a las APIs",
+        "s": "Cada flecha es un import o una llamada real del código. Gris = Python determinista, rojo = frontera de privacidad, morado = APIs de modelos de Meta.",
+        "c1": "Web y despliegue", "c2": "Ingesta (adaptadores)", "c3": "Núcleo determinista", "c4": "Capa de IA", "c5": "APIs de modelos",
+        "chain": "Una subida, llamada por llamada",
+        "local": "solo Windows local",
+        "apis_note": "<code>chat.completions</code> compatible con OpenAI y <code>response_format</code> = esquema JSON"},
+}
+
+
+def modules(lang):
+    m = MOD[lang]
+    def box(title, lines, cls=""):
+        body = "".join(f"<div class='ln'>{x}</div>" for x in lines)
+        return f"<div class='card mod {cls}'><b>{title}</b>{body}</div>"
+    col1 = (box("templates/ + static/", ["collect · diagnosis · action", "explain_section · fix_section", "job_status (polling)"])
+            + box("app.py <span class='tag2'>FastAPI</span>", ["/upload → job thread", "/job/{id} · /demo", "/case/{id} · /explain · /fix", "/case/{id}/action · /evidence.zip"])
+            + box("modal_app.py · render.yaml", ["Modal (primary) · Render (backup)", "secrets → env vars"]))
+    col2 = (box("adapters/windows/evtx.py", ["python-evtx · level · fields"])
+            + box("msinfo.py · battery_report.py", ["device · battery capacity"])
+            + box("windbg.py", ["!analyze -v · lmvm parser"])
+            + box("cdb.py · wmi.py", [m["local"]], "local")
+            + box("filters/device-diagnostics.xml", ["Event Viewer custom view"]))
+    col3 = (box("normalize.py", ["playbooks/*.yaml", "schemas/evidence.schema.json", "incidents 41 + 6008 + 1001"])
+            + box("redact.py", ["user · host · serial · MAC · paths"], "privacy")
+            + box("rules.py", ["known-benign filter", "patterns · components · summary"])
+            + box("demo.py · i18n.py", ["fixtures/real_case · EN/ES strings"]))
+    col4 = (box("agent.py", ["build_case · explain_case · fix_plan", "compact payload · 30k cap", "reconcile opinions · schema guard"])
+            + box("prompts/*.md · schemas/case.schema.json", ["evidence_analysis · case_writer", "explainer · fix_planner"])
+            + box("router.py", ["routes · retry · fallback · hedge", "second-opinion wait · usage.jsonl"])
+            + box("config/providers.yaml · settings.py", [".env / Modal secrets / Render env"]))
+    col5 = (box("Baseten", ["Muse Spark Open", "evidence_analysis"], "ai")
+            + box("Fireworks", ["Muse Spark Open", "evidence_analysis · fallback"], "ai")
+            + box("Meta Model API", ["Muse Spark", "case_writing · explanation · fix_plan"], "ai")
+            + f"<p class='m' style='font-size:15px;margin:6px 2px'>{m['apis_note']}</p>")
+    cols = ""
+    for i, (head, col) in enumerate(((m["c1"], col1), (m["c2"], col2), (m["c3"], col3), (m["c4"], col4), (m["c5"], col5))):
+        cols += f"<div class='mcol'><div class='mhead'>{head}</div>{col}</div>"
+        if i < 4:
+            cols += "<div class='arrow' style='align-self:center'>→</div>"
+    chain = ["app.upload", "_run_pipeline", "evtx.parse_evtx", "normalize", "agent.build_case", "rules.apply_rules",
+             "redact.redact_obj", "router.call_parallel", "Baseten ∥ Fireworks", "router.call_with_info", "Meta Model API",
+             "validate(case.schema)", "app._store_case", "HX-Redirect → Diagnosis"]
+    chips = "".join(
+        f"<span class='chip {'r' if i == 6 else ('s' if i < 7 else ('g' if i in (8, 10) else ''))}'>{i + 1}. {c}</span>" for i, c in enumerate(chain))
+    return (f"<h1>{m['t']}</h1><p class='sub'>{m['s']}</p><div class='mgrid'>{cols}</div>"
+            f"<div class='band' style='--b:#334155;--bg:#f8fafc;margin-top:18px'><div class='band-title'>{m['chain']}</div>"
+            f"<div style='line-height:2.1'>{chips}</div></div>")
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
@@ -298,6 +360,11 @@ def main():
                                  f"<body><div class='canvas'>{builder(t)}</div></body></html>")
                 page.locator(".canvas").screenshot(path=str(OUT / f"{name}-{lang}.png"))
                 print("wrote", name, lang)
+        for lang in ("en", "es"):
+            page.set_content(f"<html><head><meta charset='utf-8'><style>{CSS}</style></head>"
+                             f"<body><div class='canvas' style='width:1700px'>{modules(lang)}</div></body></html>")
+            page.locator(".canvas").screenshot(path=str(OUT / f"modules-{lang}.png"))
+            print("wrote modules", lang)
         browser.close()
 
 

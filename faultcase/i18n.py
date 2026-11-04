@@ -134,6 +134,7 @@ EN = {
     "dg_chart_none": "No unexpected restarts were found.",
     "dg_n_incidents": "{n} unexpected restarts",
     "dg_n_events": "{n} events worth a look",
+    "dg_n_event": "1 event worth a look",
     "dg_nothing": "Nothing found",
     "dg_ignored": "{n} harmless events ignored",
     "dg_battery_none": "Add a battery report to check it",
@@ -333,6 +334,7 @@ ES = {
     "dg_chart_none": "No se encontraron reinicios inesperados.",
     "dg_n_incidents": "{n} reinicios inesperados",
     "dg_n_events": "{n} eventos para revisar",
+    "dg_n_event": "1 evento para revisar",
     "dg_nothing": "Nada encontrado",
     "dg_ignored": "{n} eventos inofensivos ignorados",
     "dg_battery_none": "Añade un informe de batería para revisarla",
@@ -414,6 +416,14 @@ INCIDENT_LABELS = {
     "0x0": {
         "en": "Freeze without blue screen",
         "es": "Congelamiento sin pantallazo azul",
+    },
+    "unexpected_shutdown": {
+        "en": "Unexpected shutdown (no crash code)",
+        "es": "Apagado inesperado (sin código de error)",
+    },
+    "bugcheck_logged": {
+        "en": "Blue screen reported after restart",
+        "es": "Pantallazo azul informado tras reiniciar",
     },
 }
 

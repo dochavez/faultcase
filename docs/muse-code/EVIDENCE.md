@@ -1,0 +1,551 @@
+# Muse Code evidence
+
+Extracted from Muse Code's own local session log (`~/.local/share/muse/sessions/.../session.jsonl`).
+Each entry is the exact prompt sent to Muse Code and Muse's final reply, with the run's model, duration,
+tool calls and tokens as Muse Code recorded them. Personal paths and names are redacted; nothing else is edited.
+
+## 1. Environment and package skeleton
+
+- Run: `01a18efd-f1eb-79b0-96eb-71178583f7fd` · model `muse-spark-1.3-contributor` · 11.5 min · 28 tool calls · 733,767 input / 9,357 output tokens
+- Commits named in the reply: `bf8c73d`
+
+![Run 1](../img/muse-code/run-1.png)
+
+<details><summary>Full prompt</summary>
+
+```text
+Read MUSE_CODE.md and README.md first.
+
+Set up the development environment on this Windows machine:
+1. Create a Python 3.11 virtual environment in .venv and install requirements.txt.
+2. Create a minimal package skeleton: faultcase/__init__.py, faultcase/settings.py, tests/__init__.py and a pytest.ini that registers the "live" marker and skips live tests by default (they run only with `pytest -m live`).
+3. faultcase/settings.py must load configuration from environment variables, and also from a .env file if one exists (python-dotenv, without overriding variables already set in the environment). The API keys are already set as Windows user environment variables: META_API_KEY, BASETEN_API_KEY, FIREWORKS_API_KEY. BASETEN_MODEL defaults to meta-models/muse-spark-open-1026 if not set.
+4. Never print or log the full value of any API key; show only whether it is set and its last 4 characters.
+5. Initialize a git repository on branch main if one does not exist. Make sure .env, .venv and *.dmp are ignored.
+
+Done when: `pytest` runs (0 tests is fine) and you show me which of the three keys are detected. Then commit with the message "Set up environment and package skeleton".
+```
+
+</details>
+
+**Muse Code's final reply**
+
+Done. Environment is set up and committed as `bf8c73d` ("Set up environment and package skeleton").
+
+**Done criteria**
+- `pytest` runs clean: 0 tests collected, exit fine. Verified the `live` marker with a throwaway probe: default run deselects it, `pytest -m live` runs it (probe removed afterwards).
+- Key detection (`python -m faultcase.settings`, masked):
+  - `META_API_KEY`: set (masked)
+  - `BASETEN_API_KEY`: set (masked)
+  - `FIREWORKS_API_KEY`: set (masked)
+  - `BASETEN_MODEL`: `meta-models/muse-spark-open-1026`
+
+**What was created**
+- `.venv` — Python 3.11.9 virtualenv with `requirements.txt` installed.
+- [faultcase/__init__.py](faultcase/__init__.py), [faultcase/settings.py](faultcase/settings.py), [tests/__init__.py](tests/__init__.py), [pytest.ini](pytest.ini) (registers `live`, deselects by default).
+- `settings.py` loads the process environment plus `.env` as fallback (`override=False`), defaults `BASETEN_MODEL`, and only ever exposes masked key status — full values are never printed or logged.
+
+**Three things worth knowing**
+1. Python 3.11 wasn't installed (only 3.13/3.14), so I installed 3.11.9 via winget first.
+2. Only `META_API_KEY` is actually a Windows user variable; Baseten and Fireworks keys resolve from your `.env` file. All three are detected either way.
+3. The repo already existed on `main` and `.gitignore` already covered `.env`, `.venv/` and `*.dmp`, so no changes were needed there. Only the 4 skeleton files were committed; `.env` stays untracked.
+
+<details><summary>Progress messages during the run</summary>
+
+- Setting up your dev environment — reading the project docs first.
+- Docs read. Inspecting the workspace before creating anything.
+- The sandbox can't see your Python install or user variables, so I'll need approval to run setup outside it.
+- Skeleton files created. Python 3.11 isn't installed (only 3.13/3.14), so installing it now — this takes a few minutes.
+- Python 3.11 installed. Creating the virtual environment and installing dependencies.
+
+</details>
+
+## 2. Windows adapter: evtx and WinDbg parsers
+
+- Run: `01a18f0c-6127-7112-84f0-3831433501dd` · model `muse-spark-1.3-contributor` · 2.7 min · 36 tool calls · 1,554,922 input / 13,680 output tokens
+- Commits named in the reply: `c8b765c`
+
+![Run 2](../img/muse-code/run-2.png)
+
+<details><summary>Full prompt</summary>
+
+```text
+Read MUSE_CODE.md and schemas/evidence.schema.json.
+
+Create the ingestion layer as an adapter so other operating systems can be added later:
+- faultcase/adapters/__init__.py
+- faultcase/adapters/windows/evtx.py: read an .evtx file with python-evtx and return, per event: time (ISO 8601 with timezone), log name, provider name, event ID and all EventData fields as a dict. Handle malformed records by skipping them and counting them.
+- faultcase/adapters/windows/windbg.py: parse the text output of WinDbg `!analyze -v` and `lmvm nvlddmkm` (examples in fixtures/real_case/windbg/) into the `dumps` fields of the evidence schema: bugcheck_code, params, image_name, symbol_name, failure_bucket_id, failure_id_hash, process_name and driver_timestamp (ISO date). Missing fields must be null, never invented.
+- faultcase/adapters/windows/fixture_events.py: load fixtures/real_case/events_41.json into the same event format, so tests can run without an .evtx file.
+
+Add tests in tests/test_adapters_windows.py:
+- windbg parser: all 4 fixture files; check image_name is nvlddmkm.sys in all 4, the driver timestamps (2026-03-04 for the two July dumps, 2026-02-14 for October, null for April) and the failure_bucket_id values.
+- evtx parser: if fixtures/real_case/failures.evtx exists, parse it and check it returns events with event ID 41; otherwise skip the test.
+
+Done when: pytest passes. Commit with "Add Windows adapter: evtx and WinDbg parsers".
+```
+
+</details>
+
+**Muse Code's final reply**
+
+Done — `pytest` passes (6/6) and committed as `c8b765c`.
+
+**New files**
+- [faultcase/adapters/__init__.py](faultcase/adapters/__init__.py) + `windows/` subpackage (adapter layout ready for macOS/Linux later)
+- [evtx.py](faultcase/adapters/windows/evtx.py): renders each record to XML, returns `time` (ISO 8601 with timezone), `log` (channel), `source` (provider), `event_id`, `fields` (all EventData). Malformed records are skipped and counted in `EvtxResult.skipped`.
+- [windbg.py](faultcase/adapters/windows/windbg.py): `!analyze -v` keys plus `lmvm` driver timestamp → `driver_timestamp` as ISO date; missing fields stay `None`.
+- [fixture_events.py](faultcase/adapters/windows/fixture_events.py): loads `events_41.json` into the same event dicts (log defaults to `System`, verified against the real `.evtx`).
+- [tests/test_adapters_windows.py](tests/test_adapters_windows.py): parametrized WinDbg test over all 4 dumps plus the `.evtx` and fixture tests.
+
+**Verified against the real file**: `failures.evtx` exists locally (12 records), so the `.evtx` test ran for real — event 41s parse with provider `Microsoft-Windows-Kernel-Power`, channel `System`, timezone-aware times, and `BugcheckCode` in fields. WinDbg results match the task spec: `nvlddmkm.sys` in all 4, timestamps 2026-03-04 / 2026-03-04 / 2026-02-14 / null, buckets `0x133_ISR_...` ×3 and `0x116_IMAGE_nvlddmkm.sys`.
+
+One note: the probe script I used to inspect the `.evtx` structure was deleted; nothing extra was committed.
+
+<details><summary>Progress messages during the run</summary>
+
+- Reading the rules, schema, and fixtures first.
+- Skill noted. Setting up the plan and inspecting the `python-evtx` API plus the real `.evtx` structure before writing anything.
+- API confirmed. Probing the real `.evtx` to see the actual record structure.
+- The three module files already exist — reading them before touching anything.
+- Contradictory errors — likely a parallel-write race on the new directory. Checking actual state.
+- Directory race confirmed — only the `__init__` files landed. Retrying the three modules now that the directory exists.
+- All modules written. Now the tests.
+- All 6 pass, including against the real `.evtx`. Committing.
+
+</details>
+
+## 3. Normalization and redaction
+
+- Run: `01a198a1-bf97-7082-a69d-d9282bfec52e` · model `muse-spark-1.3-contributor` · 2.9 min · 20 tool calls · 1,063,076 input / 16,807 output tokens
+- Commits named in the reply: `723de43`
+
+![Run 3](../img/muse-code/run-3.png)
+
+<details><summary>Full prompt</summary>
+
+```text
+Create faultcase/normalize.py:
+- Load all playbooks from playbooks/*.yaml.
+- Assign each raw event its `kind` and `playbook` by matching event_id AND provider (provider_contains or provider_contains_any, case-insensitive). Events that match no playbook are dropped and counted as noise.
+- Group events into incidents: an event 41 and an event 6008 less than 60 seconds apart share one incident_id. Link a dump to an incident when its bugcheck parameters match the event 41 parameters (compare as normalized lowercase hex without leading zeros).
+- Output must validate against schemas/evidence.schema.json.
+
+Create faultcase/redact.py:
+- Remove Windows user names from paths (C:\Users\<USER>\...), computer names (<COMPUTER> and similar), serial numbers, MAC addresses and email addresses, replacing them with placeholders like <USER>, <COMPUTER>, <SERIAL>.
+- Provide redact_text(str) and redact_obj(any JSON-like object).
+
+Tests:
+- Normalizing the real case fixtures produces exactly 6 incidents, and the 4 dumps are linked to the incidents of 2026-04-22, 2026-07-17, 2026-07-21 and 2026-10-23.
+- redact removes a fake user name, a DESKTOP- name, a MAC address and an email from a sample text.
+
+Done when: pytest passes. Commit with "Add normalization and redaction".
+```
+
+</details>
+
+**Muse Code's final reply**
+
+Done — `pytest` passes (11/11) and committed as `723de43`.
+
+**New files**
+- [faultcase/normalize.py](faultcase/normalize.py): loads `playbooks/*.yaml`, matches events by event_id + provider (`provider_contains`/`provider_contains_any`, case-insensitive), drops non-matches as counted noise, groups 41+6008 within 60s into `inc-001`-style incidents, links dumps by normalized-hex param match, and validates the output against the evidence schema (with format checks) before returning.
+- [faultcase/redact.py](faultcase/redact.py): `redact_text` + recursive `redact_obj` with `<USER>`, `<COMPUTER>`, `<SERIAL>`, `<MAC>`, `<EMAIL>` placeholders.
+- [tests/test_normalize.py](tests/test_normalize.py), [tests/test_redact.py](tests/test_redact.py).
+
+**Verified**: real-case fixtures yield exactly 6 incidents (noise 0), and the 4 dumps link to the 04-22, 07-17, 07-21 and 10-23 incidents. The test synthesizes the 6008 companions from each fixture's `related_6008` timestamp so it runs without the gitignored `.evtx`.
+
+**Two judgment calls**
+1. The schema's dump fields don't allow `null`, so `normalize` omits `None` values (e.g. the April dump's missing driver timestamp) instead of passing them through — otherwise its own validation would fail.
+2. Serial numbers are only redacted when labeled (`SerialNumber: ...`). Bare unlabeled values that merely look like serials are left alone, since guessing would risk destroying real evidence like hashes.
+
+<details><summary>Progress messages during the run</summary>
+
+- Reading the rules, playbooks, schema, and existing code first.
+- Now reading the adapter modules to pin down the exact input shapes.
+- Input shapes confirmed. One design catch: the schema's dump fields don't allow `null`, so `normalize` must drop `None` values (e.g. the April dump's missing timestamp) for output to validate.
+- Fixing a stray escape in the serial-number pattern, then writing the tests.
+- All 11 pass. Committing.
+
+</details>
+
+## 4. Model router with fallback
+
+- Run: `01a198a7-72ed-77d1-a1e3-05394f115b51` · model `muse-spark-1.3-contributor` · 2.8 min · 11 tool calls · 1,122,453 input / 9,539 output tokens
+- Commits named in the reply: `3ca3e26`
+
+![Run 4](../img/muse-code/run-4.png)
+
+<details><summary>Full prompt</summary>
+
+```text
+Create faultcase/router.py:
+- Read config/providers.yaml and create one openai client per provider (base_url, api key and model from settings).
+- Expose call(role, messages, response_schema) -> dict. For each provider in the role's route: call it with a JSON response, validate the result against response_schema with jsonschema, retry once on invalid JSON or schema errors, and on any error or timeout move to the next provider.
+- If every provider fails, raise a clear exception listing each provider's error.
+- Append one line per attempt to logs/usage.jsonl: timestamp, role, provider, model, latency_ms, prompt_tokens, completion_tokens, success, fallback_used. Never log message contents or keys.
+- If a provider does not support response_format json_schema, fall back to json_object plus validation.
+
+Tests with a fake client (no network): baseten fails -> fireworks answers; invalid JSON once -> retry succeeds; all fail -> clear exception.
+
+Done when: pytest passes. Commit with "Add model router with fallback".
+```
+
+</details>
+
+**Muse Code's final reply**
+
+Done — `pytest` passes (30/30) and committed as `3ca3e26`.
+
+**New files**
+- [faultcase/router.py](faultcase/router.py): `Router` class (one OpenAI client per provider, injectable factory) plus module-level `call(role, messages, response_schema)`. Per provider: JSON-schema response, `jsonschema` validation, one retry on invalid JSON/schema errors only; any other error or timeout moves to the next provider. Total failure raises `RouterError` listing each provider's error. Every attempt appends the specified fields to `logs/` (gitignored), with no message contents or keys.
+- [tests/test_router.py](tests/test_router.py): 7 fake-client tests covering the three required scenarios plus `json_object` fallback, missing-key skip, unknown role, and a log-privacy assertion (prompt text and key material absent from the log).
+
+**Judgment calls**
+1. Retry budget follows the spec literally: only invalid JSON/schema errors consume the one retry; transport errors and timeouts go straight to the next provider. The `json_schema`→`json_object` downgrade happens inside a single attempt (detected by `response_format`/`json_schema` in the error) and sticks per provider, so it doesn't burn the retry.
+2. Providers with missing API keys are skipped with a logged failed attempt rather than failing at construction, so a partially configured machine still uses whatever is available.
+
+<details><summary>Progress messages during the run</summary>
+
+- Reading the rules and the files the router builds on.
+- Now writing the router.
+- All 30 pass. Committing.
+
+</details>
+
+## 5. Audit fixes: demo, timezone, privacy
+
+- Run: `01a198c7-08f8-79b1-9953-515dbd015688` · model `muse-spark-1.3-contributor` · 27.6 min · 108 tool calls · 15,228,451 input / 47,957 output tokens
+- Commits named in the reply: `13ba425`, `a834b47`, `36d3fee`, `063b371`, `b414454`, `bbaa6b6`
+
+![Run 5](../img/muse-code/run-5.png)
+
+<details><summary>Full prompt</summary>
+
+```text
+Audit fixes before user testing. Read MUSE_CODE.md first. Fix all of the following, one commit per item.
+
+1. Demo mode must be instant and free. Add scripts/build_demo_case.py that runs build_case once on the real case fixtures (both "en" and "es") and saves the results to fixtures/real_case/demo_case.json. /demo must load that file without calling any model. Add a small "Regenerate live" button on the diagnosis page of the demo that calls the models again only when a valid invite code is entered. Commit: "Serve precomputed demo case".
+
+2. Case storage and concurrency. build_case is synchronous and currently runs inside async endpoints, which blocks the server for minutes. Run it with starlette.concurrency.run_in_threadpool. Cases live only in an in-memory dict: on Modal set max_containers=1 and scaledown_window=1200 in modal_app.py so case links keep working, and return a friendly "case expired, try again" page instead of a 404. Commit: "Fix blocking agent calls and case expiry".
+
+3. Timezones. Event times from .evtx are UTC, so the 2026-04-22 20:38 local crash shows as 2026-04-23. Add a hidden form field filled by JavaScript with the browser timezone (Intl.DateTimeFormat().resolvedOptions().timeZone), convert all displayed and reported dates to that timezone, default to UTC if missing, and show the timezone name on the timeline. Add a test: the 2026-04-23T02:38:54Z event shows as 2026-04-22 in America/Managua. Commit: "Show dates in the user's timezone".
+
+4. Counts and subject (this fix was never applied). In rules.py add a summary block with total_incidents, incidents_with_dump, freezes_without_dump, first_incident_date, last_incident_date and months_span. Pass it to the case writer as explicit fields and tell prompts/case_writer.md that user_summary must state the total number of incidents over the full period, using only these numbers. In schemas/case.schema.json make manufacturer_report.subject minLength 10 and tell the prompt to include device model and main symptom. Extend the live test: every number in user_summary must appear in the rules summary. Commit: "Use rules-computed totals and require report subject".
+
+5. tests/test_cdb.py: tests that assume Windows must monkeypatch os.name to "nt" or be skipped with pytest.mark.skipif(os.name != "nt"). The full suite must pass on Linux and macOS. Commit: "Make cdb tests portable".
+
+6. modal_app.py: do not ship fixtures/real_case/failures.evtx. Add only the files the app needs (events_41.json, windbg/*.txt, demo_case.json, expected.json). Commit: "Exclude private evtx from Modal image".
+
+When done: run pytest, run scripts/build_demo_case.py, then git push. Show me the final user_summary and subject of the demo case in English.
+```
+
+</details>
+
+**Muse Code's final reply**
+
+All six fixes are done, committed one per item, and pushed (`99b012c..bbaa6b6`). Final `pytest`: 66 passed, 1 live deselected.
+
+**Commits**
+1. `13ba425` Serve precomputed demo case — `scripts/build_demo_case.py` builds en+es once into `demo_case.json`; `/demo` serves the file with zero model calls (a test proves `build_case` is never invoked); diagnosis page has a small invite-gated "Regenerate live" button.
+2. `a834b47` Fix blocking agent calls and case expiry — `build_case` runs via `run_in_threadpool`; Modal pinned to `max_containers=1` + `scaledown_window=1200`; expired cases get a friendly "has expired, start again" page instead of a 404.
+3. `36d3fee` Show dates in the user's timezone — hidden `tz` field from `Intl…resolvedOptions()`, dates converted with `zoneinfo` (UTC default, tz name on the timeline), model told to quote findings dates verbatim; test proves the `02:38Z` event shows as 04-22 in America/Managua. Added `tzdata` to requirements (missing on Windows).
+4. `063b371` Use rules-computed totals and require report subject — `summary` block in findings, passed explicitly to the writer; prompt constrains `user_summary` numbers; `subject` now `minLength: 10` with model+symptom guidance; live test asserts every summary number comes from the rules summary.
+5. `b414454` Make cdb tests portable — Windows-assuming tests pin `os.name` to `"nt"`.
+6. `bbaa6b6` Exclude private evtx from Modal image — explicit `add_local_file` list, no `failures.evtx`.
+
+**Demo case in English** (committed file, verdict `likely_hardware_fault`, high):
+- Subject: "Lenovo: recurring NVIDIA display crashes - nvlddmkm.sys TDR / DPC_WATCHDOG"
+- Summary: "Your system had 6 incidents over 7 months related to the NVIDIA graphics driver. The same graphics component fails repeatedly even after driver updates, which suggests a hardware or firmware problem rather than an isolated glitch. Please contact Lenovo support for a full diagnosis and warranty check."
+
+Three things worth knowing:
+- The final `build_demo_case.py` run was verification-only: it succeeded, but I restored the committed file afterward since the rerun differed only by model nondeterminism/metadata, keeping the verified artifact and the one-commit-per-item history.
+- The live test caught two real issues while tightening item 4: the case-writer prompt never repeated the "same defect as other machines" ban (fixed in the prompt), and the old regex flagged *correct denials* of that claim — the check now works sentence-by-sentence and skips negations (itself unit-tested).
+- Live runs still vary run to run (one returned `low` confidence before the calibration line was added); the suite is green now, but treat `-m live` as a backstop, not a gate.
+
+<details><summary>Progress messages during the run</summary>
+
+- Six items, one commit each. Reading the rules and checking timezone support first.
+- `tzdata` is missing (needed for item 3 — noted). Starting item 1: precomputed demo.
+- Code for item 1 is done. Building the precomputed demo case now (two live model runs, a few minutes).
+- Demo file built. Rewriting the demo tests for the precomputed flow.
+- Item 1 committed. Item 2: threadpool, containers, expiry page.
+- Item 2 committed. Item 3: timezones — installing `tzdata` first.
+- `tzdata` installed. Adding timezone support to rules and agent.
+- Now the app plumbing, templates, and script update.
+- The app test stub needs the new `timezone` arg, plus templates and script updates.
+- Adding the timezone tests.
+- Item 3 committed. Item 4: rules totals, prompt, schema, live test.
+- Normal suite green. Running the extended live test against the new prompt.
+- Live test failed on confidence (`low` < required `medium`). Re-running with full output captured to diagnose.
+- This re-run passed — the earlier `low` confidence was model variance. Checking what this run produced.
+- Failed again — capturing the full output to see which assert this time.
+- One failed, one passed. Inspecting the failure.
+- Both suites green. Regenerating the demo case with the final prompt.
+- Item 4 committed. Item 5: portable cdb tests.
+- Item 5 committed. Item 6: Modal image file list.
+- All six commits in. Final verification run of the demo build script.
+- Pushed. The search came back empty — reading the summary directly.
+
+</details>
+
+## 6. Automatic device identification
+
+- Run: `01a198fe-6c99-7b93-8915-5dc76d930353` · model `muse-spark-1.3-contributor` · 23.2 min · 67 tool calls · 12,594,002 input / 40,224 output tokens
+- Commits named in the reply: see the reply
+
+![Run 6](../img/muse-code/run-6.png)
+
+<details><summary>Full prompt</summary>
+
+```text
+Add automatic device identification so reports show the real model of the computer being analyzed. Read MUSE_CODE.md first. One commit per step, then git push.
+
+1. Parser. Create faultcase/adapters/windows/msinfo.py that parses a System Information export (msinfo32 > File > Export, a .txt file, often UTF-16 with BOM; detect the encoding). Extract: manufacturer, model, system SKU, Lenovo machine type when present (the 4-character code after "MT_" in the SKU, or the first 4 characters of the product name when it matches the Lenovo pattern), BIOS version and date, OS name and version, GPU name(s), GPU driver version and date. Support English and Spanish label names (for example "System Model" / "Modelo del sistema", "BIOS Version/Date" / "Versión y fecha de BIOS", "Adapter Description" / "Descripción del adaptador", "Driver Version" / "Versión del controlador"). Never extract or keep the user name or computer name. Missing fields are null. Add a test fixture with a synthetic msinfo export in English and one in Spanish (no real personal data) and tests for both.
+
+2. Collect screen. Add an optional second upload for the msinfo32 .txt with a 3-step guide (Windows + R, type msinfo32, File > Export). If present, its device data fills the device object; each field records its source ("windows_system_information", "user_entered" or "local_wmi"). Run the file through redact.py before anything reaches a model. Fall back to optional manual fields (manufacturer, model, purchase month) when no msinfo file is given.
+
+3. Local mode on Windows: read the same fields directly with PowerShell CIM queries (Win32_ComputerSystemProduct, Win32_ComputerSystem, Win32_BIOS including SerialNumber, Win32_VideoController), read-only, with a 20 second timeout. The serial is kept locally and only inserted into the report at the end, as today.
+
+4. Serial number in the web version: on the Action screen add a "Serial number (optional)" field that replaces {{SERIAL}} in the displayed report and in the downloaded text using JavaScript in the browser only. The serial must never be sent to the server. Add a test that no request body or server log contains the serial.
+
+5. Report. Tell prompts/case_writer.md to include the BIOS version and the currently installed GPU driver version when known, and to add one line stating where the device details came from ("Device details read from Windows System Information" or "Device details entered by the user"). The checklist item "BIOS on the latest version" should show the detected BIOS version so the user can compare it with the manufacturer's site.
+
+Run pytest, then show me the device section of a report generated from the English msinfo fixture.
+```
+
+</details>
+
+**Muse Code's final reply**
+
+All five steps done, `pytest` green (95 passed, 1 skipped), and pushed (`06f3ed2..f597b9d`). Commits: parser, Collect upload, CIM reading, serial field, report content.
+
+Device section of a report generated from the English msinfo fixture (device fields all sourced `windows_system_information`, purchase `user_entered`):
+
+> Model: Legion Pro 7 16IAX10H (Machine Type 83F5)
+> Serial Number: {{SERIAL}}
+> System SKU: LENOVO_MT_83F5_BU_Think_FM_Legion Pro 7 16IAX10H
+> BIOS Version: LENOVO N3FCN12W (BIOS date 4/1/2026)
+> OS: Microsoft Windows 11 Pro 10.0.26100 Build 26100
+> GPU: NVIDIA GeForce RTX 5090 Laptop GPU, driver version 32.0.15.6636 dated 2026-02-14
+> Second GPU: Intel(R) Graphics, driver 32.0.101.1234 dated 2026-01-15
+> Purchase date: 2026-01
+> Device details read from Windows System Information
+
+Checklist first item: "BIOS on the latest version (detected: LENOVO N3FCN12W)" (status unknown). Serial stays as `{{SERIAL}}` server-side for browser insertion.
+
+<details><summary>Progress messages during the run</summary>
+
+- Five steps, one commit each. Reading the rules, schema, and app first.
+- Step 1: the msinfo parser.
+- Same new-directory race as before — retrying the Spanish fixture alone.
+- Both fixtures in place (the pair is intentional). Now the tests.
+- The `\b` fails between `5` and `_` in the SKU. Fixing with a lookahead.
+- Step 1 committed. Step 2: msinfo upload + manual device fields.
+- Step 2 committed. Step 3: local CIM device reading.
+- Green. Verifying the real CIM query works on this machine (masked output).
+- Real CIM query works (Lenovo 83F5, BIOS + 3 GPUs parsed, serial detected but not shown). Committing step 3.
+- Step 3 committed. Step 4: browser-only serial field.
+- Step 4 committed. Step 5: report device content.
+- All five committed. Generating a live report with the msinfo-derived device to show the device section.
+- Report shows the full device section with BIOS, drivers, source line, and checklist BIOS item. Cleaning up and pushing.
+
+</details>
+
+## 7. Second opinion, caching, hedging, benchmark
+
+- Run: `01a19914-c1c7-72d0-9a74-f6cf69e98a8f` · model `muse-spark-1.3-contributor` · 23.6 min · 102 tool calls · 7,359,749 input / 67,556 output tokens
+- Commits named in the reply: `bc55cd8`, `1789446`, `15733e0`, `dd19a0a`, `aaf89fd`
+
+![Run 7](../img/muse-code/run-7.png)
+
+<details><summary>Full prompt</summary>
+
+```text
+Make better use of both open-weights providers and measure it. Read MUSE_CODE.md and config/providers.yaml first. One commit per item, then git push.
+
+1. Second opinion. For the evidence_analysis role, call Baseten and Fireworks in parallel (concurrent requests with the same input). Compare verdicts: if they agree, keep the confidence; if they disagree, lower confidence by one level and add a finding of type "hypothesis" explaining that two independent analyses disagreed. If one provider fails, continue with the other and record it. Make this configurable in providers.yaml (analysis_mode: second_opinion | single). Record both results in the case metadata. Commit: "Add cross-provider second opinion for evidence analysis".
+
+2. Prompt caching. Order every request so the static parts (system prompt, playbook rules, schema) come first and the case-specific data last, so providers can reuse cached prefixes. Read cached token counts from the usage object when the provider returns them (for example usage.prompt_tokens_details.cached_tokens) and log them in logs/usage.jsonl. Commit: "Order prompts for caching and log cached tokens".
+
+3. Hedged requests. If the primary provider has not answered after hedge_after_seconds (configurable, default 25), send the same request to the next provider and use whichever valid answer arrives first; cancel or ignore the other. Log which one won. Commit: "Add hedged requests".
+
+4. Reasoning effort per role. Add a reasoning_effort setting per role in providers.yaml (high for evidence_analysis, medium for case_writing) and pass it only to providers that accept it; if a provider rejects the parameter, retry once without it and remember that for the session. Commit: "Configure reasoning effort per role".
+
+5. Benchmark. Create scripts/benchmark.py that runs build_case N times (default 3) on the real case plus 3 synthetic cases you create in fixtures/synthetic/ (a healthy laptop with no incidents, a disk failure case with bad blocks, and a single isolated crash). For each provider and role record: verdict correctness against each case's expected verdict, latency p50 and p95, prompt, completion and cached tokens, estimated cost using the prices in providers.yaml (add input, output and cached prices per provider there), fallback and hedge counts, and second-opinion agreement rate. Write the results to docs/benchmark.md as tables and to docs/benchmark.json. Never include API keys or personal data. Run it once and show me the tables. Commit: "Add provider benchmark and results".
+
+Run pytest after each item. Keep all existing tests green.
+```
+
+</details>
+
+**Muse Code's final reply**
+
+All five items done, 116 tests green, pushed (`f597b9d..aaf89fd`), one commit per item.
+
+What changed:
+1. **Second opinion** (`bc55cd8`) — evidence_analysis calls Baseten + Fireworks concurrently; agreement keeps confidence, disagreement lowers it one level and adds a hypothesis finding; one failure continues with the other. `analysis_mode: second_opinion | single` in providers.yaml; both opinions in case metadata.
+2. **Prompt caching** (`1789446`) — user messages now start with a static reference block (playbook rules + output keys, identical every call) and case data last; `cached_tokens` from `usage.prompt_tokens_details` logged in usage.jsonl.
+3. **Hedged requests** (`15733e0`) — if the primary is slower than `hedge_after_seconds` (default 25), the next provider is started and the first valid answer wins; a hedge event line records the winner.
+4. **Reasoning effort** (`dd19a0a`) — per-role `reasoning_effort` (high for analysis, medium for writing); rejected parameters trigger one retry without, remembered per provider for the session.
+5. **Benchmark** (`aaf89fd`) — `scripts/benchmark.py` (default 3 runs) over the real case + 3 synthetic fixtures, with example prices in providers.yaml; results in docs/benchmark.md + docs/benchmark.json (scanned: no keys or personal data).
+
+Benchmark results (12 runs, 0 failed, ~$2.39 estimated):
+
+| Provider | Role | Calls ok/total | Correct | p50 ms | p95 ms | Prompt | Compl | Cached | Est. cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| baseten | evidence_analysis | 10/15 | 100% (10/10) | 10704 | 22680 | 28502 | 188523 | 18048 | $1.5381 |
+| fireworks | evidence_analysis | 12/12 | 100% (12/12) | 23054 | 31802 | 22194 | 30266 | 15040 | $0.2640 |
+| meta | case_writing | 12/12 | 100% (12/12) | 11218 | 13489 | 25516 | 44753 | 10233 | $0.5906 |
+
+Second-opinion agreement: 0% (10 disagreed, 2 single-opinion). The pairs are semantically aligned ("Recurrent display/GPU instability…" vs "Recurring GPU subsystem instability…") but exact string match never hits on free text — expected, and the design handles it (lowered confidence + hypothesis). Hedges: 0, fallbacks: 0.
+
+Two findings worth your attention:
+- **Baseten hit the 32k completion cap 5 times** with reasoning high (truncated JSON; 3 recovered on retry, 2 runs used the Fireworks opinion only). Those 5 capped calls are most of the $1.54 baseten cost. Follow-up: raise the completion limit or drop Baseten to medium effort.
+- **Caching works**: ~43k cached prompt tokens across the run, including 0 cached on first calls growing on repeats.
+
+<details><summary>Progress messages during the run</summary>
+
+- I'll start by reading the remaining relevant files (rules, playbooks, helpers, prompts, scripts).
+- Now let me check the evidence schema, normalize output shape, and demo script.
+- Item 1: second opinion. Starting with the config and router changes.
+- Now extracting the per-provider attempt logic and adding the parallel call:
+- Now the module-level helpers in router.py:
+- Now the agent reconciliation logic:
+- Now the tests. First an autouse fixture in test_agent.py so existing tests stay in single mode, plus new second-opinion tests:
+- Now the router tests for parallel calls:
+- Green. Committing item 1:
+- Item 2: static-first message ordering and cached-token logging.
+- Now the router cached-token extraction. First the helper and usage parsing:
+- Now update the tests that parse user content as raw JSON, and add ordering/caching tests:
+- Let me check for other tests parsing user message content as JSON:
+- Only the two spots I fixed. Now the router cached-tokens test:
+- Item 3: hedged requests. Config first:
+- Now the hedged `call_with_info` plus the race helper:
+- Let me bound the second wait too, so a hung leg can't hang the server:
+- Now the FakeClient callable support and hedge tests:
+- One test has a potential race (tiny hedge timeout vs thread scheduling). Making it deterministic:
+- Item 4: reasoning effort per role.
+- Now the reasoning-effort tests:
+- Item 5. First, check the case verdict enum and .gitignore:
+- `logs/` is ignored — good. Adding placeholder prices to the config:
+- Now the three synthetic fixtures:
+- A committed test for the synthetic fixtures (no models):
+- Now the benchmark script:
+- Verifying fixtures and case loading before the long live run:
+- Loading works. Launching the full live benchmark (12 cases × 3 model calls — this takes a while):
+- While it runs, I spot a scoring bug in my fixture: `no_relevant_issues` doesn't contain `"no relevant"` (space vs underscore). Fixing the fixture and adding a `--rescore` mode so I can re-score stored verdicts without re-calling models:
+- Benchmark finished — 12/12 runs succeeded. But baseten shows 5 failed attempts and huge completion tokens; let me investigate before finalizing.
+- Meta is now 100%. Checking which 2 baseten opinions missed:
+- Final numbers are in. Appending the run-specific truncation finding and verifying no secrets in the docs:
+- Clean. Final verification, commit, and push:
+
+</details>
+
+## 8. Wi-Fi, USB and battery playbooks
+
+- Run: `01a19992-1ceb-79d1-86a4-9f9d0725f873` · model `muse-spark-1.3-contributor` · 50.5 min · 214 tool calls · 55,413,417 input / 89,673 output tokens
+- Commits named in the reply: see the reply
+
+![Run 8](../img/muse-code/run-8.png)
+
+<details><summary>Full prompt</summary>
+
+```text
+Extend FaultCase beyond crashes with three new playbooks: Wi-Fi, USB and battery. Read MUSE_CODE.md and the existing playbooks first. Same principles: deterministic rules, safe actions only, plain-language output, fact vs hypothesis. One commit per item, then git push.
+
+1. Wi-Fi playbook (playbooks/wifi.yaml). Evidence: the Microsoft-Windows-WLAN-AutoConfig/Operational log (disconnections, failed connections) and Wi-Fi driver events in the System log (Intel drivers appear as providers like Netwtw* or Netwaw*, for example event 6062). Add the WLAN-AutoConfig channel to filters/device-diagnostics.xml as a new Query. Before relying on any event ID, verify it against fixtures/real_case/failures.evtx and the user's real logs if present, and document in the playbook which IDs were verified. Patterns: repeated disconnections per day, driver warnings or resets, problems right after resume from sleep (hypothesis). Safe actions: update the Wi-Fi driver from the laptop manufacturer's site, forget and reconnect the network, test with a different network.
+
+2. USB playbook (playbooks/usb.yaml). Evidence: Kernel-PnP events about devices that failed to start or drivers that failed to load, USB hub and controller errors in the System log. Add the needed channels and IDs to the filter, verified the same way. Patterns: the same device failing repeatedly, controller resets, failures after resume (hypothesis). Safe actions: try a different port, update chipset and USB drivers from the manufacturer, test the device on another computer.
+
+3. Battery playbook (playbooks/battery.yaml) and parser faultcase/adapters/windows/battery_report.py for the HTML produced by `powercfg /batteryreport`: design capacity, full charge capacity, cycle count, capacity history, and manufacture date if present. Compute wear percentage deterministically. Patterns: wear above 20% in the first year (fact with the numbers), fast decline across the capacity history. Safe actions: check the manufacturer's battery settings (such as conservation mode), run the manufacturer's battery diagnostic. On the Collect screen add an optional battery report upload with a short guide; in local Windows mode generate the report automatically into a temp folder (read-only command) and delete it after parsing.
+
+4. Synthetic fixtures and tests: a Wi-Fi case with repeated disconnections, a USB case with a failing device, and a battery report with 35% wear after 10 months. Add them to scripts/benchmark.py with expected verdicts, plus golden tests for the deterministic findings. Never invent findings for the real case: if the real evtx has Wi-Fi driver warnings, report them only as what they are.
+
+5. UI and report: the Diagnosis screen groups findings by component (Stability, Storage, Hardware, Temperature, Wi-Fi, USB, Battery) with plain-language labels in English and Spanish, and lists healthy components the same way. The manufacturer report includes a section per affected component only.
+
+6. Rerun scripts/benchmark.py, regenerate the demo case and screenshots, and update both READMEs: the playbook list, limitations and roadmap must match what is now implemented.
+
+Run pytest after each item and show me the new benchmark table and the components shown in the demo diagnosis.
+```
+
+</details>
+
+**Muse Code's final reply**
+
+All six items done, 155 tests green, pushed (`60d9e45..c52fbf0`), one commit per item.
+
+**Verification first:** the fixture evtx holds only 41/6008 (real case untouched by design); live logs via the Event Log API confirmed WLAN 8002/8003, Intel `Netwaw18` 5002/5005/5007 + 6062, Kernel-PnP 219/411, and Power-Troubleshooter 1. USBHUB3/USBXHCI were absent, so no hub-specific IDs were used — each playbook documents what was verified. SSIDs stay out via field allowlists; device instance suffixes and GUIDs got new redact rules.
+
+**What shipped:**
+1. `playbooks/wifi.yaml` + WLAN channel in the filter + `resume_from_sleep` marker (stability, no incident by design) + per-day/driver/after-resume patterns.
+2. `playbooks/usb.yaml` + Kernel-PnP channel + same-device (model part only), driver-failure, after-resume patterns.
+3. `battery_report.py` parser (stdlib HTML, validated against a real report, synthetic fixture only), wear math, report upload + local `powercfg` generation with temp cleanup, battery patterns with honest "no report uploaded" healthy note.
+4. Wi-Fi/USB/battery synthetic fixtures with `acceptable_final` verdicts, benchmark support for them, golden findings tests, and a never-invent guard on the real case.
+5. Diagnosis groups rules patterns and healthy notes by component (Stability, Storage, Hardware, Temperature, Wi-Fi, USB, Battery, plus Software so app-crash findings can't vanish); report has one section per affected component only — model findings moved out of that list since only rules patterns carry components.
+6. Benchmark rerun, demo + screenshots regenerated, both READMEs updated (playbooks, limitations, roadmap, benchmark numbers, test count).
+
+**New benchmark table** (2026-11-02, 21 runs, 0 failed, $1.92 est.):
+
+| Provider | Role | Calls | Correct | p50 ms | p95 ms | Est. cost |
+| --- | --- | --- | --- | --- | --- | --- |
+| baseten | evidence_analysis | 21/21 | 100% | 19975 | 26104 | $0.5268 |
+| fireworks | evidence_analysis | 21/21 | 100% | 16465 | 31516 | $0.3364 |
+| meta | case_writing | 21/21 | 100% | 12347 | 16926 | $1.0570 |
+
+Agreement 71% (15/21; new cases disagree more often on confidence). Demo diagnosis shows **Stability** findings and healthy **Storage, Hardware, Temperature, Wi-Fi, USB, Battery, Software**.
+
+One judgment call to flag: item 5's report-section test initially failed on the word "USB" — I checked and it's an honest "no USB Event 411 or 219" ruled-out sentence, not a hallucination, so USB joined the acronym allowlist with DPC and VBIOS.
+
+<details><summary>Progress messages during the run</summary>
+
+- Now checking what real logs are available for event-ID verification:
+- Both fixture and live logs exist. Copying live logs to temp (read-only) and surveying them:
+- Direct file access needs admin. Trying the Event Log API via wevtutil (allowed for standard users on some channels):
+- Tail confirms 8002 (failed connection) and 411 (device problem starting). Getting the cut-off heads:
+- Text format hides field names. Exporting one record per ID as XML:
+- Field inventory complete. Two last verification probes (resume marker + USB hub sources), then I'll start building:
+- Now the filter, resume marker, and matching changes:
+- Now the rules: skip marker events in incidents, add Wi-Fi patterns:
+- Now the focused Wi-Fi tests:
+- Green. Committing item 1 (only the listed files — temp logs with personal data stay out):
+- Item 2: USB playbook. First checking redact.py structure for the device-ID rules I'll need:
+- Now the USB patterns in rules.py (with a shared resume helper):
+- USB tests plus the redact tests:
+- My test string was malformed (used `&` where real IDs have `\`). Fixing the test to realistic format:
+- Item 3: generating a real battery report to build the parser against (stays out of the repo):
+- Structure mapped. Now reading the app upload flow and msinfo conventions:
+- Checking the report header markup for the generation date:
+- Header mapped. Checking cdb.py subprocess conventions to mirror:
+- Writing the battery report parser:
+- Validating the parser against the real report:
+- Parser validated (11.5% wear, 33 history rows). Now the synthetic fixture with different numbers:
+- Now the battery patterns in rules.py:
+- Now the app integration. Reading i18n and the collect template structure:
+- Now i18n strings (both languages, parity-tested) and the template block:
+- Now the tests. Checking existing test structures to mirror:
+- Checking the rest of the msinfo app test to mirror it:
+- Green. Quick live check of local generation (masked), then commit:
+- Item 4: synthetic fixtures. Wi-Fi case first:
+- Benchmark support for per-case acceptable verdicts:
+- Adding the never-invent guard for the real case:
+- Item 5: reading how Diagnosis renders findings today:
+- Checking report body format and prompt before designing sections:
+- Design settled: Diagnosis shows rules patterns (the only component-tagged findings) grouped by playbook. Implementing:
+- Prompt change for component sections:
+- Green. Regenerating the demo with the new section prompt:
+- Spanish correctly uses "Estabilidad:". Adding the section test:
+- Item 6: launching the full benchmark (7 cases × 3 runs — long) in the background:
+- While the benchmark runs, updating the READMEs. Reading the sections to change:
+- Updating the README (EN) — layout, limitations, roadmap, collect steps:
+- README text updates done. Waiting for the benchmark to finish:
+- "TDR/DPC analysis" — standard acronym. Adding to the allowlist:
+- "USB" in a case with no USB findings needs context — checking for hallucination vs innocent mention:
+- Listing all remaining violations at once instead of one by one:
+- VBIOS is standard (Video BIOS). Adding — this should be the last one:
+- Green. Regenerating screenshots with the new UI:
+- Grouped UI renders perfectly. Updating README benchmark tables and test counts:
+- Small MUSE_CODE truthfulness fix (playbook list) folded into this docs commit, plus a personal-data scan of the benchmark output:
+- Cleaning up all temp files with real personal data, then final verification:
+
+</details>

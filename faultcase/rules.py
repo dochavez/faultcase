@@ -72,6 +72,9 @@ def _build_incidents(
             "code": code,
             "code_hex": hex(code) if isinstance(code, int) else None,
             "code_name": info.get("name"),
+            # Label key: the stop code when Windows logged one, otherwise the
+            # kind of event (6008 alone = shutdown without a crash code).
+            "label_key": hex(code) if isinstance(code, int) else main.get("kind"),
             "explanation": info.get("explanation"),
             "power_transition": any(_sleep_in_progress(e) for e in reboots),
             "dump_module": dump.get("image_name"),
@@ -690,7 +693,7 @@ def apply_rules(
                     "date": i["date"],
                     "time": i["time"],
                     "label": (
-                        INCIDENT_LABELS.get(i.get("code_hex") or "", {}).get("en")
+                        INCIDENT_LABELS.get(i.get("label_key") or "", {}).get("en")
                         or i.get("code_name")
                         or i.get("code_hex")
                     ),

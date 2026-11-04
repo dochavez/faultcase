@@ -222,47 +222,138 @@ Fuentes de los diagramas: `docs/diagrams/` (se regeneran con `python docs/diagra
 
 ## Cómo se construyó con Muse Code
 
-Cada función siguiente es un commit revisado, construido con Muse Code (agente de terminal), según `git log`:
+Muse Code (el agente de terminal impulsado por Muse Spark, modelo `muse-spark-1.3-contributor`) construyó el núcleo de FaultCase. Su propio registro de sesión guarda **31 ejecuciones** (26 completadas), **1.009 llamadas a herramientas**, unas **5,3 horas** de trabajo del agente y **50 de los 63 commits**. Todos los números salen de ese registro (`~/.local/share/muse/sessions/.../session.jsonl`), extraídos con `docs/diagrams/build_muse_evidence.py`.
 
-| Commit | Función |
-|---|---|
-| [`bf8c73d`](https://github.com/dochavez/faultcase/commit/bf8c73d) | Set up environment and package skeleton |
-| [`a58ac1e`](https://github.com/dochavez/faultcase/commit/a58ac1e) | Add provider smoke test |
-| [`c8b765c`](https://github.com/dochavez/faultcase/commit/c8b765c) | Add Windows adapter: evtx and WinDbg parsers |
-| [`723de43`](https://github.com/dochavez/faultcase/commit/723de43) | Add normalization and redaction |
-| [`b673bbb`](https://github.com/dochavez/faultcase/commit/b673bbb) | Add rules engine and golden real-case test |
-| [`3ca3e26`](https://github.com/dochavez/faultcase/commit/3ca3e26) | Add model router with fallback |
-| [`e462f40`](https://github.com/dochavez/faultcase/commit/e462f40) | Add case-building agent |
-| [`3d3bbc2`](https://github.com/dochavez/faultcase/commit/3d3bbc2) | Add three-screen web app |
-| [`cf17104`](https://github.com/dochavez/faultcase/commit/cf17104) | Add Modal deployment |
-| [`99b012c`](https://github.com/dochavez/faultcase/commit/99b012c) | Add local minidump analysis |
-| [`13ba425`](https://github.com/dochavez/faultcase/commit/13ba425) | Serve precomputed demo case |
-| [`5392efa`](https://github.com/dochavez/faultcase/commit/5392efa) | Add msinfo32 export parser |
-| [`c3a3812`](https://github.com/dochavez/faultcase/commit/c3a3812) | Read device details locally with CIM queries |
-| [`ef0cb2e`](https://github.com/dochavez/faultcase/commit/ef0cb2e) | Add browser-only serial number field |
-| [`bc55cd8`](https://github.com/dochavez/faultcase/commit/bc55cd8) | Add cross-provider second opinion for evidence analysis |
-| [`1789446`](https://github.com/dochavez/faultcase/commit/1789446) | Order prompts for caching and log cached tokens |
-| [`15733e0`](https://github.com/dochavez/faultcase/commit/15733e0) | Add hedged requests |
-| [`dd19a0a`](https://github.com/dochavez/faultcase/commit/dd19a0a) | Configure reasoning effort per role |
-| [`aaf89fd`](https://github.com/dochavez/faultcase/commit/aaf89fd) | Add provider benchmark and results |
-| [`bc56b7e`](https://github.com/dochavez/faultcase/commit/bc56b7e) | Compare second opinions on enum verdicts |
-| [`289912f`](https://github.com/dochavez/faultcase/commit/289912f) | Cap completion length and detect truncation |
-| [`7c2a89c`](https://github.com/dochavez/faultcase/commit/7c2a89c) | Make Baseten analysis reliable |
-| [`eaf9b3f`](https://github.com/dochavez/faultcase/commit/eaf9b3f) | Add Wi-Fi playbook with verified event IDs |
-| [`870c344`](https://github.com/dochavez/faultcase/commit/870c344) | Add USB playbook with verified event IDs |
-| [`4381749`](https://github.com/dochavez/faultcase/commit/4381749) | Add battery playbook, parser and upload |
-| [`36acb22`](https://github.com/dochavez/faultcase/commit/36acb22) | Add component fixtures, benchmark cases and golden tests |
-| [`8152610`](https://github.com/dochavez/faultcase/commit/8152610) | Group diagnosis by component, report sections per component |
-| [`de72d48`](https://github.com/dochavez/faultcase/commit/de72d48) | On-demand explanation backend: `explain_case`, `prompts/explainer.md`, `explanation` route |
+### Cómo se conectan los archivos y llaman a las APIs
+
+![Cómo se conectan los archivos y llaman a las APIs](docs/img/diagrams/modules-es.png)
+
+### Ocho prompts reales y las respuestas de Muse Code
+
+| # | Tarea dada a Muse Code | Respuesta de Muse Code (primera línea) | Duración | Llamadas a herramientas |
+|---|---|---|---|---|
+| 1 | [Entorno y esqueleto del paquete](docs/img/muse-code/run-1.png) | Done. Environment is set up and committed as `bf8c73d` ("Set up environment and package skeleton"). | 11.5 min | 28 |
+| 2 | [Adaptador de Windows: parsers de evtx y WinDbg](docs/img/muse-code/run-2.png) | Done — `pytest` passes (6/6) and committed as `c8b765c`. | 2.7 min | 36 |
+| 3 | [Normalización y anonimización](docs/img/muse-code/run-3.png) | Done — `pytest` passes (11/11) and committed as `723de43`. | 2.9 min | 20 |
+| 4 | [Router de modelos con respaldo](docs/img/muse-code/run-4.png) | Done — `pytest` passes (30/30) and committed as `3ca3e26`. | 2.8 min | 11 |
+| 5 | [Correcciones de auditoría: demo, zona horaria, privacidad](docs/img/muse-code/run-5.png) | All six fixes are done, committed one per item, and pushed (`99b012c..bbaa6b6`). Final `pytest`: 66 passed, 1 live deselected. | 27.6 min | 108 |
+| 6 | [Identificación automática del equipo](docs/img/muse-code/run-6.png) | All five steps done, `pytest` green (95 passed, 1 skipped), and pushed (`06f3ed2..f597b9d`). Commits: parser, Collect upload, CIM reading, serial field, report content. | 23.2 min | 67 |
+| 7 | [Segunda opinión, caché, hedge y benchmark](docs/img/muse-code/run-7.png) | All five items done, 116 tests green, pushed (`f597b9d..aaf89fd`), one commit per item. | 23.6 min | 102 |
+| 8 | [Playbooks de Wi-Fi, USB y batería](docs/img/muse-code/run-8.png) | All six items done, 155 tests green, pushed (`60d9e45..c52fbf0`), one commit per item. | 50.5 min | 214 |
+
+Cada tarjeta muestra el prompt exacto, la respuesta final de Muse Code, el modelo, la duración, las llamadas a herramientas y los tokens, generada desde el registro de sesión (no reescrita). Los prompts y respuestas completos están en [docs/muse-code/EVIDENCE.md](docs/muse-code/EVIDENCE.md) (en inglés, como se escribieron) y el extracto en [docs/muse-code/runs.json](docs/muse-code/runs.json).
+
+<details>
+<summary>Evidencia: las ocho ejecuciones tal como las registró Muse Code</summary>
+
+**1. Entorno y esqueleto del paquete**
+
+![Muse Code run 1](docs/img/muse-code/run-1.png)
+
+**2. Adaptador de Windows: parsers de evtx y WinDbg**
+
+![Muse Code run 2](docs/img/muse-code/run-2.png)
+
+**3. Normalización y anonimización**
+
+![Muse Code run 3](docs/img/muse-code/run-3.png)
+
+**4. Router de modelos con respaldo**
+
+![Muse Code run 4](docs/img/muse-code/run-4.png)
+
+**5. Correcciones de auditoría: demo, zona horaria, privacidad**
+
+![Muse Code run 5](docs/img/muse-code/run-5.png)
+
+**6. Identificación automática del equipo**
+
+![Muse Code run 6](docs/img/muse-code/run-6.png)
+
+**7. Segunda opinión, caché, hedge y benchmark**
+
+![Muse Code run 7](docs/img/muse-code/run-7.png)
+
+**8. Playbooks de Wi-Fi, USB y batería**
+
+![Muse Code run 8](docs/img/muse-code/run-8.png)
+
+</details>
 
 La **regla de la prueba dorada** mantuvo honesto al agente: `fixtures/real_case/expected.json` define las conclusiones que el sistema debe alcanzar y nunca debe editarse para que las pruebas pasen (`tests/test_real_case.py` verifica cada campo; la prueba en vivo verifica el veredicto, la confianza y las afirmaciones prohibidas).
 
+### Historial de commits
+
+El repositorio es público, así que cualquiera puede revisar cada commit, sus cambios y su fecha en GitHub: [github.com/dochavez/faultcase/commits/main](https://github.com/dochavez/faultcase/commits/main). ✓ marca los commits que hizo el propio Muse Code (sus llamadas a `git commit` están en el registro de sesión); los que no tienen marca se hicieron fuera de Muse Code.
+
 <details>
-<summary>Dos ejemplos reales de prompts (recortados, originales en inglés)</summary>
+<summary>Los 63 commits al momento de escribir esto</summary>
 
-> Add automatic device identification so reports show the real model of the computer being analyzed. […] 1. Parser. Create `faultcase/adapters/windows/msinfo.py` that parses a System Information export (msinfo32 > File > Export […] often UTF-16 with BOM; detect the encoding). […] Never extract or keep the user name or computer name. […] 4. Serial number in the web version: on the Action screen add a "Serial number (optional)" field that replaces `{{SERIAL}}` […] using JavaScript in the browser only. The serial must never be sent to the server. […]
-
-> Make better use of both open-weights providers and measure it. […] 1. Second opinion. For the evidence_analysis role, call Baseten and Fireworks in parallel […]. Compare verdicts: if they agree, keep the confidence; if they disagree, lower confidence by one level and add a finding of type "hypothesis" […]. 5. Benchmark. Create `scripts/benchmark.py` that runs build_case N times (default 3) on the real case plus 3 synthetic cases […] For each provider and role record: verdict correctness […], latency p50 and p95, […] estimated cost using the prices in providers.yaml […], fallback and hedge counts, and second-opinion agreement rate. […]
+| # | Commit | Mensaje | Muse Code |
+|---|---|---|---|
+| 1 | [`baa30dd`](https://github.com/dochavez/faultcase/commit/baa30dd) | Initial FaultCase kit |  |
+| 2 | [`bf8c73d`](https://github.com/dochavez/faultcase/commit/bf8c73d) | Set up environment and package skeleton | ✓ |
+| 3 | [`a58ac1e`](https://github.com/dochavez/faultcase/commit/a58ac1e) | Add provider smoke test | ✓ |
+| 4 | [`c8b765c`](https://github.com/dochavez/faultcase/commit/c8b765c) | Add Windows adapter: evtx and WinDbg parsers | ✓ |
+| 5 | [`723de43`](https://github.com/dochavez/faultcase/commit/723de43) | Add normalization and redaction | ✓ |
+| 6 | [`b673bbb`](https://github.com/dochavez/faultcase/commit/b673bbb) | Add rules engine and golden real-case test | ✓ |
+| 7 | [`3ca3e26`](https://github.com/dochavez/faultcase/commit/3ca3e26) | Add model router with fallback | ✓ |
+| 8 | [`e462f40`](https://github.com/dochavez/faultcase/commit/e462f40) | Add case-building agent | ✓ |
+| 9 | [`3d3bbc2`](https://github.com/dochavez/faultcase/commit/3d3bbc2) | Add three-screen web app | ✓ |
+| 10 | [`cf17104`](https://github.com/dochavez/faultcase/commit/cf17104) | Add Modal deployment | ✓ |
+| 11 | [`99b012c`](https://github.com/dochavez/faultcase/commit/99b012c) | Add local minidump analysis | ✓ |
+| 12 | [`13ba425`](https://github.com/dochavez/faultcase/commit/13ba425) | Serve precomputed demo case | ✓ |
+| 13 | [`a834b47`](https://github.com/dochavez/faultcase/commit/a834b47) | Fix blocking agent calls and case expiry | ✓ |
+| 14 | [`36d3fee`](https://github.com/dochavez/faultcase/commit/36d3fee) | Show dates in the user timezone | ✓ |
+| 15 | [`063b371`](https://github.com/dochavez/faultcase/commit/063b371) | Use rules-computed totals and require report subject | ✓ |
+| 16 | [`b414454`](https://github.com/dochavez/faultcase/commit/b414454) | Make cdb tests portable | ✓ |
+| 17 | [`bbaa6b6`](https://github.com/dochavez/faultcase/commit/bbaa6b6) | Exclude private evtx from Modal image | ✓ |
+| 18 | [`da2add9`](https://github.com/dochavez/faultcase/commit/da2add9) | Fix cdb tests on non-Windows platforms | ✓ |
+| 19 | [`35f9edc`](https://github.com/dochavez/faultcase/commit/35f9edc) | Fix incident period calculation | ✓ |
+| 20 | [`ce27539`](https://github.com/dochavez/faultcase/commit/ce27539) | Remove internal identifiers from manufacturer report | ✓ |
+| 21 | [`082c228`](https://github.com/dochavez/faultcase/commit/082c228) | Polish Spanish and add plain-language incident labels | ✓ |
+| 22 | [`82ae9dc`](https://github.com/dochavez/faultcase/commit/82ae9dc) | Rewrite README for judges | ✓ |
+| 23 | [`248c007`](https://github.com/dochavez/faultcase/commit/248c007) | Add device model and full incident list to report | ✓ |
+| 24 | [`06f3ed2`](https://github.com/dochavez/faultcase/commit/06f3ed2) | Describe driver version changes accurately | ✓ |
+| 25 | [`5392efa`](https://github.com/dochavez/faultcase/commit/5392efa) | Add msinfo32 export parser | ✓ |
+| 26 | [`ca021fb`](https://github.com/dochavez/faultcase/commit/ca021fb) | Add msinfo upload and manual device fields | ✓ |
+| 27 | [`c3a3812`](https://github.com/dochavez/faultcase/commit/c3a3812) | Read device details locally with CIM queries | ✓ |
+| 28 | [`ef0cb2e`](https://github.com/dochavez/faultcase/commit/ef0cb2e) | Add browser-only serial number field | ✓ |
+| 29 | [`f597b9d`](https://github.com/dochavez/faultcase/commit/f597b9d) | Show device details and BIOS checklist in report | ✓ |
+| 30 | [`bc55cd8`](https://github.com/dochavez/faultcase/commit/bc55cd8) | Add cross-provider second opinion for evidence analysis | ✓ |
+| 31 | [`1789446`](https://github.com/dochavez/faultcase/commit/1789446) | Order prompts for caching and log cached tokens | ✓ |
+| 32 | [`15733e0`](https://github.com/dochavez/faultcase/commit/15733e0) | Add hedged requests | ✓ |
+| 33 | [`dd19a0a`](https://github.com/dochavez/faultcase/commit/dd19a0a) | Configure reasoning effort per role | ✓ |
+| 34 | [`aaf89fd`](https://github.com/dochavez/faultcase/commit/aaf89fd) | Add provider benchmark and results | ✓ |
+| 35 | [`bc56b7e`](https://github.com/dochavez/faultcase/commit/bc56b7e) | Compare second opinions on enum verdicts | ✓ |
+| 36 | [`289912f`](https://github.com/dochavez/faultcase/commit/289912f) | Cap completion length and detect truncation | ✓ |
+| 37 | [`7c2a89c`](https://github.com/dochavez/faultcase/commit/7c2a89c) | Make Baseten analysis reliable | ✓ |
+| 38 | [`6a6aafd`](https://github.com/dochavez/faultcase/commit/6a6aafd) | Refresh benchmark results and demo case | ✓ |
+| 39 | [`2b21606`](https://github.com/dochavez/faultcase/commit/2b21606) | Add screenshot script and images | ✓ |
+| 40 | [`fd947de`](https://github.com/dochavez/faultcase/commit/fd947de) | Add README banner | ✓ |
+| 41 | [`5c98489`](https://github.com/dochavez/faultcase/commit/5c98489) | Add CI workflow | ✓ |
+| 42 | [`c73a72f`](https://github.com/dochavez/faultcase/commit/c73a72f) | Write final README | ✓ |
+| 43 | [`284af58`](https://github.com/dochavez/faultcase/commit/284af58) | Add Spanish README | ✓ |
+| 44 | [`632a675`](https://github.com/dochavez/faultcase/commit/632a675) | Add integration diagrams | ✓ |
+| 45 | [`60d9e45`](https://github.com/dochavez/faultcase/commit/60d9e45) | Update MUSE_CODE layout | ✓ |
+| 46 | [`eaf9b3f`](https://github.com/dochavez/faultcase/commit/eaf9b3f) | Add Wi-Fi playbook with verified event IDs | ✓ |
+| 47 | [`870c344`](https://github.com/dochavez/faultcase/commit/870c344) | Add USB playbook with verified event IDs | ✓ |
+| 48 | [`4381749`](https://github.com/dochavez/faultcase/commit/4381749) | Add battery playbook, parser and upload | ✓ |
+| 49 | [`36acb22`](https://github.com/dochavez/faultcase/commit/36acb22) | Add component fixtures, benchmark cases and golden tests | ✓ |
+| 50 | [`8152610`](https://github.com/dochavez/faultcase/commit/8152610) | Group diagnosis by component, report sections per component | ✓ |
+| 51 | [`c52fbf0`](https://github.com/dochavez/faultcase/commit/c52fbf0) | Refresh benchmark, demo, screenshots and docs for new components | ✓ |
+| 52 | [`13d1f68`](https://github.com/dochavez/faultcase/commit/13d1f68) | Compact model payload, stability-only incidents, benign-event rules and visual diagnosis |  |
+| 53 | [`245f4ee`](https://github.com/dochavez/faultcase/commit/245f4ee) | Calibrate rules on a real export, AI component notes, next steps, localized file pickers, wider layout |  |
+| 54 | [`de72d48`](https://github.com/dochavez/faultcase/commit/de72d48) | On-demand plain-language explanation with Muse Spark, glossary, live demo URL |  |
+| 55 | [`8b54039`](https://github.com/dochavez/faultcase/commit/8b54039) | Windows-only notice and screenshot guide for Event Viewer export |  |
+| 56 | [`f23236d`](https://github.com/dochavez/faultcase/commit/f23236d) | Say Windows 10 and 11 computers, not only laptops |  |
+| 57 | [`0f38e4c`](https://github.com/dochavez/faultcase/commit/0f38e4c) | Refresh README screenshots and diagrams, Muse Code table without dates, FAQ |  |
+| 58 | [`1e3cfe8`](https://github.com/dochavez/faultcase/commit/1e3cfe8) | Try to fix it first with Muse, upload validation, keep-tab-open notice, new screenshots |  |
+| 59 | [`ad7bd90`](https://github.com/dochavez/faultcase/commit/ad7bd90) | Try to fix it first, upload validation, keep-tab-open notice, Render blueprint |  |
+| 60 | [`da5e02f`](https://github.com/dochavez/faultcase/commit/da5e02f) | Disable SDK silent retries, Render starter plan, backup demo URL |  |
+| 61 | [`7bbafa4`](https://github.com/dochavez/faultcase/commit/7bbafa4) | Release the leave-page guard before redirecting to Diagnosis |  |
+| 62 | [`32192b8`](https://github.com/dochavez/faultcase/commit/32192b8) | Run uploads as background jobs with real progress polling |  |
+| 63 | [`efa15a7`](https://github.com/dochavez/faultcase/commit/efa15a7) | README: inspiration photos, any-brand note, why Muse helps, disclaimer |  |
 
 </details>
 

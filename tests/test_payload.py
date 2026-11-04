@@ -207,3 +207,13 @@ def test_nvidia_gpu_resets_are_reported():
     assert gpu and gpu[0]["verdict"] == "fact"
     assert gpu[0]["detail"].startswith("4 display driver resets")
     assert findings["summary"]["total_incidents"] == 0
+
+
+
+def test_shutdown_without_crash_code_gets_a_label():
+    events = [_raw(0, "EventLog", 6008, {}, level=2)]
+    findings = rules.apply_rules(normalize.normalize(events).evidence)
+    incident = findings["incidents"][0]
+    assert incident["code_hex"] is None
+    assert incident["label_key"] == "unexpected_shutdown"
+    assert findings["summary"]["incidents"][0]["label"] == "Unexpected shutdown (no crash code)"
