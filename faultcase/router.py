@@ -16,7 +16,7 @@ import re
 import queue
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -155,6 +155,12 @@ class Router:
         """Return "second_opinion" or "single" for a role (default "single")."""
         roles = self._config.get("roles", {})
         return roles.get(role, {}).get("analysis_mode", "single")
+
+    def second_opinion_wait(self, role: str):
+        """Seconds to wait for the second opinion once the first one is in."""
+        roles = self._config.get("roles", {}) or {}
+        value = (roles.get(role) or {}).get("second_opinion_wait_seconds")
+        return float(value) if isinstance(value, (int, float)) else None
 
     def reasoning_effort(self, role: str, provider: str | None = None):
         """Return the reasoning effort for a role (provider override wins).
@@ -498,10 +504,38 @@ class Router:
             }
 
         results: dict[str, dict] = {}
-        with ThreadPoolExecutor(max_workers=2) as pool:
+        grace = self.second_opinion_wait(role)
+        pool = ThreadPoolExecutor(max_workers=2)
+        try:
             futures = {pool.submit(run, name): name for name in names}
-            for future in as_completed(futures):
-                results[futures[future]] = future.result()
+            pending = set(futures)
+            deadline = None
+            while pending:
+                timeout = (
+                    None if deadline is None
+                    else max(0.0, deadline - time.monotonic())
+                )
+                done, pending = wait(
+                    pending, timeout=timeout, return_when=FIRST_COMPLETED
+                )
+                if not done:
+                    break
+                for future in done:
+                    result = future.result()
+                    results[futures[future]] = result
+                    if result["success"] and deadline is None and grace is not None:
+                        # One opinion is in: give the other a bounded grace
+                        # period instead of letting a slow provider stall
+                        # the whole case.
+                        deadline = time.monotonic() + grace
+            for future in pending:
+                name = futures[future]
+                results[name] = self._failure(
+                    role, name,
+                    f"no answer within {grace:g}s after the first opinion",
+                )
+        finally:
+            pool.shutdown(wait=False)
         return [results[name] for name in names]
 
 

@@ -2,6 +2,7 @@
 
 import json
 import threading
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -470,3 +471,25 @@ def test_call_parallel_runs_concurrently(tmp_path):
     })
     results = router.call_parallel("test_role", MESSAGES, SCHEMA)
     assert [r["success"] for r in results] == [True, True]
+
+
+def test_call_parallel_stops_waiting_for_a_slow_second_opinion(tmp_path):
+    release = threading.Event()
+
+    def slow():
+        release.wait(5)
+        return _completion('{"ok": true}')
+
+    router, _ = _router(tmp_path, {
+        "baseten": FakeClient([_completion('{"ok": true}')]),
+        "fireworks": FakeClient([slow]),
+    })
+    router._config["roles"] = {"test_role": {"second_opinion_wait_seconds": 0.2}}
+    start = time.monotonic()
+    results = router.call_parallel("test_role", MESSAGES, SCHEMA)
+    elapsed = time.monotonic() - start
+    release.set()
+    assert elapsed < 3
+    assert results[0]["success"] is True
+    assert results[1]["success"] is False
+    assert "after the first opinion" in results[1]["error"]

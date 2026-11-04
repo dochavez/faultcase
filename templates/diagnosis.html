@@ -41,6 +41,23 @@
   </ul>
 </section>
 
+{% if notes %}
+<section aria-labelledby="ai-title" class="ai-notes">
+  <h2 id="ai-title">{{ t.dg_ai_title }}</h2>
+  <ul>
+  {% for note in notes %}
+    {% set st = status_by_component.get(note.component, "attention") %}
+    <li class="ai-note status-{{ st }}">
+      <span class="health-icon" aria-hidden="true">{{ icons[st] }}</span>
+      <div><strong>{{ t.get("comp_" + note.component, note.component) }}</strong> · <span class="health-status">{{ t["status_" + st] }}</span>
+        <p>{{ note.text }}</p></div>
+    </li>
+  {% endfor %}
+  </ul>
+  <p class="meta">{{ t.dg_ai_by.format(model=writer_model) }}</p>
+</section>
+{% endif %}
+
 <section aria-labelledby="chart-title">
   <h2 id="chart-title">{{ t.dg_chart_title }}</h2>
   {% if chart %}

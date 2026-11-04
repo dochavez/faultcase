@@ -21,6 +21,18 @@
       }
     },
     "healthy_components": {"type": "array", "items": {"type": "string"}},
+    "component_notes": {
+      "type": "array",
+      "description": "plain-language explanation for the user of each component that needs attention, in the user's language",
+      "items": {
+        "type": "object",
+        "required": ["component", "text"],
+        "properties": {
+          "component": {"enum": ["stability", "disk", "hardware", "thermal", "wifi", "usb", "battery", "software"]},
+          "text": {"type": "string"}
+        }
+      }
+    },
     "checklist": {
       "type": "array",
       "items": {"type": "object", "required": ["step", "status"],

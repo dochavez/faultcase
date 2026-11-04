@@ -8,3 +8,6 @@ evidence/
 .modal/
 logs/
 fixtures/real_case/failures.evtx
+# Personal exports: never commit them
+*.evtx
+battery-report*.html

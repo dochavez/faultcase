@@ -43,6 +43,9 @@ routes:
 roles:
   evidence_analysis:
     analysis_mode: second_opinion
+    # Once one opinion is in, wait at most this long for the other one;
+    # a late provider is reported as failed and agreement stays unknown.
+    second_opinion_wait_seconds: 60
     reasoning_effort: medium
     reasoning_effort_by_provider:
       baseten: null    # reasoning + json_schema stalls on Baseten: omit it

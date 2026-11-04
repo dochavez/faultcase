@@ -614,3 +614,44 @@ def test_components_fallback_for_old_findings():
     assert status["stability"] == "problem"
     assert status["disk"] == "ok"
     assert status["battery"] == "no_data"
+
+
+def test_collect_marks_required_and_localizes_file_buttons():
+    page = client.get("/?lang=en").text
+    assert "Required" in page and "Optional" in page
+    assert "Choose file" in page
+    es = client.get("/?lang=es").text
+    assert "Obligatorio" in es and "Elegir archivo" in es
+
+
+def test_action_explains_next_steps_with_manufacturer_link():
+    target = client.post(
+        "/demo", data={"lang": "en"}, headers={"HX-Request": "true"}
+    ).headers["HX-Redirect"]
+    case_id = target.split("/case/")[1].split("?")[0]
+    page = client.get(f"/case/{case_id}/action?lang=en").text
+    assert "What to do next" in page
+    assert 'href="https://support.lenovo.com"' in page
+    assert "public forums" in page
+
+
+def test_support_site_matching():
+    assert app_module._support_site("LENOVO")[1] == "https://support.lenovo.com"
+    assert app_module._support_site("HP Inc.")[1] == "https://support.hp.com"
+    assert app_module._support_site("Shipping Co")[1] is None
+    assert app_module._support_site(None) == (None, None)
+
+
+def test_ai_component_notes_are_shown_in_order():
+    target = client.post(
+        "/demo", data={"lang": "en"}, headers={"HX-Request": "true"}
+    ).headers["HX-Redirect"]
+    case_id = target.split("/case/")[1].split("?")[0]
+    stored = app_module.CASES[case_id]
+    stored["case"] = dict(stored["case"], component_notes=[
+        {"component": "wifi", "text": "Wi-Fi note."},
+        {"component": "stability", "text": "Stability note."},
+    ])
+    page = client.get(target).text
+    assert "What this means for you" in page
+    assert page.index("Stability note.") < page.index("Wi-Fi note.")

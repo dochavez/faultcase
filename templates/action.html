@@ -4,6 +4,19 @@
 <h1>{{ t.ac_report }}</h1>
 <p class="subject">{{ case.manufacturer_report.subject }}</p>
 
+<section class="next-steps" aria-labelledby="next-title">
+  <h2 id="next-title">{{ t.ac_next_title }}</h2>
+  <ol>
+    <li>{{ t.ac_next_1 }}</li>
+    <li>{{ t.ac_next_2.format(manufacturer=support_name or t.ac_your_manufacturer) }}
+      {% if support_url %}<br><a class="btn btn-secondary btn-small" href="{{ support_url }}" target="_blank" rel="noopener">{{ t.ac_support_btn.format(manufacturer=support_name) }} ↗</a>{% endif %}</li>
+    <li>{{ t.ac_next_3 }}</li>
+    <li>{{ t.ac_next_4 }}</li>
+    <li>{{ t.ac_next_5 }}</li>
+  </ol>
+  <p class="meta">{{ t.ac_privacy }}</p>
+</section>
+
 <section class="serial-box">
   <label for="serial">{{ t.serial_label }}</label>
   <input type="text" id="serial" autocomplete="off" spellcheck="false" placeholder="{{SERIAL}}">

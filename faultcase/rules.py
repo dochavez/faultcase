@@ -8,6 +8,7 @@ labeled "fact" or "hypothesis"; power_transition is always a hypothesis.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from datetime import date, datetime
 from pathlib import Path
@@ -78,6 +79,29 @@ def _build_incidents(
             "params": main.get("params"),
         })
     return sorted(incidents, key=lambda i: i["date"])
+
+
+GPU_RESET_KINDS = ("gpu_driver_reset", "tdr_recovered")
+
+
+def _gpu_reset_patterns(events: list[dict]) -> list[dict]:
+    """Display driver resets that did not crash the machine."""
+    resets = sorted(
+        e["time"][:10] for e in events if e.get("kind") in GPU_RESET_KINDS
+    )
+    if not resets:
+        return []
+    nvidia = sum(1 for e in events if e.get("kind") == "gpu_driver_reset")
+    detail = (
+        f"{len(resets)} display driver resets without a reboot, "
+        f"{resets[0]}..{resets[-1]}"
+    )
+    if nvidia:
+        detail += f" ({nvidia} logged by the NVIDIA driver as 'TDR occurred')"
+    return [{
+        "id": "gpu_resets", "playbook": STABILITY, "verdict": "fact",
+        "detail": detail,
+    }]
 
 
 def _stability_patterns(incidents: list[dict], dumps: list[dict]) -> list[dict]:
@@ -154,6 +178,40 @@ BENIGN_USB_DEVICE_PREFIXES = ("ROOT\\", "SWD\\")
 BENIGN_USB_DRIVERS = ("wudfrd",)
 # Successful updates are context, never a problem.
 CONTEXT_KINDS = {"update_ok"}
+# WLAN 8003 reason codes started by the user or Windows (new connection,
+# adapter turned off or put to sleep, temporary disconnect request).
+BENIGN_WIFI_DISCONNECT_REASONS = {"3", "11", "13"}
+# WLAN 8002: no connectable access point visible (out of range), cancelled.
+BENIGN_WIFI_CONNECT_REASONS = {"229396", "229377"}
+DISK_DEVICE = re.compile(r"Harddisk(\d+)", re.IGNORECASE)
+DISK_OBJECT = re.compile(r"\\DR(\d+)\b")
+# Wi-Fi is a problem (not just worth a look) from this many drops in a day.
+WIFI_PROBLEM_DROPS_PER_DAY = 10
+
+
+def _is_usb_device(device_id: str) -> bool:
+    upper = device_id.upper()
+    return upper.startswith("USB") or "VID_" in upper
+
+
+def disk_location(event: dict) -> tuple[str | None, bool]:
+    """(label, is_system_disk) for the device a disk event names.
+
+    ``Harddisk0`` / ``DR0`` is the system disk. Higher numbers are other
+    disks; a growing ``DRn`` usually means a removable drive that was
+    plugged in again. Unknown devices count as the system disk.
+    """
+    for value in (event.get("fields") or {}).values():
+        text = str(value)
+        match = DISK_DEVICE.search(text)
+        if match:
+            number = int(match.group(1))
+            return f"disk {number}", number == 0
+        match = DISK_OBJECT.search(text)
+        if match:
+            number = int(match.group(1))
+            return f"device DR{number}", number == 0
+    return None, True
 
 
 def benign_reason(event: dict) -> str | None:
@@ -165,12 +223,30 @@ def benign_reason(event: dict) -> str | None:
     if kind in CONTEXT_KINDS:
         return "context"
     if playbook == USB:
-        device = str(fields.get("DeviceInstanceId") or "").upper()
+        device = str(
+            fields.get("DeviceInstanceId") or fields.get("DriverName") or ""
+        ).upper()
         if device.startswith(BENIGN_USB_DEVICE_PREFIXES):
             return "virtual_device"
         name = str(fields.get("FailureName") or "").lower()
         if any(driver in name for driver in BENIGN_USB_DRIVERS):
             return "benign_driver"
+        # Kernel-PnP logs every device class (PCI, ACPI...); only USB
+        # devices belong to this component.
+        if device and not _is_usb_device(device):
+            return "not_usb"
+    if playbook == WIFI:
+        if kind == "wifi_driver_warning":
+            # Intel Netwtw/Netwaw 6062 is logged constantly on healthy PCs.
+            return "known_noise"
+        reason = str(fields.get("ReasonCode", "")).strip()
+        if kind == "wifi_disconnected" and reason in BENIGN_WIFI_DISCONNECT_REASONS:
+            return "user_or_system"
+        if kind == "wifi_connect_failed" and reason in BENIGN_WIFI_CONNECT_REASONS:
+            return "out_of_range"
+    if playbook == DISK and "shadowcopy" in str(fields.get("DeviceName", "")).lower():
+        # Corruption reported on a Volume Shadow Copy snapshot, not the disk.
+        return "shadow_copy"
     if level in INFO_LEVELS and (
         (playbook == DISK and kind == "volume_needs_repair")
         or (playbook == WIFI and kind in WIFI_DRIVER_KINDS)
@@ -214,8 +290,12 @@ def _component_statuses(
             else:
                 status = "ok"
         elif pid == WIFI:
+            per_day = Counter(
+                e["time"][:10] for e in events if e.get("kind") in WIFI_DROP_KINDS
+            )
+            worst = max(per_day.values(), default=0)
             status = (
-                "problem" if "wifi_frequent_disconnects" in ids
+                "problem" if worst >= WIFI_PROBLEM_DROPS_PER_DAY
                 else "attention" if count else "ok"
             )
         elif pid == USB:
@@ -230,7 +310,11 @@ def _component_statuses(
                 else "attention" if count else "ok"
             )
         elif pid == DISK:
-            serious = kinds & {"bad_block", "paging_error", "ntfs_corruption"}
+            serious = [
+                e for e in events
+                if e.get("kind") in {"bad_block", "paging_error", "ntfs_corruption"}
+                and disk_location(e)[1]
+            ]
             status = "problem" if serious else "attention" if count else "ok"
         elif pid == THERMAL:
             status = (
@@ -481,16 +565,38 @@ def _other_playbook_patterns(events: list[dict]) -> list[dict]:
         playbook = event.get("playbook")
         if not playbook or playbook == STABILITY or playbook in DEDICATED_PATTERNS:
             continue
-        grouped.setdefault((playbook, event.get("kind")), []).append(event["time"][:10])
+        label, system = (
+            disk_location(event) if playbook == DISK else (None, True)
+        )
+        # Removable drives get a new DRn each time: group them together.
+        if label and label.startswith("device DR") and not system:
+            label = "a removable drive"
+        key = (playbook, event.get("kind"), label or "", system)
+        grouped.setdefault(key, []).append(event["time"][:10])
     patterns = []
-    for (playbook, kind), dates in sorted(grouped.items()):
+    secondary = set()
+    for (playbook, kind, disk, system), dates in sorted(grouped.items()):
         dates = sorted(dates)
+        where = f" on {disk}" if disk else ""
         if len(dates) > 1:
-            detail = f"{len(dates)} {kind} events, {dates[0]}..{dates[-1]}"
+            detail = f"{len(dates)} {kind} events{where}, {dates[0]}..{dates[-1]}"
         else:
-            detail = f"1 {kind} event on {dates[0]}"
+            detail = f"1 {kind} event{where} on {dates[0]}"
         patterns.append({
             "id": kind, "playbook": playbook, "verdict": "fact", "detail": detail,
+        })
+        if not system:
+            secondary.add((playbook, disk))
+    for playbook, disk in sorted(secondary):
+        patterns.append({
+            "id": "secondary_disk", "playbook": playbook,
+            "verdict": "hypothesis",
+            "detail": (
+                "These errors are on a removable drive, not on the system disk"
+                if disk == "a removable drive" else
+                f"{disk.capitalize()} is not the system disk; it is often an "
+                "external or secondary drive"
+            ),
         })
     return patterns
 
@@ -516,6 +622,7 @@ def apply_rules(
     )
     patterns = (
         _stability_patterns(incidents, dumps)
+        + _gpu_reset_patterns(counted)
         + _wifi_patterns(counted)
         + _usb_patterns(counted)
         + _battery_patterns(evidence)

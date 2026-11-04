@@ -145,3 +145,65 @@ def test_router_error_fields_hide_secrets():
     fields = _error_fields(RuntimeError("bad key Bearer abcdefghijklmnop123"))
     assert fields["error_type"] == "RuntimeError"
     assert "abcdefghijklmnop123" not in fields["error_message"]
+
+
+def _status(events):
+    findings = rules.apply_rules(normalize.normalize(events).evidence)
+    return {c["id"]: c for c in findings["components"]}, findings
+
+
+def test_real_case_noise_is_ignored():
+    wlan = "Microsoft-Windows-WLAN-AutoConfig"
+    pnp = "Microsoft-Windows-Kernel-PnP"
+    events = [
+        _raw(1, "Netwaw18", 6062, {}, level=3),
+        _raw(2, wlan, 8003, {"ReasonCode": "3"}, level=4),
+        _raw(3, wlan, 8003, {"ReasonCode": "11"}, level=4),
+        _raw(4, wlan, 8002, {"ReasonCode": "229396"}, level=2),
+        _raw(5, pnp, 411, {"DeviceInstanceId": "PCI\\VEN_8086&DEV_7D67\\3&1"}, level=2),
+        _raw(6, "Ntfs", 55, {"DeviceName": "\\Device\\HarddiskVolumeShadowCopy5"}, level=2),
+    ]
+    status, _ = _status(events)
+    assert status["wifi"]["status"] == "ok" and status["wifi"]["ignored"] == 4
+    assert status["usb"]["status"] == "ok"
+    assert status["disk"]["status"] == "ok"
+
+
+def test_real_usb_and_wifi_failures_still_count():
+    events = [
+        _raw(1, "Microsoft-Windows-Kernel-PnP", 411,
+             {"DeviceInstanceId": "USB\\VID_1234&PID_ABCD\\1"}, level=2),
+        _raw(2, "Microsoft-Windows-WLAN-AutoConfig", 8003, {"ReasonCode": "0"}, level=4),
+    ]
+    status, _ = _status(events)
+    assert status["usb"]["status"] == "attention"
+    assert status["wifi"]["status"] == "attention"
+
+
+def test_disk_errors_on_secondary_or_removable_drive_need_attention_only():
+    data = "<string>\\Device\\Harddisk1\\DR2</string>"
+    events = [_raw(i, "disk", 51, {"Data0": data}, level=3) for i in range(3)]
+    events += [_raw(10 + i, "disk", 51, {"Data0": f"<string>\\DR{3 + i}</string>"}, level=3)
+               for i in range(3)]
+    status, findings = _status(events)
+    assert status["disk"]["status"] == "attention"
+    details = [p["detail"] for p in findings["patterns"] if p["playbook"] == "disk"]
+    assert "3 paging_error events on disk 1, 2026-01-01..2026-01-01" in details
+    assert any("removable drive" in d for d in details)
+
+
+def test_disk_errors_on_system_disk_are_a_problem():
+    events = [_raw(1, "disk", 51, {"Data0": "<string>\\Device\\Harddisk0\\DR0</string>"}, level=3)]
+    status, _ = _status(events)
+    assert status["disk"]["status"] == "problem"
+
+
+def test_nvidia_gpu_resets_are_reported():
+    events = [_raw(i, "nvlddmkm", 153,
+                   {"Data0": "<string>GpuRcReset TDR occurred on GPUID:200</string>"},
+                   level=2) for i in range(4)]
+    _, findings = _status(events)
+    gpu = [p for p in findings["patterns"] if p["id"] == "gpu_resets"]
+    assert gpu and gpu[0]["verdict"] == "fact"
+    assert gpu[0]["detail"].startswith("4 display driver resets")
+    assert findings["summary"]["total_incidents"] == 0

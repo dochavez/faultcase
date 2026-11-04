@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import tempfile
 import uuid
 import zipfile
@@ -140,6 +141,7 @@ def _store_case(
     local_dumps: dict | None = None,
     is_demo: bool = False,
     timezone: str = "UTC",
+    manufacturer: str | None = None,
 ) -> str:
     case_id = uuid.uuid4().hex[:12]
     CASES[case_id] = {
@@ -150,6 +152,7 @@ def _store_case(
         "local_dumps": local_dumps,
         "is_demo": is_demo,
         "timezone": timezone,
+        "manufacturer": manufacturer,
     }
     return case_id
 
@@ -285,7 +288,10 @@ async def upload(
     except (RouterError, ValueError) as exc:
         return _error(request, lang, f"{t['err_agent']}: {exc}")
     findings = apply_rules(evidence, tz=tz)
-    case_id = _store_case(findings, built, summaries, local_stats, timezone=tz)
+    case_id = _store_case(
+        findings, built, summaries, local_stats, timezone=tz,
+        manufacturer=(device or {}).get("manufacturer"),
+    )
     url = f"/case/{case_id}?lang={lang}"
     if _is_htmx(request):
         return Response(status_code=200, headers={"HX-Redirect": url})
@@ -306,6 +312,7 @@ async def demo(request: Request, lang: str = Form("en")):
         load_demo_summaries(),
         is_demo=True,
         timezone=data.get("timezone", "UTC"),
+        manufacturer=DEMO_DEVICE.get("manufacturer"),
     )
     url = f"/case/{case_id}?lang={lang}"
     if _is_htmx(request):
@@ -375,6 +382,40 @@ def _group_by_component(items: list) -> list:
 
 
 STATUS_RANK = {"problem": 0, "attention": 1, "ok": 2, "no_data": 3}
+
+# Official support entry points; matched by substring of the manufacturer.
+SUPPORT_SITES = {
+    "lenovo": ("Lenovo", "https://support.lenovo.com"),
+    "hp": ("HP", "https://support.hp.com"),
+    "hewlett": ("HP", "https://support.hp.com"),
+    "dell": ("Dell", "https://www.dell.com/support"),
+    "asus": ("ASUS", "https://www.asus.com/support/"),
+    "acer": ("Acer", "https://www.acer.com/support"),
+    "msi": ("MSI", "https://www.msi.com/support"),
+    "micro-star": ("MSI", "https://www.msi.com/support"),
+    "microsoft": ("Microsoft", "https://support.microsoft.com/surface"),
+    "samsung": ("Samsung", "https://www.samsung.com/support/"),
+    "apple": ("Apple", "https://support.apple.com"),
+}
+
+
+def _support_site(manufacturer: str | None) -> tuple[str | None, str | None]:
+    """(display name, support URL) for a manufacturer string, if known."""
+    text = (manufacturer or "").lower()
+    for key, (name, url) in SUPPORT_SITES.items():
+        if key == "hp":
+            if re.search(r"\bhp\b", text):
+                return name, url
+        elif key in text:
+            return name, url
+    return (manufacturer or None), None
+
+
+def _note_order(case: dict) -> list:
+    """AI component notes in canonical component order."""
+    notes = [n for n in case.get("component_notes", []) or [] if n.get("text")]
+    rank = {pid: i for i, pid in enumerate(COMPONENT_ORDER)}
+    return sorted(notes, key=lambda n: rank.get(n.get("component"), 99))
 
 
 def _components(findings: dict) -> list:
@@ -474,6 +515,13 @@ def diagnosis(request: Request, case_id: str):
              patterns_by_component=patterns_by_component,
              main_component=worst[0] if worst and worst[0]["status"] == "problem" else None,
              chart=_monthly_chart(findings["incidents"], lang),
+             notes=_note_order(case),
+             status_by_component={c["id"]: c["status"] for c in components},
+             writer_model=(
+                 "Muse Spark"
+                 if (stored["metadata"].get("providers_used") or ["", ""])[-1] == "meta"
+                 else "Muse Spark Open"
+             ),
              pattern_groups=pattern_groups, healthy_groups=healthy_groups,
              metadata=stored["metadata"],
              local_dumps=stored.get("local_dumps"),
@@ -489,9 +537,11 @@ def action(request: Request, case_id: str):
     stored = _get_case(case_id)
     if stored is None:
         return _expired(request, lang)
+    support_name, support_url = _support_site(stored.get("manufacturer"))
     return templates.TemplateResponse(
         request, "action.html",
-        _ctx(lang, case_id=case_id, case=stored["case"]),
+        _ctx(lang, case_id=case_id, case=stored["case"],
+             support_name=support_name, support_url=support_url),
     )
 
 

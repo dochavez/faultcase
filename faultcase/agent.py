@@ -362,6 +362,15 @@ def build_case(
                     {
                         "analysis": analysis,
                         "summary": clean_findings["summary"],
+                        "components": [
+                            {k: c[k] for k in ("id", "status", "count")}
+                            for c in clean_findings.get("components", [])
+                        ],
+                        "patterns": [
+                            {"component": p.get("playbook"),
+                             "type": p.get("verdict"), "detail": p.get("detail")}
+                            for p in clean_findings.get("patterns", [])
+                        ],
                         "device": clean_device,
                         "ui_language": ui_language,
                         "timezone": timezone,

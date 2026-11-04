@@ -65,12 +65,12 @@ def test_wifi_driver_and_after_resume_patterns():
              1, {}),
         _raw("2026-05-01T09:05:00+00:00", "Microsoft-Windows-WLAN-AutoConfig",
              8002, {"FailureReason": "No AP visible", "ReasonCode": 1}),
-        _raw("2026-05-01T12:00:00+00:00", "Netwaw18", 6062, {}),
+        _raw("2026-05-01T12:00:00+00:00", "Netwaw18", 5002, {}),
     ]
     findings = rules.apply_rules(normalize.normalize(events).evidence)
     patterns = {(p["playbook"], p["id"]): p for p in findings["patterns"]}
     assert patterns[("wifi", "wifi_driver_issues")]["verdict"] == "fact"
-    assert "6062" in patterns[("wifi", "wifi_driver_issues")]["detail"]
+    assert "5002" in patterns[("wifi", "wifi_driver_issues")]["detail"]
     assert patterns[("wifi", "wifi_after_resume")]["verdict"] == "hypothesis"
     assert ("wifi", "wifi_frequent_disconnects") not in patterns
 
