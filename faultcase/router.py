@@ -141,7 +141,9 @@ class Router:
 
     @staticmethod
     def _default_client(name, base_url, api_key, timeout):
-        return OpenAI(base_url=base_url, api_key=api_key, timeout=timeout)
+        # max_retries=0: the router already retries and falls back. The SDK's
+        # default (2 silent retries) turned a 90 s timeout into ~270 s.
+        return OpenAI(base_url=base_url, api_key=api_key, timeout=timeout, max_retries=0)
 
     def _log(self, entry: dict) -> None:
         if not self._log_usage:

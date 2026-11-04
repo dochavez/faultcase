@@ -493,3 +493,9 @@ def test_call_parallel_stops_waiting_for_a_slow_second_opinion(tmp_path):
     assert results[0]["success"] is True
     assert results[1]["success"] is False
     assert "after the first opinion" in results[1]["error"]
+
+
+
+def test_default_client_disables_sdk_retries():
+    client = Router._default_client("meta", "http://meta.test", "KEY-TEST", 5)
+    assert client.max_retries == 0
