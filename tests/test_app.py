@@ -6,6 +6,8 @@ import zipfile
 from pathlib import Path
 
 import pytest
+
+from faultcase.router import RouterError
 from fastapi.testclient import TestClient
 
 from faultcase import app as app_module
@@ -76,13 +78,15 @@ def test_collect_posts_browser_timezone():
     assert "resolvedOptions" in response.text
 
 
-def test_collect_has_msinfo_guide_and_manual_fields():
+def test_collect_has_msinfo_guide_and_no_manual_fields():
     response = client.get("/")
     assert "msinfo32" in response.text
     assert 'name="msinfo_file"' in response.text
-    assert 'name="dev_manufacturer"' in response.text
-    assert 'name="dev_model"' in response.text
-    assert 'name="dev_purchase"' in response.text
+    # Device details come only from Windows (msinfo32 or this computer),
+    # never typed by hand.
+    assert 'name="dev_manufacturer"' not in response.text
+    assert 'name="dev_model"' not in response.text
+    assert 'name="dev_purchase"' not in response.text
 
 
 def test_build_device_msinfo_wins_and_manual_fills_gaps():
@@ -309,6 +313,10 @@ def test_demo_flow_uses_precomputed_file(monkeypatch):
         raise RuntimeError("demo must not call models")
 
     monkeypatch.setattr(app_module, "build_case", explode)
+    monkeypatch.setattr(app_module, "settings", Settings(
+        meta_api_key=None, baseten_api_key=None, fireworks_api_key=None,
+        baseten_model="m", invite_code="secret",
+    ))
     response = client.post("/demo", data={"lang": "en"}, headers={"HX-Request": "true"})
     assert response.status_code == 200
     target = response.headers["HX-Redirect"]
@@ -642,16 +650,104 @@ def test_support_site_matching():
     assert app_module._support_site(None) == (None, None)
 
 
-def test_ai_component_notes_are_shown_in_order():
+EXPLANATION = {
+    "overview": "Plain overview.",
+    "components": [
+        {"component": "wifi", "meaning": "Wi-Fi meaning.", "action": "Wi-Fi action."},
+        {"component": "stability", "meaning": "Stability meaning.", "action": "Stability action."},
+    ],
+    "glossary": [{"term": "DPC_WATCHDOG_VIOLATION", "plain": "A driver took too long."}],
+    "next_steps": ["Step one.", "Prepare the warranty case."],
+}
+
+
+def _demo_case_id(lang="en"):
     target = client.post(
-        "/demo", data={"lang": "en"}, headers={"HX-Request": "true"}
+        "/demo", data={"lang": lang}, headers={"HX-Request": "true"}
     ).headers["HX-Redirect"]
-    case_id = target.split("/case/")[1].split("?")[0]
-    stored = app_module.CASES[case_id]
-    stored["case"] = dict(stored["case"], component_notes=[
-        {"component": "wifi", "text": "Wi-Fi note."},
-        {"component": "stability", "text": "Stability note."},
-    ])
+    return target.split("/case/")[1].split("?")[0], target
+
+
+def test_explain_button_shows_before_any_model_call():
+    case_id, target = _demo_case_id()
+    app_module.CASES[case_id]["explanations"] = {}
     page = client.get(target).text
-    assert "What this means for you" in page
-    assert page.index("Stability note.") < page.index("Wi-Fi note.")
+    assert "Explain it with Muse" in page
+    assert f'hx-post="/case/{case_id}/explain"' in page
+
+
+def test_explain_calls_muse_once_and_caches(monkeypatch):
+    calls = []
+
+    def fake_explain(findings, case, ui_language="en"):
+        calls.append(ui_language)
+        return {"explanation": EXPLANATION, "provider": "meta", "latency_ms": 5}
+
+    monkeypatch.setattr(app_module, "explain_case", fake_explain)
+    case_id, target = _demo_case_id()
+    app_module.CASES[case_id]["explanations"] = {}
+    for _ in range(2):
+        response = client.post(
+            f"/case/{case_id}/explain", data={"lang": "en"},
+            headers={"HX-Request": "true"},
+        )
+        assert response.status_code == 200
+    assert calls == ["en"]
+    html = response.text
+    assert "Plain overview." in html and "Explained by Muse Spark" in html
+    assert html.index("Stability meaning.") > 0 and "DPC_WATCHDOG_VIOLATION" in html
+    page = client.get(target).text
+    assert "Plain overview." in page and 'id="explain-btn"' not in page
+
+
+def test_explain_error_keeps_the_button(monkeypatch):
+    def broken(*args, **kwargs):
+        raise RouterError("all providers failed")
+
+    monkeypatch.setattr(app_module, "explain_case", broken)
+    case_id, _ = _demo_case_id()
+    app_module.CASES[case_id]["explanations"] = {}
+    html = client.post(
+        f"/case/{case_id}/explain", data={"lang": "es"},
+        headers={"HX-Request": "true"},
+    ).text
+    assert "Muse no pudo explicar" in html and "Explicar con Muse" in html
+
+
+def test_strip_bucket_ids_from_reports():
+    from faultcase.agent import strip_bucket_ids
+    text = "Same category as defined by FAILURE_BUCKET_ID 0x133_ISR_x!y. Next."
+    assert strip_bucket_ids(text) == "Same category. Next."
+
+
+
+@pytest.fixture(autouse=True)
+def _reset_upload_limits():
+    app_module._UPLOADS.clear()
+    yield
+    app_module._UPLOADS.clear()
+
+
+def test_invite_field_hidden_without_invite_code(monkeypatch):
+    monkeypatch.setattr(app_module, "settings", OPEN_SETTINGS)
+    page = client.get("/?lang=en").text
+    assert 'name="invite_code"' not in page
+    assert "/static/style.css?v=" in page
+
+
+def test_upload_slots_are_limited_per_visitor(monkeypatch):
+    monkeypatch.setattr(app_module, "UPLOADS_PER_HOUR", 2)
+    assert app_module._take_upload_slot("a")
+    assert app_module._take_upload_slot("a")
+    assert not app_module._take_upload_slot("a")
+    assert app_module._take_upload_slot("b")
+
+
+
+def test_explain_on_expired_case_returns_fragment_not_page():
+    html = client.post(
+        "/case/doesnotexist/explain", data={"lang": "en"},
+        headers={"HX-Request": "true"},
+    ).text
+    assert "no longer in memory" in html
+    assert "<html" not in html and "topbar" not in html

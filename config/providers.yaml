@@ -32,6 +32,7 @@ providers:
 routes:
   evidence_analysis: [baseten, fireworks]   # technical data: open-weights model
   case_writing:      [meta, fireworks]      # manufacturer case and user explanation
+  explanation:       [meta, fireworks]      # on-demand plain-language walkthrough
   tests:             [fireworks]            # tests marked as live
 
 # Per-role behavior. analysis_mode: "second_opinion" calls the first two
@@ -54,6 +55,10 @@ roles:
     analysis_mode: single
     reasoning_effort: medium
     max_tokens: 24576
+  explanation:
+    analysis_mode: single
+    reasoning_effort: low
+    max_tokens: 8192
 
 settings:
   timeout_seconds: 90

@@ -18,11 +18,6 @@ For the user (`user_summary`):
 - Write in the user's language (`ui_language`: "en" or "es"), plain words, 2 to 4 sentences, no hex codes or jargon.
 - Explain what is happening, how certain it is and what to do next.
 
-For the user, per component (`component_notes`):
-- One entry for every component in `components` whose status is "problem" or "attention", plus "battery" whenever battery data exists.
-- `text`: 1 or 2 short sentences in `ui_language`, plain everyday words, no hex codes, event IDs or file names: what the finding means for the user and one concrete thing to do.
-- Use only numbers that appear in that component's patterns. Anything that comes from a "hypothesis" pattern must be worded as a possibility ("may", "possibly"). Never contradict the status: do not call a component healthy when its status is "problem" or "attention".
-
 For the manufacturer (`manufacturer_report`):
 - Professional and factual tone, no exaggeration or threats.
 - The subject must name the device model and the main symptom, at least 10 characters (for example "Lenovo: recurring NVIDIA display crashes").

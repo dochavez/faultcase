@@ -10,6 +10,7 @@ the very end, only if a serial was provided.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from jsonschema import validate
@@ -297,6 +298,22 @@ def _reconcile_opinions(results: list) -> tuple:
     return analysis, info, metadata
 
 
+_BUCKET_REF = re.compile(
+    r"\s*\(?(?:as defined by |with |by )?FAILURE_(?:BUCKET_ID|ID_HASH)\b[:=]?\s*"
+    r"\S*?(?=[.,;)]?(?:\s|$))\)?",
+)
+
+
+def strip_bucket_ids(text: str) -> str:
+    """Remove FAILURE_BUCKET_ID / FAILURE_ID_HASH strings from a report.
+
+    The writer prompt forbids them (they identify a failure category, not
+    a defect, and confuse support staff); this is the deterministic guard.
+    """
+    cleaned = _BUCKET_REF.sub("", text)
+    return re.sub(r" +([.,;])", r"\1", cleaned)
+
+
 def _replace_serial(obj: object, serial: str) -> object:
     if isinstance(obj, str):
         return obj.replace("{{SERIAL}}", serial)
@@ -381,6 +398,9 @@ def build_case(
         CASE_SCHEMA,
     )
     validate(instance=case, schema=CASE_SCHEMA)
+    report = case["manufacturer_report"]
+    for key in ("body_en", "body_es"):
+        report[key] = strip_bucket_ids(report[key])
     if serial:
         case = _replace_serial(case, serial)
     prompt_tokens = analysis_info["prompt_tokens"] + case_info["prompt_tokens"]
@@ -398,3 +418,92 @@ def build_case(
             **opinion_metadata,
         },
     }
+
+
+COMPONENT_IDS = [
+    "stability", "disk", "hardware", "thermal", "wifi", "usb", "battery", "software",
+]
+
+EXPLANATION_SCHEMA = {
+    "type": "object",
+    "required": ["overview", "components", "glossary", "next_steps"],
+    "properties": {
+        "overview": {"type": "string"},
+        "components": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["component", "meaning", "action"],
+                "properties": {
+                    "component": {"enum": COMPONENT_IDS},
+                    "meaning": {"type": "string"},
+                    "action": {"type": "string"},
+                },
+            },
+        },
+        "glossary": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["term", "plain"],
+                "properties": {
+                    "term": {"type": "string"},
+                    "plain": {"type": "string"},
+                },
+            },
+        },
+        "next_steps": {"type": "array", "items": {"type": "string"}},
+    },
+}
+
+
+def explain_case(findings: dict, case: dict, ui_language: str = "en") -> dict:
+    """Plain-language walkthrough of a finished diagnosis (on demand).
+
+    The model only gets the deterministic findings and the verdict, all
+    redacted: never raw events, device details or the serial number.
+    """
+    clean = redact.redact_obj(findings)
+    summary = clean.get("summary", {})
+    data = {
+        "ui_language": ui_language,
+        "verdict": case.get("verdict"),
+        "confidence": case.get("confidence"),
+        "summary": {
+            key: summary.get(key) for key in (
+                "total_incidents", "first_incident_date", "last_incident_date",
+                "months_span", "incidents_with_dump", "freezes_without_dump",
+            )
+        },
+        "incidents": [
+            {"date": i.get("date"), "label": i.get("label"),
+             "code_name": next(
+                 (x.get("code_name") for x in clean.get("incidents", [])
+                  if x.get("date") == i.get("date") and x.get("time") == i.get("time")),
+                 None),
+             "has_memory_dump": i.get("has_dump")}
+            for i in summary.get("incidents", [])
+        ],
+        "components": [
+            {k: c[k] for k in ("id", "status", "count")}
+            for c in clean.get("components", [])
+        ],
+        "patterns": [
+            {"component": p.get("playbook"), "type": p.get("verdict"),
+             "detail": p.get("detail")}
+            for p in clean.get("patterns", [])
+        ],
+        "healthy_components": sorted({h.get("playbook") for h in clean.get("healthy", [])}),
+    }
+    system = (PROMPTS_DIR / "explainer.md").read_text(encoding="utf-8")
+    explanation, info = call_with_info(
+        "explanation",
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": _user_content(
+                ["overview", "components", "glossary", "next_steps"], data)},
+        ],
+        EXPLANATION_SCHEMA,
+    )
+    return {"explanation": explanation, "provider": info["provider"],
+            "latency_ms": info["latency_ms"]}

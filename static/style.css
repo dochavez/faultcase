@@ -190,6 +190,20 @@ small { color: var(--muted); }
 .next-steps li { margin: 0.45rem 0; }
 .next-steps .btn { margin-top: 0.35rem; }
 
+.explain { border: 2px solid var(--accent); border-radius: var(--radius); padding: 0.25rem 1.25rem 1rem; margin: 1.5rem 0; background: #f4faf8; }
+.explain h3 { font-size: 1.05rem; margin: 1rem 0 0.3rem; }
+.btn-ai { font-size: 1.05rem; padding: 0.7rem 1.4rem; }
+.ex-overview { font-size: 1.1rem; }
+.ex-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.ex-action { color: var(--ink); }
+.ex-steps { padding-left: 1.4rem; }
+.ex-steps li { margin: 0.3rem 0; }
+.ex-glossary { margin-top: 1rem; }
+.ex-glossary summary { font-weight: 700; cursor: pointer; }
+.ex-glossary dt { font-family: Consolas, monospace; font-weight: 700; margin-top: 0.6rem; }
+.ex-glossary dd { margin: 0.1rem 0 0 0; }
+.tech-note { background: var(--wash); border-radius: var(--radius); padding: 0.6rem 0.8rem; }
+
 /* Diagnosis: verdict card, health grid, chart */
 .verdict-card {
   border: 2px solid var(--line); border-left-width: 8px; border-radius: var(--radius);

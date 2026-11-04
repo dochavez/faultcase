@@ -54,7 +54,7 @@ This project was born from a real case: a Lenovo Legion Pro 7 16IAX10H (machine 
 
 ## Try it in 1 minute
 
-**Live demo:** `[DEMO URL — added after Modal deploy]`
+**Live demo:** [https://dochavez--faultcase-fastapi-app.us-east.modal.run/](https://dochavez--faultcase-fastapi-app.us-east.modal.run/)
 
 Open the demo URL and click **Try a sample case** — no account, no invite code, instant and free (the demo case is precomputed; see `scripts/build_demo_case.py`).
 

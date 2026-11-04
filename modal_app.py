@@ -1,8 +1,9 @@
 """Deploy the FaultCase FastAPI app on Modal.
 
 Secrets live in Modal, never in this file: a secret named ``faultcase``
-holding META_API_KEY, BASETEN_API_KEY, BASETEN_MODEL, FIREWORKS_API_KEY
-and INVITE_CODE.
+holding META_API_KEY, BASETEN_API_KEY, BASETEN_MODEL and FIREWORKS_API_KEY.
+INVITE_CODE is optional: without it the upload form has no invite field
+and live analyses are rate-limited (UPLOADS_PER_HOUR, UPLOADS_PER_DAY).
 
 Deploy with: modal deploy modal_app.py
 """
@@ -18,7 +19,12 @@ image = (
     .pip_install_from_requirements("requirements.txt")
     .add_local_dir("faultcase", f"{REMOTE_ROOT}/faultcase")
     .add_local_dir("config", f"{REMOTE_ROOT}/config")
-    .add_local_dir("filters", f"{REMOTE_ROOT}/filters")
+    # Only the filter file: a personal .evtx saved in filters/ must never
+    # be uploaded.
+    .add_local_file(
+        "filters/device-diagnostics.xml",
+        f"{REMOTE_ROOT}/filters/device-diagnostics.xml",
+    )
     .add_local_dir("playbooks", f"{REMOTE_ROOT}/playbooks")
     .add_local_dir("prompts", f"{REMOTE_ROOT}/prompts")
     .add_local_dir("schemas", f"{REMOTE_ROOT}/schemas")

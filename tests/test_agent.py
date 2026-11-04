@@ -319,3 +319,25 @@ def test_cross_machine_defect_claim_detector():
         "Same failure category, not proof of the same defect as other machines."
     ) is None
     assert cross_machine_defect_claim("The same module failed twice.") is None
+
+
+def test_explain_case_sends_only_redacted_findings(monkeypatch):
+    from faultcase import rules
+    captured = []
+
+    def fake_call(role, messages, response_schema):
+        captured.append((role, messages))
+        return ({"overview": "o", "components": [], "glossary": [],
+                 "next_steps": []},
+                {"provider": "meta", "model": "m", "latency_ms": 1,
+                 "prompt_tokens": 1, "completion_tokens": 1})
+
+    monkeypatch.setattr(agent, "call_with_info", fake_call)
+    findings = rules.apply_rules(EVIDENCE)
+    result = agent.explain_case(findings, CASE, "es")
+    role, messages = captured[0]
+    assert role == "explanation" and result["provider"] == "meta"
+    data = _case_data(messages[1]["content"])
+    assert data["ui_language"] == "es"
+    assert "janedoe" not in messages[1]["content"]
+    assert {c["id"] for c in data["components"]} >= {"stability", "wifi"}

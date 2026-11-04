@@ -50,11 +50,13 @@
         <input type="hidden" name="lang" value="{{ lang }}">
         <input type="hidden" name="tz" class="tz-field" value="UTC">
         {{ file_picker("evtx", "file", ".evtx", t.file_label, required=True) }}
+        {% if invite_required %}
         <p>
           <label for="invite">{{ t.invite_label }}</label>
           <input type="password" id="invite" name="invite_code" autocomplete="off">
           <small>{{ t.invite_help }}</small>
         </p>
+        {% endif %}
         {% if local_dumps %}
         <p class="check">
           <label for="local-dumps">
@@ -96,19 +98,6 @@
           <small>{{ t.battery_local_note }}</small>
         </p>
         {% endif %}
-        <h3>{{ t.manual_title }} <span class="tag tag-optional">{{ t.optional }}</span></h3>
-        <p>
-          <label for="dev-manufacturer">{{ t.manufacturer_label }}</label>
-          <input type="text" id="dev-manufacturer" name="dev_manufacturer" autocomplete="off">
-        </p>
-        <p>
-          <label for="dev-model">{{ t.model_label }}</label>
-          <input type="text" id="dev-model" name="dev_model" autocomplete="off">
-        </p>
-        <p>
-          <label for="dev-purchase">{{ t.purchase_label }}</label>
-          <input type="month" id="dev-purchase" name="dev_purchase">
-        </p>
         <p><button class="btn btn-primary" id="upload-btn" type="submit">{{ t.upload_btn }}</button></p>
       </form>
       <div id="upload-loading" class="loading" aria-live="polite">

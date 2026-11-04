@@ -12,8 +12,11 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import re
 import tempfile
+import threading
+import time
 import uuid
 import zipfile
 from pathlib import Path
@@ -27,7 +30,7 @@ from starlette.concurrency import run_in_threadpool
 
 from faultcase.adapters.windows import evtx as evtx_adapter
 from faultcase.adapters.windows import battery_report, cdb, msinfo, wmi
-from faultcase.agent import build_case
+from faultcase.agent import build_case, explain_case
 from faultcase.demo import DEMO_CASE_PATH, DEMO_DEVICE, build_demo_evidence
 from faultcase.demo import load_demo_summaries
 from faultcase.i18n import INCIDENT_LABELS, STRINGS, get_lang
@@ -114,8 +117,43 @@ templates = Jinja2Templates(directory=str(ROOT / "templates"))
 CASES: dict[str, dict] = {}
 
 
+# Changes whenever style.css changes, so browsers never keep a stale copy.
+ASSET_VERSION = str(int((ROOT / "static" / "style.css").stat().st_mtime))
+
+# Without an invite code the public site protects API credits with a
+# simple per-visitor and global limit on live analyses (in memory: the
+# Modal deployment runs a single container).
+UPLOADS_PER_HOUR = int(os.environ.get("UPLOADS_PER_HOUR", "6"))
+UPLOADS_PER_DAY = int(os.environ.get("UPLOADS_PER_DAY", "60"))
+_UPLOADS: list[tuple[float, str]] = []
+_UPLOADS_LOCK = threading.Lock()
+
+
+def _client_id(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _take_upload_slot(client: str) -> bool:
+    """Record one live analysis; False when a limit is reached."""
+    now = time.time()
+    with _UPLOADS_LOCK:
+        _UPLOADS[:] = [(t, c) for t, c in _UPLOADS if now - t < 86400]
+        mine = sum(1 for t, c in _UPLOADS if c == client and now - t < 3600)
+        if mine >= UPLOADS_PER_HOUR or len(_UPLOADS) >= UPLOADS_PER_DAY:
+            return False
+        _UPLOADS.append((now, client))
+        return True
+
+
 def _ctx(lang: str, **extra) -> dict:
-    return {"lang": lang, "t": STRINGS[lang], **extra}
+    return {
+        "lang": lang, "t": STRINGS[lang],
+        "invite_required": bool(settings.invite_code),
+        "asset_version": ASSET_VERSION, **extra,
+    }
 
 
 def _is_htmx(request: Request) -> bool:
@@ -283,6 +321,8 @@ async def upload(
         evidence["battery"] = battery_data
     if not evidence["events"]:
         return _error(request, lang, t["err_no_events"])
+    if not _take_upload_slot(_client_id(request)):
+        return _error(request, lang, t["err_rate_limit"])
     try:
         built = await run_in_threadpool(build_case, evidence, lang, device or None, tz)
     except (RouterError, ValueError) as exc:
@@ -314,10 +354,53 @@ async def demo(request: Request, lang: str = Form("en")):
         timezone=data.get("timezone", "UTC"),
         manufacturer=DEMO_DEVICE.get("manufacturer"),
     )
+    # Precomputed explanations: the sample case never spends credits.
+    CASES[case_id]["explanations"] = {
+        code: data[code]["explanation"]
+        for code in ("en", "es")
+        if isinstance(data.get(code), dict) and data[code].get("explanation")
+    }
     url = f"/case/{case_id}?lang={lang}"
     if _is_htmx(request):
         return Response(status_code=200, headers={"HX-Redirect": url})
     return RedirectResponse(url, status_code=303)
+
+
+@app.post("/case/{case_id}/explain")
+async def explain(request: Request, case_id: str, lang: str = Form("en")):
+    """On-demand plain-language explanation by Muse Spark (cached per case)."""
+    lang = get_lang(lang)
+    t = STRINGS[lang]
+    stored = _get_case(case_id)
+    if stored is None:
+        if not _is_htmx(request):
+            return _expired(request, lang)
+        # Swap a small notice into the section, never a whole page.
+        return templates.TemplateResponse(
+            request, "explain_section.html",
+            _ctx(lang, case_id=case_id, explanation=None, status_by_component={},
+                 expired=True),
+        )
+    cache = stored.setdefault("explanations", {})
+    error = None
+    if lang not in cache:
+        if not _take_upload_slot(_client_id(request)):
+            error = t["err_rate_limit"]
+        else:
+            try:
+                result = await run_in_threadpool(
+                    explain_case, stored["findings"], stored["case"], lang
+                )
+                result["model"] = MODEL_NAMES.get(result.get("provider"), "Muse Spark")
+                cache[lang] = result
+            except (RouterError, ValueError) as exc:
+                error = f"{t['err_explain']}: {exc}"
+    if not _is_htmx(request):
+        return RedirectResponse(f"/case/{case_id}?lang={lang}", status_code=303)
+    return templates.TemplateResponse(
+        request, "explain_section.html",
+        _ctx(lang, case_id=case_id, **_explain_ctx(stored, lang, explain_error=error)),
+    )
 
 
 @app.post("/case/{case_id}/regenerate")
@@ -347,6 +430,7 @@ async def regenerate(
         return _error(request, lang, f"{t['err_agent']}: {exc}", page="error.html")
     stored["case"] = built["case"]
     stored["metadata"] = built["metadata"]
+    stored["explanations"] = {}
     stored["summaries"] = summaries
     url = f"/case/{case_id}?lang={lang}"
     if _is_htmx(request):
@@ -411,11 +495,17 @@ def _support_site(manufacturer: str | None) -> tuple[str | None, str | None]:
     return (manufacturer or None), None
 
 
-def _note_order(case: dict) -> list:
-    """AI component notes in canonical component order."""
-    notes = [n for n in case.get("component_notes", []) or [] if n.get("text")]
-    rank = {pid: i for i, pid in enumerate(COMPONENT_ORDER)}
-    return sorted(notes, key=lambda n: rank.get(n.get("component"), 99))
+MODEL_NAMES = {"meta": "Muse Spark", "baseten": "Muse Spark Open",
+               "fireworks": "Muse Spark Open"}
+
+
+def _explain_ctx(stored: dict, lang: str, **extra) -> dict:
+    components = _components(stored["findings"])
+    return dict(
+        explanation=(stored.get("explanations") or {}).get(lang),
+        status_by_component={c["id"]: c["status"] for c in components},
+        **extra,
+    )
 
 
 def _components(findings: dict) -> list:
@@ -515,13 +605,7 @@ def diagnosis(request: Request, case_id: str):
              patterns_by_component=patterns_by_component,
              main_component=worst[0] if worst and worst[0]["status"] == "problem" else None,
              chart=_monthly_chart(findings["incidents"], lang),
-             notes=_note_order(case),
-             status_by_component={c["id"]: c["status"] for c in components},
-             writer_model=(
-                 "Muse Spark"
-                 if (stored["metadata"].get("providers_used") or ["", ""])[-1] == "meta"
-                 else "Muse Spark Open"
-             ),
+             **_explain_ctx(stored, lang),
              pattern_groups=pattern_groups, healthy_groups=healthy_groups,
              metadata=stored["metadata"],
              local_dumps=stored.get("local_dumps"),

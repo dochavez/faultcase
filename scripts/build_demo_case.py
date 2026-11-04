@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from faultcase import rules  # noqa: E402
-from faultcase.agent import build_case  # noqa: E402
+from faultcase.agent import build_case, explain_case  # noqa: E402
 from faultcase.demo import (  # noqa: E402
     DEMO_CASE_PATH,
     DEMO_DEVICE,
@@ -39,6 +39,12 @@ def main() -> None:
             timezone=args.timezone,
         )
         data[lang] = {"case": result["case"], "metadata": result["metadata"]}
+        print(f"explaining {lang} ...", flush=True)
+        explanation = explain_case(data["findings"], result["case"], lang)
+        explanation["model"] = (
+            "Muse Spark" if explanation["provider"] == "meta" else "Muse Spark Open"
+        )
+        data[lang]["explanation"] = explanation
     DEMO_CASE_PATH.write_text(
         json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
     )

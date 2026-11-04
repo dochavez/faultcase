@@ -1,0 +1,56 @@
+{% set icons = {"problem": "✕", "attention": "!", "ok": "✓", "no_data": "–"} %}
+<section id="explain" class="explain" aria-labelledby="ai-title" aria-live="polite">
+  <h2 id="ai-title">{{ t.dg_ai_title }}</h2>
+  {% if explanation %}
+  {% set ex = explanation.explanation %}
+  <p class="ex-overview">{{ ex.overview }}</p>
+  {% if ex.components %}
+  <ul class="ex-list">
+  {% for item in ex.components %}
+    {% set st = status_by_component.get(item.component, "attention") %}
+    <li class="ai-note status-{{ st }}">
+      <span class="health-icon" aria-hidden="true">{{ icons[st] }}</span>
+      <div>
+        <strong>{{ t.get("comp_" + item.component, item.component) }}</strong> ·
+        <span class="health-status">{{ t["status_" + st] }}</span>
+        <p>{{ item.meaning }}</p>
+        <p class="ex-action"><strong>{{ t.ex_todo }}:</strong> {{ item.action }}</p>
+      </div>
+    </li>
+  {% endfor %}
+  </ul>
+  {% endif %}
+  {% if ex.next_steps %}
+  <h3>{{ t.ex_steps }}</h3>
+  <ol class="ex-steps">
+  {% for step in ex.next_steps %}<li>{{ step }}</li>{% endfor %}
+  </ol>
+  {% endif %}
+  {% if ex.glossary %}
+  <details class="ex-glossary">
+    <summary>{{ t.ex_glossary }}</summary>
+    <dl>
+    {% for entry in ex.glossary %}
+      <dt>{{ entry.term }}</dt><dd>{{ entry.plain }}</dd>
+    {% endfor %}
+    </dl>
+  </details>
+  {% endif %}
+  <p class="meta">{{ t.ex_by.format(model=explanation.model) }}</p>
+  {% elif expired %}
+  <div class="error-box">{{ t.err_case_gone }}
+    <a href="/?lang={{ lang }}">{{ t.back_home }}</a></div>
+  {% else %}
+  <p>{{ t.ex_intro }}</p>
+  <form hx-post="/case/{{ case_id }}/explain" hx-target="#explain" hx-swap="outerHTML"
+        hx-indicator="#explain-loading" hx-disabled-elt="#explain-btn"
+        method="post" action="/case/{{ case_id }}/explain">
+    <input type="hidden" name="lang" value="{{ lang }}">
+    <button class="btn btn-primary btn-ai" id="explain-btn" type="submit">✦ {{ t.ex_btn }}</button>
+  </form>
+  <div id="explain-loading" class="loading">
+    <span class="spinner" aria-hidden="true"></span> {{ t.ex_loading }}
+  </div>
+  {% if explain_error %}<div class="error-box">{{ explain_error }}</div>{% endif %}
+  {% endif %}
+</section>
