@@ -6,10 +6,11 @@
   </span>
   <div class="file-pick">
     <input type="file" class="file-input" id="{{ id }}" name="{{ name }}" accept="{{ accept }}"
-           aria-labelledby="{{ id }}-label"{% if required %} required aria-required="true"{% endif %}>
+           aria-labelledby="{{ id }}-label"{% if required %} aria-required="true" aria-describedby="{{ id }}-error"{% endif %}>
     <label for="{{ id }}" class="btn btn-secondary btn-small file-btn">{{ t.choose_file }}</label>
     <span class="file-name" data-file-for="{{ id }}">{{ t.no_file }}</span>
   </div>
+  {% if required %}<p class="field-error" id="{{ id }}-error" role="alert" hidden></p>{% endif %}
 </div>
 {%- endmacro %}
 {% block content %}
@@ -148,6 +149,48 @@
   </li>
 </ol>
 <script>
+(function () {
+  var form = document.querySelector('form[action="/upload"]');
+  var input = document.getElementById("evtx");
+  var error = document.getElementById("evtx-error");
+  if (!form || !input || !error) return;
+  var messages = {
+    none: {{ t.err_pick_evtx|tojson }},
+    type: {{ t.err_file_type|tojson }},
+    big: {{ t.err_too_big|tojson }},
+    empty: {{ t.err_empty|tojson }}
+  };
+  function problem() {
+    var file = input.files && input.files[0];
+    if (!file) return messages.none;
+    if (!/\.evtx$/i.test(file.name)) return messages.type;
+    if (file.size === 0) return messages.empty;
+    if (file.size > 20 * 1024 * 1024) return messages.big;
+    return "";
+  }
+  function show(text) {
+    error.textContent = text;
+    error.hidden = !text;
+    input.closest(".field").classList.toggle("invalid", !!text);
+    if (text) { error.scrollIntoView({block: "center", behavior: "smooth"}); }
+  }
+  var busy = false;
+  // Capture phase: runs before HTMX sees the submit.
+  form.addEventListener("submit", function (event) {
+    var text = problem();
+    if (text) { event.preventDefault(); event.stopImmediatePropagation(); show(text); }
+  }, true);
+  form.addEventListener("htmx:beforeRequest", function (event) {
+    var text = problem();
+    if (text) { event.preventDefault(); show(text); return; }
+    show(""); busy = true;
+  });
+  form.addEventListener("htmx:afterRequest", function () { busy = false; });
+  input.addEventListener("change", function () { show(input.files.length ? problem() : ""); });
+  window.addEventListener("beforeunload", function (event) {
+    if (busy) { event.preventDefault(); event.returnValue = ""; }
+  });
+})();
 try {
   var platform = (navigator.userAgentData && navigator.userAgentData.platform)
     || navigator.platform || navigator.userAgent || "";

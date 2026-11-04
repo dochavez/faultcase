@@ -51,6 +51,7 @@ safe_fixes:
   - "Update the Wi-Fi driver from the laptop manufacturer's support page."
   - "Forget the network and reconnect."
   - "Test with a different network (for example phone tethering)."
+  - "If drops happen after waking from sleep, in Device Manager > Network adapters > Wi-Fi > Power Management, turn off 'Allow the computer to turn off this device to save power'."
 
 escalate_if:
   - "wifi_frequent_disconnects on several days and the device is under warranty"

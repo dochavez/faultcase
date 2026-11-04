@@ -507,3 +507,90 @@ def explain_case(findings: dict, case: dict, ui_language: str = "en") -> dict:
     )
     return {"explanation": explanation, "provider": info["provider"],
             "latency_ms": info["latency_ms"]}
+
+
+FIX_PLAN_SCHEMA = {
+    "type": "object",
+    "required": ["assessment", "self_fix_likely", "steps", "stop_when"],
+    "properties": {
+        "assessment": {"type": "string"},
+        "self_fix_likely": {"type": "boolean"},
+        "steps": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["component", "title", "why", "how", "minutes", "risk", "check"],
+                "properties": {
+                    "component": {"enum": COMPONENT_IDS},
+                    "title": {"type": "string"},
+                    "why": {"type": "string"},
+                    "how": {"type": "string"},
+                    "minutes": {"type": "integer"},
+                    "risk": {"enum": ["none", "low"]},
+                    "check": {"type": "string"},
+                },
+            },
+        },
+        "stop_when": {"type": "string"},
+    },
+}
+
+
+def fix_plan(
+    findings: dict, case: dict, ui_language: str = "en",
+    manufacturer: str | None = None,
+) -> dict:
+    """Self-help plan before a claim, grounded in the playbooks' safe fixes.
+
+    Only components that need attention (plus stability when there are
+    incidents) contribute their ``safe_fixes``; the model may only adapt
+    those, never invent others. Input is redacted; no device serial.
+    """
+    clean = redact.redact_obj(findings)
+    components = [
+        {k: c[k] for k in ("id", "status", "count")}
+        for c in clean.get("components", [])
+    ]
+    involved = {c["id"] for c in components if c["status"] in ("problem", "attention")}
+    if clean.get("summary", {}).get("total_incidents"):
+        involved.add("stability")
+    playbooks = {p["id"]: p for p in load_playbooks()}
+    fixes = [
+        {"component": pid,
+         "safe_fixes": playbooks[pid].get("safe_fixes", []),
+         "escalate_if": playbooks[pid].get("escalate_if", [])}
+        for pid in COMPONENT_IDS if pid in involved and pid in playbooks
+    ]
+    summary = clean.get("summary", {})
+    data = {
+        "ui_language": ui_language,
+        "manufacturer": redact.redact_obj(manufacturer) if manufacturer else None,
+        "verdict": case.get("verdict"),
+        "confidence": case.get("confidence"),
+        "summary": {
+            key: summary.get(key) for key in (
+                "total_incidents", "first_incident_date", "last_incident_date",
+                "months_span", "incidents_with_dump", "freezes_without_dump",
+                "driver_change_direction",
+            )
+        },
+        "components": components,
+        "patterns": [
+            {"component": p.get("playbook"), "type": p.get("verdict"),
+             "detail": p.get("detail")}
+            for p in clean.get("patterns", [])
+        ],
+        "fixes": fixes,
+    }
+    system = (PROMPTS_DIR / "fix_planner.md").read_text(encoding="utf-8")
+    plan, info = call_with_info(
+        "fix_plan",
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": _user_content(
+                ["assessment", "self_fix_likely", "steps", "stop_when"], data)},
+        ],
+        FIX_PLAN_SCHEMA,
+    )
+    return {"plan": plan, "provider": info["provider"],
+            "latency_ms": info["latency_ms"]}

@@ -64,6 +64,28 @@
 <p class="meta">{{ t.ac_zip_note }}</p>
 <p><a href="/case/{{ case_id }}?lang={{ lang }}">&larr; {{ t.ac_back }}</a></p>
 
+<section class="tried" id="tried" hidden>
+  <h2>{{ t.ac_tried }}</h2>
+  <ul id="tried-list"></ul>
+  <small>{{ t.ac_tried_note }}</small>
+</section>
+<script>
+(function () {
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem("faultcase-fix-{{ case_id }}") || "{}"); } catch (e) {}
+  var titles = Object.keys(state).sort().map(function (k) { return state[k]; });
+  if (!titles.length) return;
+  var list = document.getElementById("tried-list");
+  titles.forEach(function (title) {
+    var li = document.createElement("li"); li.textContent = title; list.appendChild(li);
+  });
+  document.getElementById("tried").hidden = false;
+  var lines = titles.map(function (title) { return "- " + title; }).join("\n");
+  var en = document.getElementById("report-en"), es = document.getElementById("report-es");
+  if (en) en.textContent += "\n\nSteps already taken by the user:\n" + lines;
+  if (es) es.textContent += "\n\nPasos ya realizados por el usuario:\n" + lines;
+})();
+</script>
 <script>
 var serialOriginals = {};
 document.querySelectorAll("pre[id^='report-']").forEach(function (pre) {

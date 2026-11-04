@@ -341,3 +341,28 @@ def test_explain_case_sends_only_redacted_findings(monkeypatch):
     assert data["ui_language"] == "es"
     assert "janedoe" not in messages[1]["content"]
     assert {c["id"] for c in data["components"]} >= {"stability", "wifi"}
+
+
+
+def test_fix_plan_uses_only_safe_fixes_of_involved_components(monkeypatch):
+    from faultcase import rules
+    captured = []
+
+    def fake_call(role, messages, response_schema):
+        captured.append((role, messages, response_schema))
+        return ({"assessment": "a", "self_fix_likely": False, "steps": [],
+                 "stop_when": "s"},
+                {"provider": "meta", "model": "m", "latency_ms": 1,
+                 "prompt_tokens": 1, "completion_tokens": 1})
+
+    monkeypatch.setattr(agent, "call_with_info", fake_call)
+    findings = rules.apply_rules(EVIDENCE)
+    result = agent.fix_plan(findings, CASE, "en", "Lenovo")
+    role, messages, schema = captured[0]
+    assert role == "fix_plan" and result["provider"] == "meta"
+    data = _case_data(messages[1]["content"])
+    assert data["manufacturer"] == "Lenovo"
+    assert [f["component"] for f in data["fixes"]] == ["stability"]
+    assert data["fixes"][0]["safe_fixes"]
+    assert "janedoe" not in messages[1]["content"]
+    assert schema["properties"]["steps"]["items"]["properties"]["risk"]["enum"] == ["none", "low"]

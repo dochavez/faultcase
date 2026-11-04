@@ -16,9 +16,14 @@
   {% endif %}
   <p class="summary">{{ case.user_summary }}</p>
   <p class="confidence">{{ t.dg_confidence }}: <strong>{{ t["c_" + case.confidence] }}</strong></p>
-  <p class="cta-row">
-    <a class="btn btn-primary btn-big" href="/case/{{ case_id }}/action?lang={{ lang }}">{{ t.dg_cta }}</a>
-  </p>
+  <div class="two-paths">
+    <a class="path path-fix" href="#fix">
+      <strong>🛠 {{ t.fix_path_t }}</strong><span>{{ t.fix_path_d }}</span>
+    </a>
+    <a class="path path-case btn-big" id="warranty-btn" href="/case/{{ case_id }}/action?lang={{ lang }}">
+      <strong>📄 {{ t.dg_cta }}</strong><span>{{ t.case_path_d }}</span>
+    </a>
+  </div>
 </section>
 
 <section aria-labelledby="health-title">
@@ -42,6 +47,8 @@
 </section>
 
 {% include "explain_section.html" %}
+
+{% include "fix_section.html" %}
 
 <section aria-labelledby="chart-title">
   <h2 id="chart-title">{{ t.dg_chart_title }}</h2>

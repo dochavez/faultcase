@@ -10,6 +10,9 @@ rules:
   - "Event 19 is also used by WindowsUpdateClient: ALWAYS filter by provider."
   - "WHEA 18 (fatal) is strong evidence of a hardware failure."
   - "Frequent WHEA 17/19/47 (corrected) may anticipate a failure."
+safe_fixes:
+  - "Run the manufacturer's hardware diagnostic and save the result."
+  - "Run Windows Memory Diagnostic (press Windows + R, type mdsched.exe)."
 escalate_if:
   - "whea_fatal present"
   - "10 or more corrected WHEA events within 30 days"

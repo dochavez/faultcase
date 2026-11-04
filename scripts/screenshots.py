@@ -43,7 +43,7 @@ def _capture_flow(page, lang, gif_frames):
         gif_frames.append(page.screenshot())
     page.click("#demo-btn")
     page.wait_for_url("**/case/*")
-    page.wait_for_selector("a.btn-big")
+    page.wait_for_selector("#warranty-btn")
     # The sample case ships a precomputed Muse explanation: clicking the
     # button shows it without any model call.
     if page.query_selector("#explain-btn"):
@@ -51,13 +51,17 @@ def _capture_flow(page, lang, gif_frames):
         page.wait_for_selector(".ex-overview")
         page.evaluate("document.querySelectorAll('.ex-glossary').forEach(d => d.open = true)")
         page.locator("#explain").screenshot(path=str(IMG_DIR / f"explain-{lang}.png"))
+    if page.query_selector("#fix-btn"):
+        page.click("#fix-btn")
+        page.wait_for_selector(".fix-steps")
+        page.locator("#fix").screenshot(path=str(IMG_DIR / f"fix-{lang}.png"))
     page.screenshot(path=str(IMG_DIR / f"diagnosis-{lang}.png"), full_page=True)
     if gif_frames is not None:
         gif_frames.append(page.screenshot())
         page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
         page.wait_for_timeout(300)
         gif_frames.append(page.screenshot())
-    page.click("a.btn-big")
+    page.click("#warranty-btn")
     page.wait_for_url("**/action*")
     page.wait_for_selector("#serial")
     page.screenshot(path=str(IMG_DIR / f"action-{lang}.png"), full_page=True)

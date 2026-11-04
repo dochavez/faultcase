@@ -552,6 +552,63 @@
       "provider": "meta",
       "latency_ms": 4617,
       "model": "Muse Spark"
+    },
+    "fix_plan": {
+      "plan": {
+        "assessment": "This looks like a likely display hardware or GPU-related fault since crashes persisted across 2 different driver versions from 2026-02-14 and 2026-03-04. You can try the safe steps Lenovo support will ask for anyway, but a warranty repair is the most likely outcome.",
+        "self_fix_likely": false,
+        "steps": [
+          {
+            "check": "System stays stable for 7 days of normal use with no new restarts.",
+            "component": "stability",
+            "how": "Go to Lenovo Support site, enter your serial number, open Drivers and Software, download the Display / VGA driver offered for your model. Install it and restart.",
+            "minutes": 10,
+            "risk": "low",
+            "title": "Install the Lenovo display driver from Lenovo",
+            "why": "We have 4 dumps with nvlddmkm.sys that failed across 2 driver versions, so using the version validated by Lenovo is worth testing."
+          },
+          {
+            "check": "BIOS shows as updated in Lenovo Vantage and no new incidents appear.",
+            "component": "stability",
+            "how": "In Lenovo Vantage go to System Update, or on Lenovo Support site check BIOS/UEFI updates. Install if offered while plugged into power and keep the lid open until it finishes.",
+            "minutes": 15,
+            "risk": "low",
+            "title": "Install Lenovo BIOS updates",
+            "why": "You have 6 total stability incidents including 2 freezes without dumps in 6 months, so firmware fixes from the manufacturer may help."
+          },
+          {
+            "check": "Diagnostic report saved; if it shows a failure, you have evidence for warranty.",
+            "component": "stability",
+            "how": "Open Lenovo Vantage > Hardware Scan, run a full scan including Display and GPU. Save or screenshot the result.",
+            "minutes": 15,
+            "risk": "none",
+            "title": "Run Lenovo hardware diagnostic",
+            "why": "4 incidents clustered within 90 days from 2026-04-22 to 2026-07-21 suggests a persistent problem that the built-in diagnostic may detect."
+          },
+          {
+            "check": "No crashes during the test period while using the laptop without sleep.",
+            "component": "stability",
+            "how": "Go to Settings > System > Power > Screen and sleep, set sleep to Never for a few days. Use Shut down instead of closing the lid.",
+            "minutes": 2,
+            "risk": "none",
+            "title": "Test with sleep temporarily off",
+            "why": "3 of 6 incidents may possibly have happened during a power transition, so testing without sleep can help isolate it."
+          },
+          {
+            "check": "Next time, a small memory dump file is created in C:\\Windows\\Minidump.",
+            "component": "stability",
+            "how": "Open System Properties > Advanced > Startup and Recovery > Settings, ensure Small memory dump is selected. Keep at least 5 GB free on Windows drive.",
+            "minutes": 3,
+            "risk": "none",
+            "title": "Ensure small memory dumps are enabled",
+            "why": "We already have 4 dumps with nvlddmkm.sys from 6 incidents, so keeping dumps enabled ensures the next event leaves evidence for support."
+          }
+        ],
+        "stop_when": "Stop and prepare a warranty case for Lenovo if another restart or freeze happens after installing the Lenovo drivers and BIOS, or if the hardware diagnostic reports a failure."
+      },
+      "provider": "meta",
+      "latency_ms": 5227,
+      "model": "Muse Spark"
     }
   },
   "es": {
@@ -781,6 +838,63 @@
       },
       "provider": "meta",
       "latency_ms": 5489,
+      "model": "Muse Spark"
+    },
+    "fix_plan": {
+      "plan": {
+        "assessment": "Es poco probable que puedas solucionarlo por tu cuenta, porque hubo 4 bloqueos con nvlddmkm.sys con 2 versiones distintas del controlador. Estos pasos son los que te pedirá igualmente el soporte de Lenovo, pero lo más probable es que necesite reparación en garantía.",
+        "self_fix_likely": false,
+        "steps": [
+          {
+            "check": "No hay nuevos bloqueos durante 7 días de uso normal.",
+            "component": "stability",
+            "how": "Ve a la página de Soporte de Lenovo, busca tu modelo exacto, entra en Controladores y descarga el controlador de vídeo / gráficos recomendado por Lenovo e instálalo. Reinicia al terminar.",
+            "minutes": 15,
+            "risk": "low",
+            "title": "Instala el controlador de pantalla de Lenovo",
+            "why": "El sistema registró 4 volcados con nvlddmkm.sys y falló con 2 marcas de tiempo distintas, lo que muestra que persiste entre versiones del controlador."
+          },
+          {
+            "check": "La BIOS muestra la nueva versión y el equipo inicia con normalidad.",
+            "component": "stability",
+            "how": "Abre Lenovo Vantage > Actualizaciones del sistema o entra a la página de Soporte de Lenovo > BIOS / UEFI y aplica la actualización disponible. Mantén el cargador conectado y no apagues el equipo durante el proceso.",
+            "minutes": 20,
+            "risk": "low",
+            "title": "Actualiza la BIOS desde Lenovo",
+            "why": "Tienes 6 incidentes en 6 meses y 3/6 posiblemente ocurrieron durante una transición de energía, por lo que la actualización de BIOS puede mejorar esa estabilidad."
+          },
+          {
+            "check": "Diagnóstico completado con informe guardado para enviar a soporte.",
+            "component": "stability",
+            "how": "Abre Lenovo Vantage > Diagnóstico de hardware > Análisis completo. Ejecuta todas las pruebas, especialmente las de GPU / vídeo, y guarda el resultado en PDF o captura de pantalla.",
+            "minutes": 20,
+            "risk": "none",
+            "title": "Ejecuta el diagnóstico de hardware de Lenovo",
+            "why": "Hubo 4 incidentes en 90 días y 2 bloqueos sin volcado, por lo que conviene dejar constancia de un posible fallo de hardware."
+          },
+          {
+            "check": "No hay nuevos bloqueos durante 3 o 4 días sin suspensión.",
+            "component": "stability",
+            "how": "Ve a Configuración > Sistema > Energía y batería > Pantalla y suspensión. Pon Suspender el equipo en Nunca cuando está enchufado y prueba así unos días.",
+            "minutes": 5,
+            "risk": "none",
+            "title": "Prueba unos días sin suspensión",
+            "why": "3/6 incidentes posiblemente ocurrieron durante una transición de energía, por lo que deshabilitar temporalmente la suspensión puede ayudar a aislar el problema."
+          },
+          {
+            "check": "La opción queda en minivolcado y se guardan futuros archivos en Minidump.",
+            "component": "stability",
+            "how": "Abre Propiedades del sistema > Configuración avanzada del sistema > Inicio y recuperación > Configuración. Elige Volcado de memoria pequeño (256 KB) y acepta.",
+            "minutes": 3,
+            "risk": "none",
+            "title": "Asegúrate de que se guarden minivolcados",
+            "why": "Solo 4 de los 6 incidentes dejaron volcado, por lo que asegurar los minivolcados dejará evidencia útil para la garantía."
+          }
+        ],
+        "stop_when": "Si ocurre otro reinicio o bloqueo después de estos pasos, detente y prepara el caso para garantía con los informes y minivolcados guardados."
+      },
+      "provider": "meta",
+      "latency_ms": 6843,
       "model": "Muse Spark"
     }
   }

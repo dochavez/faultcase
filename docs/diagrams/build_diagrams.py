@@ -71,7 +71,7 @@ T = {
   "up": "HTTPS upload · .evtx required · ≤ 20 MB",
   "br": "Browser", "br_tag": "Jinja2 + HTMX · English / Spanish",
   "s1_b": "Collect", "s1_m": "Guide with screenshots · required / optional uploads · sample case",
-  "s2_b": "Diagnosis", "s2_m": "Verdict card · 8 health cards · monthly SVG chart · <i>Explain it with Muse</i>",
+  "s2_b": "Diagnosis", "s2_m": "Verdict · 8 health cards · monthly chart · <i>Explain it with Muse</i> · <i>Try to fix it first</i>",
   "s3_b": "Action", "s3_m": "EN/ES manufacturer report · next steps · checklist · evidence ZIP · serial filled in the browser",
   "srv": "FastAPI on Modal", "srv_tag": "1 container · cases in memory only",
   "p1_b": "Adapters", "p1_m": "<code>evtx.py</code> (python-evtx, event level) · <code>msinfo.py</code> · <code>battery_report.py</code> · <code>windbg.py</code>",
@@ -80,10 +80,10 @@ T = {
   "p4_b": "rules.py + 8 playbooks", "p4_m": "No AI. Known-benign filter · patterns labeled fact / hypothesis · component status · exact summary",
   "p5_b": "agent.py", "p5_m": "Compact payload: ≤ 20 events per component, 30k-token cap · reconcile two opinions · JSON-schema guard",
   "p6_b": "router.py", "p6_m": "<code>providers.yaml</code> routes · 1 retry · fallback · hedge 25 s · second-opinion wait 60 s · <code>usage.jsonl</code>",
-  "to_models": "redacted findings only", "back": "validated case + plain-language explanation → Diagnosis",
+  "to_models": "redacted findings only", "back": "validated case · plain-language explanation · fix plan → Diagnosis",
   "md": "Meta models", "md_tag": "OpenAI-compatible endpoints",
   "bt_m": "Muse Spark Open<br><code>meta-models/muse-spark-open-1026</code>", "fw_m": "Muse Spark Open<br><code>accounts/fireworks/models/muse-spark-open</code>", "mt_m": "Muse Spark<br><code>muse-spark-1.1</code>",
-  "r_an": "evidence_analysis", "r_fb": "fallback", "r_cw": "case_writing", "r_ex": "explanation (on demand)",
+  "r_an": "evidence_analysis", "r_fb": "fallback", "r_cw": "case_writing", "r_ex": "explanation (on demand)", "r_fx": "fix_plan (on demand)",
   "side1_b": "Case store", "side1_m": "In memory, gone after 20 min idle. Never written to disk.",
   "side2_b": "Cost guard", "side2_m": "6 live analyses per visitor per hour, 60 per day. Sample case is free.",
   "side3_b": "Evidence ZIP", "side3_m": "Findings + EN/ES report + dump summaries. Never <code>.evtx</code> or <code>.dmp</code>.",
@@ -106,6 +106,9 @@ T = {
   "i3_b": "explanation", "i3_m": "Plain-language walkthrough, per-component meaning and action, glossary",
   "i3_p": "<b>On demand, cached</b>Runs only when the user clicks <i>Explain it with Muse</i>. Cached per case and language; the sample case ships it precomputed.",
   "i3_r": "<b>Meta Model API</b>Muse Spark<br><b style='margin-top:8px'>Fireworks</b>fallback",
+  "i4_b": "fix_plan", "i4_m": "Ordered self-help plan before a claim: why, how, minutes, risk, how to check",
+  "i4_p": "<b>On demand, grounded</b>Only adapts the <code>safe_fixes</code> of the components that need attention; no registry edits or destructive commands. Says when a warranty repair is the likely outcome.",
+  "i4_r": "<b>Meta Model API</b>Muse Spark<br><b style='margin-top:8px'>Fireworks</b>fallback",
   "build": "Build & ship", "b1": "<b>Muse Code</b>terminal agent used to build the core pipeline",
   "b2": "<b>GitHub</b>CI on windows-latest + ubuntu-latest", "b3": "<b>Modal</b><code>modal deploy modal_app.py</code> · secrets in Modal",
   "obs": "Every call → <code>logs/usage.jsonl</code>: provider, model, latency, prompt / completion / cached tokens, fallback, error type. Never prompts or keys.",
@@ -133,7 +136,7 @@ T = {
   "up": "Subida HTTPS · .evtx obligatorio · ≤ 20 MB",
   "br": "Navegador", "br_tag": "Jinja2 + HTMX · inglés / español",
   "s1_b": "Recopilar", "s1_m": "Guía con capturas · subidas obligatorias / opcionales · caso de ejemplo",
-  "s2_b": "Diagnóstico", "s2_m": "Veredicto · 8 tarjetas de estado · gráfico SVG mensual · <i>Explicar con Muse</i>",
+  "s2_b": "Diagnóstico", "s2_m": "Veredicto · 8 tarjetas · gráfico mensual · <i>Explicar con Muse</i> · <i>Intentar solucionarlo</i>",
   "s3_b": "Acción", "s3_m": "Informe EN/ES · próximos pasos · lista previa · ZIP de evidencias · serie solo en el navegador",
   "srv": "FastAPI en Modal", "srv_tag": "1 contenedor · casos solo en memoria",
   "p1_b": "Adaptadores", "p1_m": "<code>evtx.py</code> (python-evtx, nivel del evento) · <code>msinfo.py</code> · <code>battery_report.py</code> · <code>windbg.py</code>",
@@ -142,10 +145,10 @@ T = {
   "p4_b": "rules.py + 8 playbooks", "p4_m": "Sin IA. Filtro de eventos inofensivos · patrones como hecho / hipótesis · estado por componente · resumen exacto",
   "p5_b": "agent.py", "p5_m": "Carga compacta: ≤ 20 eventos por componente, tope de 30k tokens · reconciliar dos opiniones · validación JSON",
   "p6_b": "router.py", "p6_m": "Rutas de <code>providers.yaml</code> · 1 reintento · respaldo · hedge 25 s · espera de segunda opinión 60 s · <code>usage.jsonl</code>",
-  "to_models": "solo hallazgos anonimizados", "back": "caso validado + explicación sencilla → Diagnóstico",
+  "to_models": "solo hallazgos anonimizados", "back": "caso validado · explicación sencilla · plan de solución → Diagnóstico",
   "md": "Modelos de Meta", "md_tag": "endpoints compatibles con OpenAI",
   "bt_m": "Muse Spark Open<br><code>meta-models/muse-spark-open-1026</code>", "fw_m": "Muse Spark Open<br><code>accounts/fireworks/models/muse-spark-open</code>", "mt_m": "Muse Spark<br><code>muse-spark-1.1</code>",
-  "r_an": "evidence_analysis", "r_fb": "respaldo", "r_cw": "case_writing", "r_ex": "explanation (a petición)",
+  "r_an": "evidence_analysis", "r_fb": "respaldo", "r_cw": "case_writing", "r_ex": "explanation (a petición)", "r_fx": "fix_plan (a petición)",
   "side1_b": "Almacén de casos", "side1_m": "En memoria; desaparece tras 20 min sin uso. Nunca se escribe en disco.",
   "side2_b": "Control de costo", "side2_m": "6 análisis en vivo por visitante por hora, 60 al día. El ejemplo es gratis.",
   "side3_b": "ZIP de evidencias", "side3_m": "Hallazgos + informe EN/ES + resúmenes de volcados. Nunca <code>.evtx</code> ni <code>.dmp</code>.",
@@ -168,6 +171,9 @@ T = {
   "i3_b": "explanation", "i3_m": "Explicación sencilla, significado y acción por componente, glosario",
   "i3_p": "<b>A petición, en caché</b>Solo se ejecuta cuando el usuario pulsa <i>Explicar con Muse</i>. Se guarda por caso e idioma; el ejemplo la trae precalculada.",
   "i3_r": "<b>Meta Model API</b>Muse Spark<br><b style='margin-top:8px'>Fireworks</b>respaldo",
+  "i4_b": "fix_plan", "i4_m": "Plan de autoayuda ordenado antes de reclamar: por qué, cómo, minutos, riesgo, cómo comprobar",
+  "i4_p": "<b>A petición, acotado</b>Solo adapta las <code>safe_fixes</code> de los componentes con problemas; nada de registro ni comandos destructivos. Dice cuándo lo probable es la garantía.",
+  "i4_r": "<b>Meta Model API</b>Muse Spark<br><b style='margin-top:8px'>Fireworks</b>respaldo",
   "build": "Construcción y despliegue", "b1": "<b>Muse Code</b>agente de terminal con el que se construyó el núcleo",
   "b2": "<b>GitHub</b>CI en windows-latest + ubuntu-latest", "b3": "<b>Modal</b><code>modal deploy modal_app.py</code> · secretos en Modal",
   "obs": "Cada llamada → <code>logs/usage.jsonl</code>: proveedor, modelo, latencia, tokens de prompt / respuesta / caché, respaldo, tipo de error. Nunca prompts ni claves.",
@@ -218,7 +224,7 @@ def arch(t):
     md = band("#7c3aed", "#faf5ff", "✦ " + t["md"], t["md_tag"], '<div class="row">'
               + card("Baseten", t["bt_m"], "ai", extra=f'<span class="chip">{t["r_an"]}</span>')
               + card("Fireworks", t["fw_m"], "ai", extra=f'<span class="chip">{t["r_an"]}</span><span class="chip s">{t["r_fb"]}</span>')
-              + card("Meta Model API", t["mt_m"], "ai", extra=f'<span class="chip">{t["r_cw"]}</span><span class="chip g">{t["r_ex"]}</span>')
+              + card("Meta Model API", t["mt_m"], "ai", extra=f'<span class="chip">{t["r_cw"]}</span><span class="chip g">{t["r_ex"]}</span><span class="chip g">{t["r_fx"]}</span>')
               + "</div>")
     down = lambda label: f'<div class="down"><span class="a">↓</span><span class="pill">{label}</span><span class="a">↓</span></div>'
     up = lambda label: f'<div class="down"><span class="a">↑</span><span class="pill">{label}</span><span class="a">↑</span></div>'
@@ -226,7 +232,7 @@ def arch(t):
               f'<span style="--c:#b91c1c;--f:#fef2f2">{t["lg_priv"]}</span>'
               f'<span style="--c:#b45309;--f:#fffbeb">{t["lg_loc"]}</span></div>')
     return (f'<h1>{t["arch_t"]}</h1><p class="sub">{t["arch_s"]}</p>' + pc + down(t["up"]) + br
-            + down("POST /upload · /demo · /case/{id}/explain") + srv + down(t["to_models"]) + md
+            + down("POST /upload · /demo · /case/{id}/explain · /case/{id}/fix") + srv + down(t["to_models"]) + md
             + up(t["back"]) + legend)
 
 
@@ -250,7 +256,7 @@ def integration(t):
     head = (f'<div class="grid3" style="margin-bottom:8px;font-weight:800;color:#475569;font-size:16px;text-transform:uppercase;letter-spacing:.05em">'
             f'<div>{t["col1"]}</div><div></div><div>{t["col2"]}</div><div></div><div>{t["col3"]}</div></div>')
     body = '<div class="grid3">'
-    for i in ("1", "2", "3"):
+    for i in ("1", "2", "3", "4"):
         body += (card(t[f"i{i}_b"], t[f"i{i}_m"]) + '<div class="arrow">→</div>'
                  + f'<div class="card"><div class="m" style="font-size:17px">{t[f"i{i}_p"]}</div></div>'
                  + '<div class="arrow">→</div>'

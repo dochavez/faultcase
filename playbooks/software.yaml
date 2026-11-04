@@ -10,4 +10,7 @@ rules:
   - "Correlate the date of the first stability incident with updates installed in the previous 7 days (possible regression; this is a hypothesis)."
   - "Group app_crash by application name and module; report only those repeated 3 or more times."
   - "Application crashes alone are NOT evidence of a hardware failure."
+safe_fixes:
+  - "Install pending Windows updates (Settings > Windows Update) and restart."
+  - "Update or reinstall the application that crashes most often."
 no_findings: "No repeated application failures."

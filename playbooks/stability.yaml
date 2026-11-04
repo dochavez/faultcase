@@ -66,6 +66,9 @@ patterns:
 safe_fixes:
   - "Install the display driver from the laptop manufacturer's support page (not only from NVIDIA/AMD)."
   - "Install the BIOS updates offered by the manufacturer."
+  - "Run the manufacturer's hardware diagnostic (for example Lenovo Vantage, HP PC Hardware Diagnostics, Dell SupportAssist) and save the result."
+  - "If incidents happen during sleep or wake-up, test for a few days with sleep turned off (Settings > System > Power)."
+  - "Make sure Windows keeps small memory dumps (System Properties > Startup and Recovery > Small memory dump) so the next crash leaves evidence."
 
 escalate_if:
   - "persists_across_driver_versions"

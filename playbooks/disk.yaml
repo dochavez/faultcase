@@ -13,6 +13,8 @@ rules:
   - "Several 129 or 153 events indicate a disk or controller that stops responding."
 safe_fixes:
   - "Back up important files."
+  - "Run a read-only check of the system drive: open Terminal and run chkdsk C: (without /f)."
+  - "If the errors are on an external or secondary drive, test that drive on another computer and with another cable."
 escalate_if:
   - "bad_block present"
   - "5 or more controller_reset within 30 days"

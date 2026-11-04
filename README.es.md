@@ -103,7 +103,7 @@ Después abre http://127.0.0.1:8000 y haz clic en **Try a sample case**.
 
 ![Pantalla de recopilación](docs/img/collect-es.png)
 
-**Diagnóstico**: tarjeta del veredicto con el problema principal, 8 tarjetas de estado por componente, gráfico de reinicios por mes, línea de tiempo, *Explicar con Muse* y detalles técnicos para el técnico del fabricante:
+**Diagnóstico**: tarjeta del veredicto con el problema principal y dos caminos (*Intentar solucionarlo primero* o *Preparar mi caso de garantía*), 8 tarjetas de estado por componente, gráfico de reinicios por mes, línea de tiempo, *Explicar con Muse* y detalles técnicos para el técnico del fabricante:
 
 ![Pantalla de diagnóstico](docs/img/diagnosis-es.png)
 
@@ -111,11 +111,15 @@ Después abre http://127.0.0.1:8000 y haz clic en **Try a sample case**.
 
 ![Explicar con Muse](docs/img/explain-es.png)
 
+**Intentar solucionarlo primero**: a petición, Muse Spark convierte las soluciones seguras de los playbooks para los componentes con problemas en un plan ordenado (por qué, cómo, minutos, riesgo, cómo comprobar, cuándo parar). Los pasos marcados se añaden al informe para el fabricante en el navegador:
+
+![Intentar solucionarlo primero](docs/img/fix-es.png)
+
 **Acción**: qué hacer ahora (con el enlace de soporte del fabricante), informe EN/ES, lista previa, ZIP de evidencias y número de serie rellenado solo en el navegador:
 
 ![Pantalla de acción](docs/img/action-es.png)
 
-Versiones en inglés: [collect-en.png](docs/img/collect-en.png), [diagnosis-en.png](docs/img/diagnosis-en.png), [explain-en.png](docs/img/explain-en.png), [action-en.png](docs/img/action-en.png). Se regeneran con `python scripts/screenshots.py` (herramientas de desarrollo: `pip install playwright pillow` y `playwright install chromium`; solo el caso de ejemplo, sin llamadas a modelos).
+Versiones en inglés: [collect-en.png](docs/img/collect-en.png), [diagnosis-en.png](docs/img/diagnosis-en.png), [explain-en.png](docs/img/explain-en.png), [fix-en.png](docs/img/fix-en.png), [action-en.png](docs/img/action-en.png). Se regeneran con `python scripts/screenshots.py` (herramientas de desarrollo: `pip install playwright pillow` y `playwright install chromium`; solo el caso de ejemplo, sin llamadas a modelos).
 
 ## Cómo funciona
 
@@ -146,15 +150,16 @@ Una subida, de principio a fin:
 | Análisis técnico de la evidencia | Muse Spark Open | Baseten y Fireworks en paralelo (segunda opinión) |
 | Redacción del caso EN/ES y resumen para el usuario | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks de respaldo) |
 | *Explicar con Muse*: explicación sencilla a petición | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks de respaldo) |
+| *Intentar solucionarlo primero*: plan de autoayuda con las soluciones seguras de los playbooks, a petición | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks de respaldo) |
 | Construcción de este proyecto | Muse Code | Terminal |
 
-Las rutas viven en `config/providers.yaml`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`.
+Las rutas viven en `config/providers.yaml`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`, `fix_plan: [meta, fireworks]`.
 
 - **Segunda opinión.** Ambos proveedores de pesos abiertos analizan los mismos hallazgos redactados al mismo tiempo. Si el veredicto y la confianza coinciden, se conservan; si difieren, la confianza baja un nivel y se añade un hallazgo de tipo `hypothesis`. Si un proveedor falla, o responde más de 60 s después del primero (`second_opinion_wait_seconds`), se continúa con la opinión disponible. Se alterna con `analysis_mode: second_opinion | single`.
 - **Caché de prompts.** Cada solicitud pone primero el contenido estático (prompt del sistema, reglas de playbooks, claves de salida) y los datos del caso al final, para que los proveedores reutilicen los prefijos en caché. Los tokens en caché se leen de `usage.prompt_tokens_details` y se registran en `logs/usage.jsonl`.
 - **Solicitudes de cobertura (hedged).** Si el proveedor principal tarda más de `hedge_after_seconds` (25 por defecto), se inicia el siguiente proveedor y gana la primera respuesta válida; una línea `hedge` registra al ganador.
 - **Esfuerzo de razonamiento por rol.** `medium` en ambos roles (omitido para el análisis en Baseten, cuya generación restringida se bloquea con él); los parámetros rechazados se reintentan una vez sin ellos y se recuerdan durante la sesión.
-- **Límites de completado.** `max_tokens` por rol (16384 análisis, 24576 redacción, 8192 explicación; los dos primeros medidos desde los completados exitosos más grandes más un margen). `finish_reason == "length"` se registra como `truncated` y se reintenta una vez.
+- **Límites de completado.** `max_tokens` por rol (16384 análisis, 24576 redacción, 8192 explicación y plan de solución; los dos primeros medidos desde los completados exitosos más grandes más un margen). `finish_reason == "length"` se registra como `truncated` y se reintenta una vez.
 
 ### Benchmark (medido el 2026-11-02)
 
@@ -249,6 +254,7 @@ Cada garantía está respaldada por una prueba:
 | El ZIP de evidencias nunca contiene `.evtx`/`.dmp` crudos | `test_demo_flow_uses_precomputed_file` |
 | Los modelos reciben conteos y ≤ 20 eventos por componente, nunca el registro crudo (tope de 30k tokens) | `test_twenty_thousand_events_fit_the_token_budget` |
 | *Explicar con Muse* recibe solo hallazgos anonimizados | `test_explain_case_sends_only_redacted_findings` |
+| *Intentar solucionarlo primero* solo adapta soluciones seguras de los componentes con problemas | `test_fix_plan_uses_only_safe_fixes_of_involved_components` |
 | Los eventos inofensivos conocidos nunca cuentan como fallos | `test_known_benign_events_are_not_counted` |
 | Los identificadores de cubo de fallo se eliminan del informe | `test_strip_bucket_ids_from_reports` |
 | Solo los campos analizados salen del análisis local de volcados | `test_analyze_dump_returns_only_parsed_fields` |
@@ -290,7 +296,7 @@ faultcase/                 # Paquete Python
 templates/ static/         # páginas Jinja2, CSS, capturas de la guía del Visor de eventos
 config/                    # providers.yaml (rutas, roles, precios)
 filters/ playbooks/        # device-diagnostics.xml; disk/hardware/software/stability/thermal/wifi/usb/battery
-prompts/ schemas/          # evidence_analysis.md, case_writer.md, explainer.md; esquemas evidence/case
+prompts/ schemas/          # evidence_analysis.md, case_writer.md, explainer.md, fix_planner.md; esquemas evidence/case
 fixtures/                  # real_case/, synthetic/, msinfo/
 scripts/                   # smoke_test.py, build_demo_case.py, benchmark.py, screenshots.py
 tests/                     # suite pytest (las pruebas en vivo necesitan claves)
@@ -313,7 +319,7 @@ pytest -m live    # construye el caso real con modelos reales (necesita claves e
 <summary>Referencia de <code>config/providers.yaml</code></summary>
 
 - `providers.*`: `base_url`, `api_key_env`, `model`/`model_env`, precios de ejemplo `price_per_1k_*`.
-- `routes`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`.
+- `routes`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`, `fix_plan: [meta, fireworks]`.
 - `roles.*`: `analysis_mode` (`second_opinion` para análisis, `single` para redacción), `reasoning_effort` (`medium`, omitido para el análisis en Baseten), `max_tokens` (16384/24576/8192), `second_opinion_wait_seconds: 60`.
 - `settings`: `timeout_seconds: 90`, `max_retries_per_provider: 1`, `hedge_after_seconds: 25`, `log_usage: true`.
 
@@ -338,6 +344,9 @@ Baseten y Fireworks analizan la misma evidencia de forma independiente; el acuer
 
 **¿Solo Windows?**
 Sí: equipos con Windows 10 y 11, portátiles y de escritorio (el informe de batería solo aplica a portátiles). La evidencia es propia de Windows (`.evtx`, WinDbg, msinfo32, CIM, `powercfg`), pero el análisis funciona en cualquier sistema: el servidor en Modal y CI corren en Linux. Linux y macOS están en la hoja de ruta como adaptadores aparte.
+
+**¿Muse me puede ayudar a resolverlo sin abrir un ticket?**
+Sí: *Intentar solucionarlo primero* da un plan ordenado construido solo con las soluciones seguras de FaultCase para tus hallazgos (controlador del fabricante, BIOS, diagnóstico de hardware, prueba sin suspensión, ajuste de energía del Wi-Fi…), con cuánto tarda cada paso y cómo saber si funcionó. Tú haces cada paso; FaultCase nunca cambia tu equipo. Si la evidencia apunta a hardware lo dice, y los pasos que marcaste pasan al informe de garantía.
 
 **¿Qué hace "Explicar con Muse"?**
 A petición, Muse Spark lee los hechos contados (nunca el registro crudo) y los explica con palabras sencillas: qué significa cada hallazgo, qué hacer, los próximos pasos y un glosario para los detalles técnicos. Se ejecuta una vez por caso e idioma y se guarda; el caso de ejemplo la trae precalculada.

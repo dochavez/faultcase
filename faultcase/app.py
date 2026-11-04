@@ -30,7 +30,7 @@ from starlette.concurrency import run_in_threadpool
 
 from faultcase.adapters.windows import evtx as evtx_adapter
 from faultcase.adapters.windows import battery_report, cdb, msinfo, wmi
-from faultcase.agent import build_case, explain_case
+from faultcase.agent import build_case, explain_case, fix_plan
 from faultcase.demo import DEMO_CASE_PATH, DEMO_DEVICE, build_demo_evidence
 from faultcase.demo import load_demo_summaries
 from faultcase.i18n import INCIDENT_LABELS, STRINGS, get_lang
@@ -360,6 +360,11 @@ async def demo(request: Request, lang: str = Form("en")):
         for code in ("en", "es")
         if isinstance(data.get(code), dict) and data[code].get("explanation")
     }
+    CASES[case_id]["fix_plans"] = {
+        code: data[code]["fix_plan"]
+        for code in ("en", "es")
+        if isinstance(data.get(code), dict) and data[code].get("fix_plan")
+    }
     url = f"/case/{case_id}?lang={lang}"
     if _is_htmx(request):
         return Response(status_code=200, headers={"HX-Redirect": url})
@@ -405,6 +410,44 @@ async def explain(request: Request, case_id: str, lang: str = Form("en")):
     )
 
 
+@app.post("/case/{case_id}/fix")
+async def fix(request: Request, case_id: str, lang: str = Form("en")):
+    """On-demand self-help plan by Muse Spark, from the playbooks' safe fixes."""
+    lang = get_lang(lang)
+    t = STRINGS[lang]
+    stored = _get_case(case_id)
+    if stored is None:
+        if not _is_htmx(request):
+            return _expired(request, lang)
+        return templates.TemplateResponse(
+            request, "fix_section.html",
+            _ctx(lang, case_id=case_id, fix=None, status_by_component={}, expired=True),
+        )
+    cache = stored.setdefault("fix_plans", {})
+    error = None
+    if lang not in cache:
+        if not _take_upload_slot(_client_id(request)):
+            error = t["err_rate_limit"]
+        else:
+            try:
+                result = await run_in_threadpool(
+                    fix_plan, stored["findings"], stored["case"], lang,
+                    stored.get("manufacturer"),
+                )
+                result["model"] = MODEL_NAMES.get(result.get("provider"), "Muse Spark")
+                cache[lang] = result
+            except (RouterError, ValueError) as exc:
+                error = f"{t['err_fix']}: {exc}"
+    if lang in cache:
+        stored.setdefault("fix_revealed", set()).add(lang)
+    if not _is_htmx(request):
+        return RedirectResponse(f"/case/{case_id}?lang={lang}#fix", status_code=303)
+    return templates.TemplateResponse(
+        request, "fix_section.html",
+        _ctx(lang, case_id=case_id, **_explain_ctx(stored, lang, fix_error=error)),
+    )
+
+
 @app.post("/case/{case_id}/regenerate")
 async def regenerate(
     request: Request,
@@ -433,6 +476,7 @@ async def regenerate(
     stored["case"] = built["case"]
     stored["metadata"] = built["metadata"]
     stored["explanations"] = {}
+    stored["fix_plans"] = {}
     stored["summaries"] = summaries
     url = f"/case/{case_id}?lang={lang}"
     if _is_htmx(request):
@@ -506,8 +550,10 @@ def _explain_ctx(stored: dict, lang: str, **extra) -> dict:
     # Shown only after the user clicks, even when it is already cached
     # (the sample case ships it precomputed).
     revealed = lang in stored.get("revealed", set())
+    fix_shown = lang in stored.get("fix_revealed", set())
     return dict(
         explanation=(stored.get("explanations") or {}).get(lang) if revealed else None,
+        fix=(stored.get("fix_plans") or {}).get(lang) if fix_shown else None,
         status_by_component={c["id"]: c["status"] for c in components},
         **extra,
     )

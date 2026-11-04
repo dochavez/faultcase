@@ -1,0 +1,63 @@
+<section id="fix" class="fix" aria-labelledby="fix-title" aria-live="polite">
+  <h2 id="fix-title">🛠 {{ t.fix_title }}</h2>
+  {% if fix %}
+  {% set p = fix.plan %}
+  <p class="fix-assess {{ 'fix-likely' if p.self_fix_likely else 'fix-warranty' }}">
+    <strong>{{ t.fix_likely if p.self_fix_likely else t.fix_unlikely }}</strong> {{ p.assessment }}
+  </p>
+  <ol class="fix-steps" data-case="{{ case_id }}">
+  {% for step in p.steps %}
+    <li class="fix-step">
+      <label class="fix-check">
+        <input type="checkbox" data-step="{{ loop.index0 }}" data-title="{{ step.title }}">
+        <span class="fix-step-title">{{ step.title }}</span>
+      </label>
+      <p class="fix-meta">{{ t.get("comp_" + step.component, step.component) }} · ⏱ {{ t.fix_minutes.format(n=step.minutes) }} · {{ t["fix_risk_" + step.risk] }}</p>
+      <p><strong>{{ t.fix_why }}:</strong> {{ step.why }}</p>
+      <p><strong>{{ t.fix_how }}:</strong> {{ step.how }}</p>
+      <p class="fix-ok"><strong>{{ t.fix_check }}:</strong> {{ step.check }}</p>
+    </li>
+  {% endfor %}
+  </ol>
+  <div class="fix-stop">
+    <p><strong>{{ t.fix_stop }}:</strong> {{ p.stop_when }}</p>
+    <a class="btn btn-primary" href="/case/{{ case_id }}/action?lang={{ lang }}">{{ t.dg_cta }}</a>
+    <small>{{ t.fix_carry }}</small>
+  </div>
+  <p class="meta">{{ t.fix_by.format(model=fix.model) }}</p>
+  <script>
+  (function () {
+    var list = document.querySelector(".fix-steps");
+    if (!list) return;
+    var key = "faultcase-fix-" + list.dataset.case;
+    var state = {};
+    try { state = JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) {}
+    list.querySelectorAll("input[type=checkbox]").forEach(function (box) {
+      box.checked = !!state[box.dataset.step];
+      box.closest("li").classList.toggle("done", box.checked);
+      box.addEventListener("change", function () {
+        if (box.checked) { state[box.dataset.step] = box.dataset.title; }
+        else { delete state[box.dataset.step]; }
+        box.closest("li").classList.toggle("done", box.checked);
+        try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}
+      });
+    });
+  })();
+  </script>
+  {% elif expired %}
+  <div class="error-box">{{ t.err_case_gone }}
+    <a href="/?lang={{ lang }}">{{ t.back_home }}</a></div>
+  {% else %}
+  <p>{{ t.fix_intro }}</p>
+  <form hx-post="/case/{{ case_id }}/fix" hx-target="#fix" hx-swap="outerHTML"
+        hx-indicator="#fix-loading" hx-disabled-elt="#fix-btn"
+        method="post" action="/case/{{ case_id }}/fix">
+    <input type="hidden" name="lang" value="{{ lang }}">
+    <button class="btn btn-primary btn-ai" id="fix-btn" type="submit">✦ {{ t.fix_btn }}</button>
+  </form>
+  <div id="fix-loading" class="loading">
+    <span class="spinner" aria-hidden="true"></span> {{ t.fix_loading }}
+  </div>
+  {% if fix_error %}<div class="error-box">{{ fix_error }}</div>{% endif %}
+  {% endif %}
+</section>

@@ -773,3 +773,74 @@ def test_sample_explanation_waits_for_the_click():
                        headers={"HX-Request": "true"}).text
     assert "Plain overview." in html
     assert "Plain overview." in client.get(target).text
+
+
+
+FIX_PLAN = {
+    "assessment": "Plain assessment.",
+    "self_fix_likely": False,
+    "steps": [
+        {"component": "stability", "title": "Install the Lenovo display driver",
+         "why": "Why text.", "how": "How text.", "minutes": 15, "risk": "low",
+         "check": "No restarts for 7 days."},
+    ],
+    "stop_when": "Stop text.",
+}
+
+
+def test_diagnosis_offers_two_paths():
+    case_id, target = _demo_case_id()
+    page = client.get(target).text
+    assert 'href="#fix"' in page and 'id="warranty-btn"' in page
+    assert f'hx-post="/case/{case_id}/fix"' in page
+    assert "Try to fix it first" in page
+
+
+def test_fix_plan_calls_muse_once_and_shows_steps(monkeypatch):
+    calls = []
+
+    def fake_plan(findings, case, ui_language="en", manufacturer=None):
+        calls.append((ui_language, manufacturer))
+        return {"plan": FIX_PLAN, "provider": "meta", "latency_ms": 5}
+
+    monkeypatch.setattr(app_module, "fix_plan", fake_plan)
+    case_id, target = _demo_case_id()
+    app_module.CASES[case_id]["fix_plans"] = {}
+    for _ in range(2):
+        html = client.post(f"/case/{case_id}/fix", data={"lang": "en"},
+                           headers={"HX-Request": "true"}).text
+    assert calls == [("en", "Lenovo")]
+    assert "Install the Lenovo display driver" in html
+    assert "A warranty repair is the most likely outcome." in html
+    assert 'type="checkbox"' in html and "Stop text." in html
+    assert "Install the Lenovo display driver" in client.get(target).text
+
+
+def test_fix_error_keeps_the_button(monkeypatch):
+    def broken(*args, **kwargs):
+        raise RouterError("down")
+
+    monkeypatch.setattr(app_module, "fix_plan", broken)
+    case_id, _ = _demo_case_id()
+    app_module.CASES[case_id]["fix_plans"] = {}
+    html = client.post(f"/case/{case_id}/fix", data={"lang": "es"},
+                       headers={"HX-Request": "true"}).text
+    assert "Muse no pudo preparar un plan" in html and "Obtener mi plan con Muse" in html
+
+
+def test_action_carries_tried_steps_locally():
+    case_id, _ = _demo_case_id()
+    page = client.get(f"/case/{case_id}/action?lang=en").text
+    assert f"faultcase-fix-{case_id}" in page
+    assert "Steps already taken by the user" in page
+
+
+
+def test_upload_form_validates_in_the_browser_and_warns_to_keep_open():
+    page = client.get("/?lang=en").text
+    assert 'id="evtx-error"' in page and "Choose your .evtx file first" in page
+    assert "htmx:beforeRequest" in page and "beforeunload" in page
+    assert "close or refresh this tab" in page
+    es = client.get("/?lang=es").text
+    assert "No cierres ni actualices esta pestaña" in es
+    assert "Primero elige tu archivo .evtx" in es

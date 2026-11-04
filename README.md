@@ -103,7 +103,7 @@ Then open http://127.0.0.1:8000 and click **Try a sample case**.
 
 ![Collect screen](docs/img/collect-en.png)
 
-**Diagnosis** — verdict card with the main problem, 8 component health cards, restarts-per-month chart, incident timeline, *Explain it with Muse*, technical details for the manufacturer's technician:
+**Diagnosis** — verdict card with the main problem and two paths (*Try to fix it first* or *Prepare my warranty case*), 8 component health cards, restarts-per-month chart, incident timeline, *Explain it with Muse*, technical details for the manufacturer's technician:
 
 ![Diagnosis screen](docs/img/diagnosis-en.png)
 
@@ -111,11 +111,15 @@ Then open http://127.0.0.1:8000 and click **Try a sample case**.
 
 ![Explain it with Muse](docs/img/explain-en.png)
 
+**Try to fix it first** — on demand, Muse Spark turns the playbooks' safe fixes for the components that need attention into an ordered plan (why, how, minutes, risk, how to check, when to stop). Ticked steps are added to the manufacturer report in the browser:
+
+![Try to fix it first](docs/img/fix-en.png)
+
 **Action** — what to do next (with the manufacturer's support link), EN/ES manufacturer report, checklist, evidence ZIP, serial number filled in the browser only:
 
 ![Action screen](docs/img/action-en.png)
 
-Spanish versions: [collect-es.png](docs/img/collect-es.png), [diagnosis-es.png](docs/img/diagnosis-es.png), [explain-es.png](docs/img/explain-es.png), [action-es.png](docs/img/action-es.png). Regenerate them with `python scripts/screenshots.py` (dev tools: `pip install playwright pillow` and `playwright install chromium`; sample case only, no model calls).
+Spanish versions: [collect-es.png](docs/img/collect-es.png), [diagnosis-es.png](docs/img/diagnosis-es.png), [explain-es.png](docs/img/explain-es.png), [fix-es.png](docs/img/fix-es.png), [action-es.png](docs/img/action-es.png). Regenerate them with `python scripts/screenshots.py` (dev tools: `pip install playwright pillow` and `playwright install chromium`; sample case only, no model calls).
 
 ## How it works
 
@@ -146,15 +150,16 @@ One upload, end to end:
 | Technical evidence analysis | Muse Spark Open | Baseten and Fireworks in parallel (second opinion) |
 | Writing the EN/ES manufacturer case and user summary | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks as fallback) |
 | *Explain it with Muse*: plain-language walkthrough on demand | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks as fallback) |
+| *Try to fix it first*: self-help plan from the playbooks' safe fixes, on demand | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks as fallback) |
 | Building this project | Muse Code | Terminal |
 
-Routes live in `config/providers.yaml`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`.
+Routes live in `config/providers.yaml`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`, `fix_plan: [meta, fireworks]`.
 
 - **Second opinion.** Both open-weights providers analyze the same redacted findings concurrently. Matching verdict enum + confidence is kept; a mismatch lowers confidence one level and adds a `hypothesis` finding. One failure, or an answer more than 60 s after the first one (`second_opinion_wait_seconds`), continues with the surviving opinion. Toggle with `analysis_mode: second_opinion | single`.
 - **Prompt caching.** Every request puts static content first (system prompt, playbook rules, output keys) and case data last, so providers can reuse cached prefixes. Cached tokens are read from `usage.prompt_tokens_details` and logged in `logs/usage.jsonl`.
 - **Hedged requests.** If the primary provider is slower than `hedge_after_seconds` (default 25), the next provider starts and the first valid answer wins; a `hedge` line records the winner.
 - **Reasoning effort per role.** `medium` for both roles (omitted for Baseten analysis, whose constrained generation stalls with it); rejected parameters are retried once without and remembered for the session.
-- **Completion caps.** Per-role `max_tokens` (16384 analysis, 24576 writing, 8192 explanation; analysis and writing measured from the largest successful completions plus margin). `finish_reason == "length"` is logged as `truncated` and retried once.
+- **Completion caps.** Per-role `max_tokens` (16384 analysis, 24576 writing, 8192 explanation and fix plan; analysis and writing measured from the largest successful completions plus margin). `finish_reason == "length"` is logged as `truncated` and retried once.
 
 ### Benchmark (measured 2026-11-02)
 
@@ -249,6 +254,7 @@ Each guarantee is enforced by a test:
 | Evidence ZIP never contains raw `.evtx`/`.dmp` | `test_demo_flow_uses_precomputed_file` |
 | Models get counts plus ≤ 20 events per component, never the raw log (30k-token cap) | `test_twenty_thousand_events_fit_the_token_budget` |
 | *Explain it with Muse* receives only redacted findings | `test_explain_case_sends_only_redacted_findings` |
+| *Try to fix it first* only adapts safe fixes of the components that need attention | `test_fix_plan_uses_only_safe_fixes_of_involved_components` |
 | Known-benign events are never counted as faults | `test_known_benign_events_are_not_counted` |
 | Failure bucket IDs are stripped from manufacturer reports | `test_strip_bucket_ids_from_reports` |
 | Only parsed fields leave local dump analysis | `test_analyze_dump_returns_only_parsed_fields` |
@@ -290,7 +296,7 @@ faultcase/                 # Python package
 templates/ static/         # Jinja2 pages, CSS, Event Viewer guide screenshots
 config/                    # providers.yaml (routes, roles, prices)
 filters/ playbooks/        # device-diagnostics.xml; disk/hardware/software/stability/thermal/wifi/usb/battery
-prompts/ schemas/          # evidence_analysis.md, case_writer.md, explainer.md; evidence/case schemas
+prompts/ schemas/          # evidence_analysis.md, case_writer.md, explainer.md, fix_planner.md; evidence/case schemas
 fixtures/                  # real_case/, synthetic/, msinfo/
 scripts/                   # smoke_test.py, build_demo_case.py, benchmark.py, screenshots.py
 tests/                     # pytest suite (live tests need keys)
@@ -313,7 +319,7 @@ pytest -m live    # builds the real case with real models (needs API keys in .en
 <summary><code>config/providers.yaml</code> reference</summary>
 
 - `providers.*`: `base_url`, `api_key_env`, `model`/`model_env`, example `price_per_1k_*` prices.
-- `routes`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`.
+- `routes`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`, `fix_plan: [meta, fireworks]`.
 - `roles.*`: `analysis_mode` (`second_opinion` for analysis, `single` for writing), `reasoning_effort` (`medium`, omitted for Baseten analysis), `max_tokens` (16384/24576/8192), `second_opinion_wait_seconds: 60`.
 - `settings`: `timeout_seconds: 90`, `max_retries_per_provider: 1`, `hedge_after_seconds: 25`, `log_usage: true`.
 
@@ -338,6 +344,9 @@ Baseten and Fireworks independently analyze the same evidence; agreement keeps c
 
 **Windows only?**
 Yes: Windows 10 and 11 computers, laptops and desktops (the battery report applies to laptops only). The evidence is Windows-specific (`.evtx`, WinDbg, msinfo32, CIM, `powercfg`), but parsing runs anywhere — the server on Modal and CI run on Linux. Linux and macOS are on the roadmap as separate adapters.
+
+**Can Muse help me fix it without opening a ticket?**
+Yes: *Try to fix it first* gives an ordered plan built only from FaultCase's safe fixes for your findings (manufacturer driver, BIOS, hardware diagnostic, sleep test, Wi-Fi power setting…), with how long each step takes and how to know it worked. You do every step; FaultCase never changes your computer. When the evidence points to hardware it says so, and the steps you ticked go into the warranty report.
 
 **What does "Explain it with Muse" do?**
 On request, Muse Spark reads the counted facts (never the raw log) and explains them in plain words: what each finding means, what to do, the next steps and a glossary for the technical details. It runs once per case and language and is cached; the sample case ships it precomputed.
