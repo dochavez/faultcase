@@ -14,8 +14,10 @@
 {%- endmacro %}
 {% block content %}
 <section class="hero">
+  <p class="os-badge"><span aria-hidden="true">⊞</span> {{ t.os_badge }}</p>
   <h1>{{ t.hero_title }}</h1>
   <p>{{ t.hero_sub }}</p>
+  <p class="os-note" id="os-note" hidden>{{ t.os_note }}</p>
 </section>
 
 <ol class="steps">
@@ -32,11 +34,31 @@
     <div>
       <h2>{{ t.s2_t }}</h2>
       <p>{{ t.s2_d }}</p>
-      <ol class="substeps">
-        <li>{{ t.ev_a }}</li>
-        <li>{{ t.ev_b }}</li>
+      <ol class="substeps guide">
+        <li>{{ t.ev_open }}</li>
+        <li>{{ t.ev_a }}
+          <figure class="shot">
+            <img src="/static/img/guide/ev-import.png" width="473" height="334" loading="lazy"
+                 alt="{{ t.shot_import_alt }}">
+            <figcaption>{{ t.shot_actions }}</figcaption>
+          </figure>
+        </li>
+        <li>{{ t.ev_check }}
+          <figure class="shot">
+            <img src="/static/img/guide/ev-view.png" width="1100" height="128" loading="lazy"
+                 alt="{{ t.shot_view_alt }}">
+          </figure>
+        </li>
+        <li>{{ t.ev_b }}
+          <figure class="shot">
+            <img src="/static/img/guide/ev-save.png" width="473" height="334" loading="lazy"
+                 alt="{{ t.shot_save_alt }}">
+            <figcaption>{{ t.shot_actions }}</figcaption>
+          </figure>
+        </li>
         <li>{{ t.ev_c }}</li>
       </ol>
+      <p class="meta">{{ t.shot_lang_note }}</p>
     </div>
   </li>
   <li class="step">
@@ -126,6 +148,13 @@
   </li>
 </ol>
 <script>
+try {
+  var platform = (navigator.userAgentData && navigator.userAgentData.platform)
+    || navigator.platform || navigator.userAgent || "";
+  if (!/win/i.test(platform)) {
+    document.getElementById("os-note").hidden = false;
+  }
+} catch (e) {}
 document.querySelectorAll(".file-input").forEach(function (input) {
   var name = document.querySelector('[data-file-for="' + input.id + '"]');
   var empty = name.textContent;

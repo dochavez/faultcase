@@ -175,6 +175,23 @@ small { color: var(--muted); }
 .file-name { color: var(--muted); }
 .file-name.has-file { color: var(--ink); font-weight: 600; }
 
+/* Collect: OS badge and screenshot guide */
+.os-badge {
+  display: inline-block; margin: 1.25rem 0 0; padding: 0.2rem 0.75rem;
+  border-radius: 999px; background: #e8f0fe; color: #174ea6; font-weight: 700; font-size: 0.9rem;
+}
+.os-note {
+  border: 1px solid #c58a00; background: #fff6e0; border-radius: var(--radius);
+  padding: 0.6rem 0.9rem; font-weight: 600;
+}
+.guide > li { margin: 0.6rem 0; }
+.shot { margin: 0.5rem 0 0.75rem; }
+.shot img {
+  display: block; max-width: 100%; height: auto; border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.shot figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; }
+
 /* AI explanations and next steps */
 .ai-notes ul, .next-steps ol { margin: 0; padding: 0; }
 .ai-notes ul { list-style: none; display: grid; gap: 0.6rem; }

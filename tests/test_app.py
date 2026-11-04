@@ -751,3 +751,13 @@ def test_explain_on_expired_case_returns_fragment_not_page():
     ).text
     assert "no longer in memory" in html
     assert "<html" not in html and "topbar" not in html
+
+
+def test_collect_says_windows_only_and_shows_screenshots():
+    page = client.get("/?lang=en").text
+    assert "For Windows 10 and 11 laptops" in page
+    assert 'id="os-note" hidden' in page
+    for name in ("ev-import", "ev-view", "ev-save"):
+        assert f"/static/img/guide/{name}.png" in page
+        assert client.get(f"/static/img/guide/{name}.png").status_code == 200
+    assert "Para portátiles con Windows 10 y 11" in client.get("/?lang=es").text
