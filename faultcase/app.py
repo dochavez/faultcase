@@ -395,6 +395,8 @@ async def explain(request: Request, case_id: str, lang: str = Form("en")):
                 cache[lang] = result
             except (RouterError, ValueError) as exc:
                 error = f"{t['err_explain']}: {exc}"
+    if lang in cache:
+        stored.setdefault("revealed", set()).add(lang)
     if not _is_htmx(request):
         return RedirectResponse(f"/case/{case_id}?lang={lang}", status_code=303)
     return templates.TemplateResponse(
@@ -501,8 +503,11 @@ MODEL_NAMES = {"meta": "Muse Spark", "baseten": "Muse Spark Open",
 
 def _explain_ctx(stored: dict, lang: str, **extra) -> dict:
     components = _components(stored["findings"])
+    # Shown only after the user clicks, even when it is already cached
+    # (the sample case ships it precomputed).
+    revealed = lang in stored.get("revealed", set())
     return dict(
-        explanation=(stored.get("explanations") or {}).get(lang),
+        explanation=(stored.get("explanations") or {}).get(lang) if revealed else None,
         status_by_component={c["id"]: c["status"] for c in components},
         **extra,
     )

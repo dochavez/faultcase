@@ -4,7 +4,7 @@ Usage: python scripts/screenshots.py
 
 Starts the app locally with uvicorn, drives it with Playwright through the
 precomputed demo case only (no model calls, no personal data) and writes:
-  docs/img/collect-en.png, diagnosis-en.png, action-en.png (and -es)
+  docs/img/collect-en.png, diagnosis-en.png, explain-en.png, action-en.png (and -es)
   docs/img/flow.gif (under 5 MB)
 
 Requires (dev tools only, not in requirements.txt):
@@ -44,6 +44,13 @@ def _capture_flow(page, lang, gif_frames):
     page.click("#demo-btn")
     page.wait_for_url("**/case/*")
     page.wait_for_selector("a.btn-big")
+    # The sample case ships a precomputed Muse explanation: clicking the
+    # button shows it without any model call.
+    if page.query_selector("#explain-btn"):
+        page.click("#explain-btn")
+        page.wait_for_selector(".ex-overview")
+        page.evaluate("document.querySelectorAll('.ex-glossary').forEach(d => d.open = true)")
+        page.locator("#explain").screenshot(path=str(IMG_DIR / f"explain-{lang}.png"))
     page.screenshot(path=str(IMG_DIR / f"diagnosis-{lang}.png"), full_page=True)
     if gif_frames is not None:
         gif_frames.append(page.screenshot())

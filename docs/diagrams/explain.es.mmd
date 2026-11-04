@@ -1,0 +1,17 @@
+sequenceDiagram
+    autonumber
+    participant U as Usuario (navegador)
+    participant A as FastAPI en Modal
+    participant C as Almacén de casos (memoria)
+    participant M as Muse Spark<br/>Meta Model API
+    U->>A: clic en "Explicar con Muse" (POST HTMX)
+    A->>C: ¿explicación guardada para este caso e idioma?
+    alt guardada (o caso de ejemplo)
+        C-->>A: explicación
+    else primer clic
+        A->>A: control de límite · anonimizar hallazgos
+        A->>M: explanation(veredicto, estados, patrones, incidentes)
+        M-->>A: resumen · significado + acción por componente · pasos · glosario
+        A->>C: guardar (desaparece tras 20 min sin uso)
+    end
+    A-->>U: reemplaza la sección de explicación (sin recargar)

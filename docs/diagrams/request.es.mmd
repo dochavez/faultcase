@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    participant U as Usuario (navegador)
+    participant A as FastAPI en Modal
+    participant R as router.py
+    participant O as Muse Spark Open<br/>Baseten ∥ Fireworks
+    participant M as Muse Spark<br/>Meta Model API
+    rect rgb(236, 254, 255)
+    Note over U,A: Recopilar
+    U->>A: POST /upload · .evtx (+ msinfo .txt, batería .html)
+    A->>A: leer → normalizar → anonimizar → reglas (sin IA)
+    Note right of A: 7.159 eventos → 877 contados<br/>6 incidentes · 15 patrones
+    end
+    rect rgb(245, 243, 255)
+    Note over A,O: Segunda opinión · ≈ 9,5k tokens cada una
+    A->>R: evidence_analysis(hallazgos anonimizados)
+    par mismo JSON a ambos proveedores
+        R->>O: Baseten
+    and
+        R->>O: Fireworks
+    end
+    O-->>R: veredicto + confianza (×2)
+    R-->>A: dos opiniones · ¿acuerdo? se mantiene : baja la confianza
+    end
+    rect rgb(238, 242, 255)
+    Note over A,M: Redacción del caso
+    A->>R: case_writing(análisis + equipo, sin serie)
+    R->>M: redactar caso EN/ES
+    M-->>R: caso JSON
+    R-->>A: validado contra case.schema.json
+    end
+    A-->>U: 303 → Diagnóstico (veredicto, tarjetas, gráfico)

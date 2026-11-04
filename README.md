@@ -8,7 +8,7 @@
 
 [Leer en español](README.es.md)
 
-**Pitch:** FaultCase turns repeated crashes on a Windows laptop into a warranty case ready to send to the manufacturer.
+**Pitch:** FaultCase turns repeated crashes on a Windows 10 or 11 computer (laptop or desktop) into a warranty case ready to send to the manufacturer.
 
 ![Full flow: Collect → Diagnosis → Action](docs/img/flow.gif)
 
@@ -29,7 +29,7 @@
 - [Run the tests](#run-the-tests)
 - [Configuration](#configuration)
 - [Roadmap](#roadmap)
-- [FAQ for judges](#faq-for-judges)
+- [FAQ](#faq)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 
@@ -99,81 +99,62 @@ Then open http://127.0.0.1:8000 and click **Try a sample case**.
 
 ## Screenshots
 
-Collect (step 1–4 guide, uploads, sample-case button):
+**Collect** — Windows 10/11 badge, step-by-step Event Viewer guide with screenshots, required/optional uploads, sample case:
 
 ![Collect screen](docs/img/collect-en.png)
 
-Diagnosis (verdict, timeline, fact/hypothesis findings, healthy components):
+**Diagnosis** — verdict card with the main problem, 8 component health cards, restarts-per-month chart, incident timeline, *Explain it with Muse*, technical details for the manufacturer's technician:
 
 ![Diagnosis screen](docs/img/diagnosis-en.png)
 
-Action (manufacturer report in English/Spanish, checklist, evidence ZIP, browser-only serial field):
+**Explain it with Muse** — on demand, Muse Spark turns the counted facts into plain words: what each finding means, what to do, next steps and a glossary:
+
+![Explain it with Muse](docs/img/explain-en.png)
+
+**Action** — what to do next (with the manufacturer's support link), EN/ES manufacturer report, checklist, evidence ZIP, serial number filled in the browser only:
 
 ![Action screen](docs/img/action-en.png)
 
-Spanish versions: [collect-es.png](docs/img/collect-es.png), [diagnosis-es.png](docs/img/diagnosis-es.png), [action-es.png](docs/img/action-es.png). Regenerate them any time with `python scripts/screenshots.py` (needs `pip install playwright pillow` plus `playwright install chromium`; demo data only, no model calls).
+Spanish versions: [collect-es.png](docs/img/collect-es.png), [diagnosis-es.png](docs/img/diagnosis-es.png), [explain-es.png](docs/img/explain-es.png), [action-es.png](docs/img/action-es.png). Regenerate them with `python scripts/screenshots.py` (dev tools: `pip install playwright pillow` and `playwright install chromium`; sample case only, no model calls).
 
 ## How it works
 
-Three screens (FastAPI + Jinja2 + HTMX, English/Spanish): **Collect** the evidence, read the **Diagnosis**, act on the **Action** screen.
+Three screens (FastAPI + Jinja2 + HTMX, English/Spanish): **Collect** the evidence, read the **Diagnosis**, act on the **Action** screen. Python does all counting; the Meta models only interpret and write.
 
-```mermaid
-flowchart LR
-    Browser --> Collect["Collect screen<br/>.evtx + msinfo upload, demo button"]
-    Collect --> Adapters["Windows adapters<br/>evtx, windbg, msinfo, wmi, cdb"]
-    Adapters --> Normalize["normalize.py<br/>evidence schema"]
-    Normalize --> Redact["redact.py<br/>strip personal data"]
-    Redact --> Rules["rules.py + playbooks<br/>incidents, patterns, summary"]
-    Rules --> Agent["agent.py<br/>analysis + case writing"]
-    Agent --> Router["router.py<br/>provider fallback"]
-    Router --> BF["Baseten + Fireworks<br/>Muse Spark Open: analysis"]
-    Router --> Meta["Meta Model API<br/>Muse Spark: case writing"]
-    BF --> Screens["Diagnosis + Action screens"]
-    Meta --> Screens
-```
+![FaultCase architecture](docs/img/diagrams/architecture-en.png)
 
-One request, end to end:
+What the deterministic core does before any model is called:
 
-```mermaid
-sequenceDiagram
-    participant U as Browser
-    participant A as FastAPI app
-    participant P as Parsers + rules
-    participant R as Model router
-    participant B as Baseten
-    participant F as Fireworks
-    participant M as Meta
-    U->>A: upload .evtx (+ msinfo)
-    A->>P: parse, redact, apply playbooks
-    P-->>A: redacted findings
-    A->>R: evidence_analysis request
-    R->>B: analyze (parallel)
-    R->>F: analyze (parallel)
-    B-->>R: verdict + confidence
-    F-->>R: verdict + confidence
-    R-->>A: reconciled analysis
-    A->>R: case_writing request
-    R->>M: write case
-    M-->>R: case JSON
-    R-->>A: validated case
-    A-->>U: Diagnosis + Action screens
-```
+- **Parse** every record with `python-evtx`, including the Windows event level (critical, error, warning, information).
+- **Normalize** against 8 playbooks (`playbooks/*.yaml`): stability, storage, hardware, temperature, Wi-Fi, USB, battery, software. Only stability events form incidents: event 41 and 6008 within 60 s, and a 1001 bug-check report within 15 min of its 41.
+- **Ignore known-benign noise** with explicit rules: virtual Hyper-V/software devices (`ROOT\`, `SWD\`), the WUDFRd framework driver, Intel Wi-Fi 6062, user- or system-initiated Wi-Fi disconnects, informational NTFS 98, corruption reported on Volume Shadow Copy snapshots, successful updates.
+- **Compute** patterns labeled `fact` or `hypothesis`, a status per component (problem, needs attention, no problems, no data) and an exact summary (incident count, dates, months, dumps, driver direction).
+- **Compact** the payload: per component, counts plus at most 20 representative redacted events, with a 30k-token hard cap.
+
+On the real anonymized export this turns 7,159 events into a ~9.5k-token request:
+
+![From a real export to one case](docs/img/diagrams/pipeline-en.png)
+
+One upload, end to end:
+
+![One request end to end](docs/img/diagrams/request-en.png)
 
 ## Models and providers
 
 | Role | Model | Provider |
 |---|---|---|
 | Technical evidence analysis | Muse Spark Open | Baseten and Fireworks in parallel (second opinion) |
-| Writing the case, explaining it to the user | Muse Spark (`muse-spark-1.1`) | Meta Model API |
+| Writing the EN/ES manufacturer case and user summary | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks as fallback) |
+| *Explain it with Muse*: plain-language walkthrough on demand | Muse Spark (`muse-spark-1.1`) | Meta Model API (Fireworks as fallback) |
 | Building this project | Muse Code | Terminal |
 
-Routes live in `config/providers.yaml`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`.
+Routes live in `config/providers.yaml`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`.
 
-- **Second opinion.** Both open-weights providers analyze the same redacted findings concurrently. Matching verdict enum + confidence is kept; a mismatch lowers confidence one level and adds a `hypothesis` finding. One failure continues with the other opinion. Toggle with `analysis_mode: second_opinion | single`.
+- **Second opinion.** Both open-weights providers analyze the same redacted findings concurrently. Matching verdict enum + confidence is kept; a mismatch lowers confidence one level and adds a `hypothesis` finding. One failure, or an answer more than 60 s after the first one (`second_opinion_wait_seconds`), continues with the surviving opinion. Toggle with `analysis_mode: second_opinion | single`.
 - **Prompt caching.** Every request puts static content first (system prompt, playbook rules, output keys) and case data last, so providers can reuse cached prefixes. Cached tokens are read from `usage.prompt_tokens_details` and logged in `logs/usage.jsonl`.
 - **Hedged requests.** If the primary provider is slower than `hedge_after_seconds` (default 25), the next provider starts and the first valid answer wins; a `hedge` line records the winner.
 - **Reasoning effort per role.** `medium` for both roles (omitted for Baseten analysis, whose constrained generation stalls with it); rejected parameters are retried once without and remembered for the session.
-- **Completion caps.** Per-role `max_tokens` (16384 analysis, 24576 writing, measured from the largest successful completions plus margin). `finish_reason == "length"` is logged as `truncated` and retried once.
+- **Completion caps.** Per-role `max_tokens` (16384 analysis, 24576 writing, 8192 explanation; analysis and writing measured from the largest successful completions plus margin). `finish_reason == "length"` is logged as `truncated` and retried once.
 
 ### Benchmark (measured 2026-11-02)
 
@@ -196,105 +177,52 @@ The real-case final verdict must be in `acceptable_verdicts` in `fixtures/real_c
 
 ## How Muse, Baseten and Fireworks work together
 
-Integration map (every name, role and setting below comes from `config/providers.yaml` and `faultcase/router.py`):
+![How Muse, Baseten and Fireworks work together](docs/img/diagrams/integration-en.png)
 
-```mermaid
-flowchart TB
-    Browser["Browser<br/>3 screens, EN/ES"]
-    App["FastAPI app (app.py)<br/>upload, demo, evidence ZIP"]
-    Redact["redact.py"]
-    Rules["rules.py + playbooks/*.yaml"]
-    Router["router.py<br/>routes, fallback, hedge"]
-    Meta[("Meta Model API<br/>api.meta.ai/v1<br/>Muse Spark · case_writing")]
-    Baseten[("Baseten<br/>inference.baseten.co/v1<br/>Muse Spark Open · evidence_analysis")]
-    Fireworks[("Fireworks<br/>api.fireworks.ai/inference/v1<br/>Muse Spark Open · evidence_analysis")]
-    Code["Muse Code (terminal agent)"]
-    Repo[("Repository<br/>dochavez/faultcase")]
-    Browser -- ".evtx + msinfo upload" --> App
-    App -- "raw events, dumps" --> Redact
-    Redact -- "redacted evidence" --> Rules
-    Rules -- "redacted findings" --> Router
-    Router -- "analysis request" --> Baseten
-    Router -- "analysis request" --> Fireworks
-    Baseten -- "JSON analysis" --> Router
-    Fireworks -- "JSON analysis" --> Router
-    Router -- "case request" --> Meta
-    Meta -- "case JSON" --> Router
-    Router -- "validated case" --> App
-    App -- "Diagnosis + Action" --> Browser
-    Code -- "commits" --> Repo
-    Repo -. "deploys (modal_app.py)" .-> App
-```
+*Explain it with Muse*, on demand and cached:
 
-One real request, step by step:
-
-```mermaid
-sequenceDiagram
-    participant U as Browser
-    participant A as FastAPI app
-    participant D as redact + rules
-    participant G as agent.py
-    participant R as router.py
-    participant B as Baseten
-    participant F as Fireworks
-    participant M as Meta (muse-spark-1.1)
-    U->>A: POST /upload (.evtx)
-    A->>D: parse, redact, apply playbooks
-    D-->>A: redacted findings
-    A->>G: build_case(findings)
-    G->>R: evidence_analysis (parallel)
-    R->>B: same findings JSON
-    R->>F: same findings JSON
-    B-->>R: enum verdict + confidence
-    F-->>R: enum verdict + confidence
-    R-->>G: two opinions
-    G->>G: agreement check (enum + confidence)
-    G->>R: case_writing (analysis + device)
-    R->>M: write manufacturer case
-    M-->>R: case JSON
-    R->>R: validate vs case.schema.json
-    R-->>G: validated case
-    G-->>A: case + metadata
-    A-->>U: redirect to Diagnosis
-```
+![Explain it with Muse sequence](docs/img/diagrams/explain-en.png)
 
 Resilience: what happens at each failure, and what the user sees:
 
-```mermaid
-flowchart TD
-    Req["model request"] --> Try["try provider (timeout 90s)"]
-    Try --> OK{"valid JSON?"}
-    OK -- yes --> Done["return answer<br/>user: sees Diagnosis"]
-    OK -- "invalid JSON, schema fail or truncated" --> Retry{"retry left? (max 1)"}
-    Retry -- yes --> Try
-    Retry -- no --> Next{"next provider in route?"}
-    Next -- "yes (fallback_used)" --> Fallback["try next provider<br/>user: waits, notices nothing"]
-    Fallback --> Try
-    Next -- no --> Err["RouterError<br/>user: error page, try again"]
-    Try -. "slower than hedge_after_seconds (25s)" .-> Hedge["start next provider too<br/>first valid answer wins<br/>user: waits less"]
-    Hedge --> Done
-    SO["second opinion:<br/>one provider fails"] --> Cont["continue with the surviving opinion<br/>user: notices nothing"]
-```
+![What happens when something fails](docs/img/diagrams/resilience-en.png)
+
+Diagram sources: `docs/diagrams/` (rebuild with `python docs/diagrams/build_diagrams.py` and `mmdc`).
 
 ## How it was built with Muse Code
 
 Every feature below is one reviewed commit built with Muse Code (terminal agent), from `git log`:
 
-| Date | Commit |
+| Commit | Feature |
 |---|---|
-| Oct 30 | Set up environment and package skeleton |
-| Oct 30 | Add Windows adapter: evtx and WinDbg parsers |
-| Nov 1 | Add normalization and redaction |
-| Nov 1 | Add rules engine and golden real-case test |
-| Nov 1 | Add model router with fallback |
-| Nov 1 | Add case-building agent |
-| Nov 1 | Add three-screen web app |
-| Nov 1 | Serve precomputed demo case |
-| Nov 1 | Add msinfo32 export parser |
-| Nov 1 | Add cross-provider second opinion for evidence analysis |
-| Nov 1 | Add provider benchmark and results |
-| Nov 1 | Compare second opinions on enum verdicts |
-| Nov 1 | Make Baseten analysis reliable |
+| [`bf8c73d`](https://github.com/dochavez/faultcase/commit/bf8c73d) | Set up environment and package skeleton |
+| [`a58ac1e`](https://github.com/dochavez/faultcase/commit/a58ac1e) | Add provider smoke test |
+| [`c8b765c`](https://github.com/dochavez/faultcase/commit/c8b765c) | Add Windows adapter: evtx and WinDbg parsers |
+| [`723de43`](https://github.com/dochavez/faultcase/commit/723de43) | Add normalization and redaction |
+| [`b673bbb`](https://github.com/dochavez/faultcase/commit/b673bbb) | Add rules engine and golden real-case test |
+| [`3ca3e26`](https://github.com/dochavez/faultcase/commit/3ca3e26) | Add model router with fallback |
+| [`e462f40`](https://github.com/dochavez/faultcase/commit/e462f40) | Add case-building agent |
+| [`3d3bbc2`](https://github.com/dochavez/faultcase/commit/3d3bbc2) | Add three-screen web app |
+| [`cf17104`](https://github.com/dochavez/faultcase/commit/cf17104) | Add Modal deployment |
+| [`99b012c`](https://github.com/dochavez/faultcase/commit/99b012c) | Add local minidump analysis |
+| [`13ba425`](https://github.com/dochavez/faultcase/commit/13ba425) | Serve precomputed demo case |
+| [`5392efa`](https://github.com/dochavez/faultcase/commit/5392efa) | Add msinfo32 export parser |
+| [`c3a3812`](https://github.com/dochavez/faultcase/commit/c3a3812) | Read device details locally with CIM queries |
+| [`ef0cb2e`](https://github.com/dochavez/faultcase/commit/ef0cb2e) | Add browser-only serial number field |
+| [`bc55cd8`](https://github.com/dochavez/faultcase/commit/bc55cd8) | Add cross-provider second opinion for evidence analysis |
+| [`1789446`](https://github.com/dochavez/faultcase/commit/1789446) | Order prompts for caching and log cached tokens |
+| [`15733e0`](https://github.com/dochavez/faultcase/commit/15733e0) | Add hedged requests |
+| [`dd19a0a`](https://github.com/dochavez/faultcase/commit/dd19a0a) | Configure reasoning effort per role |
+| [`aaf89fd`](https://github.com/dochavez/faultcase/commit/aaf89fd) | Add provider benchmark and results |
+| [`bc56b7e`](https://github.com/dochavez/faultcase/commit/bc56b7e) | Compare second opinions on enum verdicts |
+| [`289912f`](https://github.com/dochavez/faultcase/commit/289912f) | Cap completion length and detect truncation |
+| [`7c2a89c`](https://github.com/dochavez/faultcase/commit/7c2a89c) | Make Baseten analysis reliable |
+| [`eaf9b3f`](https://github.com/dochavez/faultcase/commit/eaf9b3f) | Add Wi-Fi playbook with verified event IDs |
+| [`870c344`](https://github.com/dochavez/faultcase/commit/870c344) | Add USB playbook with verified event IDs |
+| [`4381749`](https://github.com/dochavez/faultcase/commit/4381749) | Add battery playbook, parser and upload |
+| [`36acb22`](https://github.com/dochavez/faultcase/commit/36acb22) | Add component fixtures, benchmark cases and golden tests |
+| [`8152610`](https://github.com/dochavez/faultcase/commit/8152610) | Group diagnosis by component, report sections per component |
+| [`de72d48`](https://github.com/dochavez/faultcase/commit/de72d48) | On-demand explanation backend: `explain_case`, `prompts/explainer.md`, `explanation` route |
 
 The **golden-test rule** kept the agent honest: `fixtures/real_case/expected.json` defines the conclusions the system must reach, and it must never be edited to make tests pass (`tests/test_real_case.py` checks every field; the live test checks the verdict, confidence and forbidden claims).
 
@@ -319,10 +247,14 @@ Each guarantee is enforced by a test:
 | Web serial field never sends anything to the server | `test_serial_canary_never_reaches_server` |
 | Device uploads redacted before use | `test_build_device_redacts_personal_data` |
 | Evidence ZIP never contains raw `.evtx`/`.dmp` | `test_demo_flow_uses_precomputed_file` |
+| Models get counts plus ≤ 20 events per component, never the raw log (30k-token cap) | `test_twenty_thousand_events_fit_the_token_budget` |
+| *Explain it with Muse* receives only redacted findings | `test_explain_case_sends_only_redacted_findings` |
+| Known-benign events are never counted as faults | `test_known_benign_events_are_not_counted` |
+| Failure bucket IDs are stripped from manufacturer reports | `test_strip_bucket_ids_from_reports` |
 | Only parsed fields leave local dump analysis | `test_analyze_dump_returns_only_parsed_fields` |
 | Usage log never stores prompts or keys | `test_baseten_fails_fireworks_answers` |
 
-Plus: read-only (the product never modifies the user's system), uploads processed in memory or a temp folder and deleted right after, and API keys masked to their last 4 characters anywhere they are shown.
+Plus: read-only (the product never modifies the user's system), uploads processed in memory or a temp folder and deleted right after, cases kept in memory only (gone after 20 minutes idle), the Modal image ships only the filter file (never a personal `.evtx`), and API keys masked to their last 4 characters anywhere they are shown.
 
 ## Design decisions
 
@@ -335,11 +267,12 @@ Plus: read-only (the product never modifies the user's system), uploads processe
 
 ## Limitations
 
-- Windows evidence only today (`faultcase/adapters/` has just `windows/`; the layout is ready for Linux and macOS).
+- Windows 10 and 11 only (laptops and desktops). `faultcase/adapters/` has just `windows/`; Linux and macOS need their own adapters and playbooks, not just instructions. The app tells macOS/Linux visitors so.
 - An `.evtx` without memory dumps gives a weaker case (freezes without dumps are reported as such).
 - Wi-Fi and USB findings need an export made with the current filter (WLAN-AutoConfig and Kernel-PnP channels); older exports simply show those components as healthy.
 - Battery findings need the `powercfg /batteryreport` HTML (uploaded, or generated locally on Windows); without it the report says so.
 - The same failure bucket or hash means the same failure *category*; it does not prove the same defect as other machines (a live test asserts the text never claims that).
+- Cases live in memory: a restart or 20 idle minutes clears them (by design, for privacy).
 - Live model output varies between runs; the demo is precomputed so it is instant, free and stable.
 
 ## Project layout
@@ -354,34 +287,34 @@ faultcase/                 # Python package
   rules.py                 # playbooks → deterministic findings
   router.py                # providers with fallback, hedge, usage log
   demo.py / i18n.py        # precomputed demo, EN/ES strings
-templates/ static/         # Jinja2 pages, CSS
+templates/ static/         # Jinja2 pages, CSS, Event Viewer guide screenshots
 config/                    # providers.yaml (routes, roles, prices)
 filters/ playbooks/        # device-diagnostics.xml; disk/hardware/software/stability/thermal/wifi/usb/battery
-prompts/ schemas/          # evidence_analysis.md, case_writer.md; evidence/case schemas
+prompts/ schemas/          # evidence_analysis.md, case_writer.md, explainer.md; evidence/case schemas
 fixtures/                  # real_case/, synthetic/, msinfo/
 scripts/                   # smoke_test.py, build_demo_case.py, benchmark.py, screenshots.py
 tests/                     # pytest suite (live tests need keys)
-docs/                      # benchmark.md/.json, img/
+docs/                      # benchmark.md/.json, img/, diagrams/ (sources)
 modal_app.py               # Modal deployment
 ```
 
 ## Run the tests
 
 ```bash
-pytest            # full suite: 155 tests, no network and no API keys needed
+pytest            # full suite, no network and no API keys needed
 pytest -m live    # builds the real case with real models (needs API keys in .env)
 ```
 
 ## Configuration
 
-`.env` (see `.env.example`): `META_API_KEY`, `BASETEN_API_KEY`, `FIREWORKS_API_KEY`, `BASETEN_MODEL` (defaults to `meta-models/muse-spark-open-1026`), `INVITE_CODE` (required for uploads and live demo regeneration; the demo itself needs none).
+`.env` (see `.env.example`): `META_API_KEY`, `BASETEN_API_KEY`, `FIREWORKS_API_KEY`, `BASETEN_MODEL` (defaults to `meta-models/muse-spark-open-1026`), `INVITE_CODE` (optional: when set, uploads and live demo regeneration ask for it; when empty the field is hidden and live analyses are limited by `UPLOADS_PER_HOUR`, default 6 per visitor, and `UPLOADS_PER_DAY`, default 60).
 
 <details>
 <summary><code>config/providers.yaml</code> reference</summary>
 
 - `providers.*`: `base_url`, `api_key_env`, `model`/`model_env`, example `price_per_1k_*` prices.
-- `routes`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`.
-- `roles.*`: `analysis_mode` (`second_opinion` for analysis, `single` for writing), `reasoning_effort` (`medium`, omitted for Baseten analysis), `max_tokens` (16384/24576).
+- `routes`: `evidence_analysis: [baseten, fireworks]`, `case_writing: [meta, fireworks]`, `explanation: [meta, fireworks]`.
+- `roles.*`: `analysis_mode` (`second_opinion` for analysis, `single` for writing), `reasoning_effort` (`medium`, omitted for Baseten analysis), `max_tokens` (16384/24576/8192), `second_opinion_wait_seconds: 60`.
 - `settings`: `timeout_seconds: 90`, `max_retries_per_provider: 1`, `hedge_after_seconds: 25`, `log_usage: true`.
 
 </details>
@@ -392,7 +325,7 @@ pytest -m live    # builds the real case with real models (needs API keys in .en
 - Linux and macOS adapters.
 - Larger benchmark runs across more synthetic cases.
 
-## FAQ for judges
+## FAQ
 
 **Do I need API keys?**
 No for the demo (`/demo` serves a precomputed case). Yes in `.env` for new diagnoses and `pytest -m live`.
@@ -404,7 +337,10 @@ Only redacted findings: counts, codes, dates, driver names. Memory dumps never l
 Baseten and Fireworks independently analyze the same evidence; agreement keeps confidence, disagreement lowers it and says so. The benchmark measures both (currently 71% agreement, 15/21).
 
 **Windows only?**
-Evidence collection is Windows (`.evtx`, WinDbg, msinfo32, CIM, `powercfg`), but `.evtx` parsing runs anywhere — the server and CI run on Linux too.
+Yes: Windows 10 and 11 computers, laptops and desktops (the battery report applies to laptops only). The evidence is Windows-specific (`.evtx`, WinDbg, msinfo32, CIM, `powercfg`), but parsing runs anywhere — the server on Modal and CI run on Linux. Linux and macOS are on the roadmap as separate adapters.
+
+**What does "Explain it with Muse" do?**
+On request, Muse Spark reads the counted facts (never the raw log) and explains them in plain words: what each finding means, what to do, the next steps and a glossary for the technical details. It runs once per case and language and is cached; the sample case ships it precomputed.
 
 **Who sends the report to the manufacturer?**
 You do. FaultCase prepares the evidence package and the bilingual draft; it takes no action on your behalf.

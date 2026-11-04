@@ -1,0 +1,17 @@
+sequenceDiagram
+    autonumber
+    participant U as User (browser)
+    participant A as FastAPI on Modal
+    participant C as Case store (memory)
+    participant M as Muse Spark<br/>Meta Model API
+    U->>A: click "Explain it with Muse" (HTMX POST)
+    A->>C: cached explanation for this case + language?
+    alt cached (or the sample case)
+        C-->>A: explanation
+    else first click
+        A->>A: rate-limit check · redact findings
+        A->>M: explanation(verdict, statuses, patterns, incidents)
+        M-->>A: overview · per-component meaning + action · steps · glossary
+        A->>C: store (gone after 20 min idle)
+    end
+    A-->>U: swaps the explain section in place (no page reload)

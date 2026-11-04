@@ -761,3 +761,15 @@ def test_collect_says_windows_only_and_shows_screenshots():
         assert f"/static/img/guide/{name}.png" in page
         assert client.get(f"/static/img/guide/{name}.png").status_code == 200
     assert "Para equipos con Windows 10 y 11" in client.get("/?lang=es").text
+
+
+
+def test_sample_explanation_waits_for_the_click():
+    case_id, target = _demo_case_id()
+    app_module.CASES[case_id]["explanations"] = {
+        "en": {"explanation": EXPLANATION, "provider": "meta", "model": "Muse Spark"}}
+    assert 'id="explain-btn"' in client.get(target).text
+    html = client.post(f"/case/{case_id}/explain", data={"lang": "en"},
+                       headers={"HX-Request": "true"}).text
+    assert "Plain overview." in html
+    assert "Plain overview." in client.get(target).text
