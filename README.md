@@ -8,7 +8,9 @@
 
 [Leer en español](README.es.md)
 
-**Pitch:** FaultCase turns repeated crashes on a Windows 10 or 11 computer (laptop or desktop) into a warranty case ready to send to the manufacturer.
+**FaultCase is a free web tool that reads the error history Windows already keeps, tells you in plain words what is failing on your computer and why, helps you try the safe fixes first, and, if the problem is still there, prepares the evidence and the report your manufacturer's support needs.**
+
+Nothing to install: you export one file from Windows, upload it, and get the answer in about a minute.
 
 > **Works with any brand.** FaultCase reads what Windows 10 and 11 already log, so it works on any laptop or desktop: Lenovo, HP, Dell, ASUS, Acer, MSI, Microsoft Surface, Samsung or a custom-built PC. The real case behind this project happens to be two Lenovo computers, but nothing in the analysis depends on the brand; the manufacturer only changes the support link on the Action screen.
 
@@ -16,6 +18,7 @@
 
 ## Table of contents
 
+- [What FaultCase is (and is not)](#what-faultcase-is-and-is-not)
 - [One night vs one minute](#one-night-vs-one-minute)
 - [Inspiration](#inspiration)
 - [Why Muse helps](#why-muse-helps)
@@ -36,6 +39,38 @@
 - [Disclaimer](#disclaimer)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
+
+## What FaultCase is (and is not)
+
+| FaultCase **is** | FaultCase **is not** |
+|---|---|
+| A **diagnosis** of the failures Windows has already recorded: blue screens, freezes, sudden shutdowns, disk, Wi-Fi, USB, battery and app errors | An **antivirus** or security scanner |
+| A **one-time check** you run when something keeps failing | A **monitoring** program running in the background |
+| A **website**: you upload one exported file, nothing is installed | An app or driver installed on your computer (a local mode exists only for advanced users) |
+| A **guide to fix it**: plain-language explanation plus an ordered plan of safe fixes, with buttons that open the right Windows setting | A **repair tool** that changes your computer by itself (the analysis is read-only; nothing changes without your confirmation) |
+| A **case builder**: a professional report for the manufacturer in English and Spanish, with every incident, code and step already tried | A replacement for the manufacturer's support, a technician or a warranty decision |
+
+### Why not just send a screenshot of the blue screen?
+
+| | A phone photo or screenshot | FaultCase |
+|---|---|---|
+| How many failures it shows | One moment | Every recorded incident, with dates (e.g. 6 crashes in 6 months) |
+| Pattern | None | Same module across crashes, persists across driver versions, happens after sleep, shuts down without power |
+| Other components | Not visible | 8 components checked: stability, storage, hardware, temperature, Wi-Fi, USB, battery, software |
+| What it means | The user has to guess | Explained in plain words, each finding labeled fact or hypothesis |
+| What support asks next | Driver? BIOS? Model? Serial? How often? | Model, BIOS, driver versions, full timeline and steps already taken, in one report |
+| Result | Often "update your drivers and try again" | A case support can act on, or a fix you can do yourself first |
+
+### What it adds to the tools that come with the computer
+
+Windows and manufacturers already include useful tools, and FaultCase works **with** them, not against them:
+
+| Built-in tool | What it does well | What FaultCase adds |
+|---|---|---|
+| **Event Viewer** / **Reliability Monitor** (Windows) | Record every error | Turns thousands of technical entries into a few counted findings, filters known harmless noise and explains what matters |
+| **Manufacturer apps** (Lenovo Vantage, HP Support Assistant, Dell SupportAssist…) | Update drivers and BIOS, run hardware scans for that brand | Looks at the history across all components, works for any brand, and writes the evidence report; its fix plan points you back to these apps when they are the right step |
+| **WinDbg** (Microsoft debugger) | Analyzes memory dumps in depth | Gives the same conclusion without expert knowledge, and links each dump to the incident it belongs to |
+| **Windows Get Help / troubleshooters** | Generic fixes for common problems | A plan based on *your* recorded failures, and an honest verdict when a warranty repair is the likely outcome |
 
 ## One night vs one minute
 

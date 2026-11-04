@@ -8,7 +8,9 @@
 
 [Read in English](README.md)
 
-**Idea en una línea:** FaultCase convierte los fallos repetidos de un equipo con Windows 10 u 11 (portátil o de escritorio) en un caso de garantía listo para enviar al fabricante.
+**FaultCase es una herramienta web gratuita que lee el historial de errores que Windows ya guarda, te explica en palabras sencillas qué está fallando en tu computadora y por qué, te ayuda a probar primero las soluciones seguras y, si el problema sigue, prepara la evidencia y el informe que necesita el soporte del fabricante.**
+
+No hay que instalar nada: exportas un archivo de Windows, lo subes y obtienes la respuesta en alrededor de un minuto.
 
 > **Funciona con cualquier marca.** FaultCase lee lo que Windows 10 y 11 ya registran, así que funciona en cualquier portátil o equipo de escritorio: Lenovo, HP, Dell, ASUS, Acer, MSI, Microsoft Surface, Samsung o un PC armado. El caso real de este proyecto son dos equipos Lenovo, pero nada del análisis depende de la marca; el fabricante solo cambia el enlace de soporte en la pantalla de Acción.
 
@@ -16,6 +18,7 @@
 
 ## Índice
 
+- [Qué es FaultCase (y qué no es)](#qué-es-faultcase-y-qué-no-es)
 - [Una noche frente a un minuto](#una-noche-frente-a-un-minuto)
 - [Inspiración](#inspiración)
 - [Por qué ayuda Muse](#por-qué-ayuda-muse)
@@ -36,6 +39,38 @@
 - [Aviso](#aviso)
 - [Licencia](#licencia)
 - [Agradecimientos](#agradecimientos)
+
+## Qué es FaultCase (y qué no es)
+
+| FaultCase **es** | FaultCase **no es** |
+|---|---|
+| Un **diagnóstico** de los fallos que Windows ya registró: pantallazos azules, congelamientos, apagados repentinos, disco, Wi-Fi, USB, batería y errores de aplicaciones | Un **antivirus** ni un analizador de seguridad |
+| Una **revisión puntual** que haces cuando algo falla una y otra vez | Un programa de **monitoreo** que corre en segundo plano |
+| Un **sitio web**: subes un archivo exportado, no se instala nada | Una aplicación o controlador instalado en tu equipo (existe un modo local solo para usuarios avanzados) |
+| Una **guía para solucionarlo**: explicación sencilla y un plan ordenado de soluciones seguras, con botones que abren el ajuste correcto de Windows | Una **herramienta de reparación** que cambia tu equipo por su cuenta (el análisis es de solo lectura; nada cambia sin tu confirmación) |
+| Un **generador del caso**: un informe profesional para el fabricante en inglés y español, con cada incidente, código y paso ya intentado | Un sustituto del soporte del fabricante, de un técnico ni de la decisión de garantía |
+
+### ¿Por qué no mandar simplemente una foto del pantallazo azul?
+
+| | Una foto o captura de pantalla | FaultCase |
+|---|---|---|
+| Cuántos fallos muestra | Un solo momento | Cada incidente registrado, con fechas (por ejemplo, 6 fallos en 6 meses) |
+| Patrón | Ninguno | El mismo módulo en varios fallos, persiste con distintas versiones del controlador, ocurre al despertar, se apaga sin energía |
+| Otros componentes | No se ven | 8 componentes revisados: estabilidad, almacenamiento, hardware, temperatura, Wi-Fi, USB, batería y software |
+| Qué significa | El usuario tiene que adivinar | Explicado en palabras sencillas, cada hallazgo etiquetado como hecho o hipótesis |
+| Lo que soporte pide después | ¿Controlador? ¿BIOS? ¿Modelo? ¿Serie? ¿Cada cuánto? | Modelo, BIOS, versiones del controlador, línea de tiempo completa y pasos ya realizados, en un solo informe |
+| Resultado | A menudo "actualice los controladores y vuelva a intentarlo" | Un caso con el que soporte puede actuar, o un arreglo que puedes hacer tú primero |
+
+### Qué aporta frente a las herramientas que trae la computadora
+
+Windows y los fabricantes ya incluyen herramientas útiles, y FaultCase trabaja **con** ellas, no contra ellas:
+
+| Herramienta incluida | Lo que hace bien | Lo que agrega FaultCase |
+|---|---|---|
+| **Visor de eventos** / **Monitor de confiabilidad** (Windows) | Registran cada error | Convierte miles de entradas técnicas en pocos hallazgos contados, filtra el ruido inofensivo conocido y explica lo importante |
+| **Apps del fabricante** (Lenovo Vantage, HP Support Assistant, Dell SupportAssist…) | Actualizan controladores y BIOS y hacen pruebas de hardware de esa marca | Revisa el historial de todos los componentes, funciona con cualquier marca y redacta el informe de evidencia; su plan te remite a esas apps cuando son el paso correcto |
+| **WinDbg** (depurador de Microsoft) | Analiza a fondo los volcados de memoria | Llega a la misma conclusión sin conocimientos expertos y vincula cada volcado con su incidente |
+| **Obtener ayuda / solucionadores de Windows** | Arreglos genéricos para problemas comunes | Un plan basado en *tus* fallos registrados y un veredicto honesto cuando lo probable es una reparación en garantía |
 
 ## Una noche frente a un minuto
 
