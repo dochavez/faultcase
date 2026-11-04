@@ -301,7 +301,8 @@ fixtures/                  # real_case/, synthetic/, msinfo/
 scripts/                   # smoke_test.py, build_demo_case.py, benchmark.py, screenshots.py
 tests/                     # suite pytest (las pruebas en vivo necesitan claves)
 docs/                      # benchmark.md/.json, img/, diagrams/ (fuentes)
-modal_app.py               # despliegue en Modal
+modal_app.py               # despliegue en Modal (principal)
+render.yaml                # Blueprint de Render (despliegue de respaldo)
 ```
 
 ## Ejecutar las pruebas

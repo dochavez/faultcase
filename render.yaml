@@ -1,0 +1,22 @@
+# Render Blueprint: backup deployment of FaultCase (the primary one runs on Modal).
+# Render builds from the GitHub repository, so private files (.env, *.evtx,
+# evidence/) never reach it: they are gitignored.
+services:
+  - type: web
+    name: faultcase
+    runtime: python
+    plan: free            # free instances sleep after ~15 min idle; first visit wakes them
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn faultcase.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: META_API_KEY
+        sync: false
+      - key: BASETEN_API_KEY
+        sync: false
+      - key: FIREWORKS_API_KEY
+        sync: false
+      - key: BASETEN_MODEL
+        value: meta-models/muse-spark-open-1026
