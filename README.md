@@ -10,12 +10,15 @@
 
 **Pitch:** FaultCase turns repeated crashes on a Windows 10 or 11 computer (laptop or desktop) into a warranty case ready to send to the manufacturer.
 
+> **Works with any brand.** FaultCase reads what Windows 10 and 11 already log, so it works on any laptop or desktop: Lenovo, HP, Dell, ASUS, Acer, MSI, Microsoft Surface, Samsung or a custom-built PC. The real case behind this project happens to be two Lenovo computers, but nothing in the analysis depends on the brand; the manufacturer only changes the support link on the Action screen.
+
 ![Full flow: Collect → Diagnosis → Action](docs/img/flow.gif)
 
 ## Table of contents
 
 - [One night vs one minute](#one-night-vs-one-minute)
-- [The problem](#the-problem)
+- [Inspiration](#inspiration)
+- [Why Muse helps](#why-muse-helps)
 - [Try it in 1 minute](#try-it-in-1-minute)
 - [Screenshots](#screenshots)
 - [How it works](#how-it-works)
@@ -30,6 +33,7 @@
 - [Configuration](#configuration)
 - [Roadmap](#roadmap)
 - [FAQ](#faq)
+- [Disclaimer](#disclaimer)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 
@@ -46,11 +50,32 @@ Reaching the demo conclusion by hand took a full night. FaultCase does the same 
 | Look up the exact laptop model and BIOS | msinfo32 export or local CIM reading |
 | Write the manufacturer report in two languages | Muse Spark case writer, EN + ES |
 
-## The problem
+## Inspiration
 
-When a new laptop keeps rebooting on its own, the problem falls between three companies: Microsoft owns the OS, NVIDIA owns the driver, Lenovo owns the warranty. Each one sees only its own piece. The user ends up with blurry phone photos of a blue screen and a support team asking for data they don't know where to find.
+These are the real screens that started FaultCase, photographed with a phone because that is all a user usually has when a computer fails:
 
-This project was born from a real case: a Lenovo Legion Pro 7 16IAX10H (machine type 83F5, NVIDIA GPU, bought in January 2026) with 6 incidents in 6 months (2026-04-22 to 2026-10-23). Four crashes left memory dumps, all blaming `nvlddmkm.sys` across two driver builds (2026-03-04 and 2026-02-14); two more freezes left no dump at all. That real anonymized case ships as the one-click demo.
+| Blue screen: the stop code | Blue screen: the parameters | A second computer |
+|---|---|---|
+| ![VIDEO_TDR_FAILURE (0x116), what failed: nvlddmkm.sys](docs/img/inspiration/video-tdr-failure.jpg) | ![Bug check parameters, the third one 0xFFFFFFFFC000009A](docs/img/inspiration/bugcheck-parameters.jpg) | ![Microsoft Visual C++ Runtime Library: Assertion failed](docs/img/inspiration/second-lenovo-app-crash.jpg) |
+| `VIDEO_TDR_FAILURE (0x116)`, what failed: `nvlddmkm.sys`, the NVIDIA display driver. | The four bug check parameters. The third, `0xFFFFFFFFC000009A`, is `STATUS_INSUFFICIENT_RESOURCES`. | An application crash ("Assertion failed") on a second Lenovo computer I own. |
+
+When a new laptop keeps rebooting on its own, the problem falls between three companies: Microsoft owns the OS, NVIDIA owns the driver, the laptop maker owns the warranty. Each one sees only its own piece. The user ends up with blurry phone photos like these and a support team asking for data they don't know where to find.
+
+The main case: a Lenovo Legion Pro 7 16IAX10H (machine type 83F5, NVIDIA GPU, bought in January 2026) with 6 incidents in 6 months (2026-04-22 to 2026-10-23). Four crashes left memory dumps, all blaming `nvlddmkm.sys` across two driver builds (2026-03-04 and 2026-02-14); two more freezes left no dump at all. That real anonymized case ships as the one-click demo.
+
+## Why Muse helps
+
+The computer is the device most people use every day for work and study, so when it fails the cost is real: lost hours, lost files and a support process few people know how to navigate. Event Viewer already holds the evidence, but it is written for engineers. Muse turns it into decisions:
+
+| Benefit | How Muse delivers it | What the user gains |
+|---|---|---|
+| **Understand** | *Explain it with Muse* turns the counted facts into plain words, per component, with a glossary of the technical terms | Knows what is wrong without reading error codes |
+| **Decide** | *Try to fix it first* builds a plan only from safe fixes and says honestly when a warranty repair is the likely outcome | Doesn't waste days on fixes that cannot work, and doesn't send a computer for repair when a driver update would do |
+| **Act** | Muse Spark writes a professional manufacturer report in English and Spanish, with every incident, code, driver and step already tried | One message support can act on, instead of a long back-and-forth or an anonymous forum thread |
+| **Trust** | Two independent Muse Spark Open analyses (Baseten and Fireworks) must agree; every finding is labeled fact or hypothesis; Python, not the model, does the counting | Confidence that is earned, never invented numbers |
+| **Speed** | The whole pipeline runs from one upload | About a minute instead of a night with Event Viewer and WinDbg |
+| **Privacy** | Personal data is removed before any model call, memory dumps never leave the computer, cases live only in memory | Gets AI help without handing over personal data |
+| **Low cost** | Compact, redacted payload (about 9.5k tokens per analysis) and cached prompts | The full benchmark of 21 runs cost about $1.92, roughly 9 cents a case |
 
 ## Try it in 1 minute
 
@@ -355,6 +380,16 @@ On request, Muse Spark reads the counted facts (never the raw log) and explains 
 
 **Who sends the report to the manufacturer?**
 You do. FaultCase prepares the evidence package and the bilingual draft; it takes no action on your behalf.
+
+## Disclaimer
+
+FaultCase was created for demonstration purposes. Its goal is to show how Muse can be a useful tool to help people detect, understand and resolve problems with the computer they use every day, because that device has to stay in the best possible working condition.
+
+- It is not affiliated with or endorsed by Microsoft, NVIDIA, Lenovo or any other manufacturer.
+- It does not replace the manufacturer's official support, a technician or a warranty assessment. A verdict is "likely", never a confirmed defect.
+- Every finding is labeled fact or hypothesis and the counts come from deterministic rules; the user reviews the report before sending it.
+- It is read-only: it never changes the computer. Every fix is performed by the user, who decides whether to apply it.
+- It gives no legal advice. The user decides whether and how to contact the manufacturer.
 
 ## License
 

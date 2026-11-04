@@ -10,12 +10,15 @@
 
 **Idea en una línea:** FaultCase convierte los fallos repetidos de un equipo con Windows 10 u 11 (portátil o de escritorio) en un caso de garantía listo para enviar al fabricante.
 
+> **Funciona con cualquier marca.** FaultCase lee lo que Windows 10 y 11 ya registran, así que funciona en cualquier portátil o equipo de escritorio: Lenovo, HP, Dell, ASUS, Acer, MSI, Microsoft Surface, Samsung o un PC armado. El caso real de este proyecto son dos equipos Lenovo, pero nada del análisis depende de la marca; el fabricante solo cambia el enlace de soporte en la pantalla de Acción.
+
 ![Flujo completo: recopilación → diagnóstico → acción](docs/img/flow.gif)
 
 ## Índice
 
 - [Una noche frente a un minuto](#una-noche-frente-a-un-minuto)
-- [El problema](#el-problema)
+- [Inspiración](#inspiración)
+- [Por qué ayuda Muse](#por-qué-ayuda-muse)
 - [Pruébalo en 1 minuto](#pruébalo-en-1-minuto)
 - [Capturas de pantalla](#capturas-de-pantalla)
 - [Cómo funciona](#cómo-funciona)
@@ -30,6 +33,7 @@
 - [Configuración](#configuración)
 - [Hoja de ruta](#hoja-de-ruta)
 - [Preguntas frecuentes](#preguntas-frecuentes)
+- [Aviso](#aviso)
 - [Licencia](#licencia)
 - [Agradecimientos](#agradecimientos)
 
@@ -46,11 +50,32 @@ Llegar a la conclusión del caso de demostración a mano tomó una noche entera.
 | Averiguar el modelo exacto de la laptop y la BIOS | Exportación de msinfo32 o lectura CIM local |
 | Redactar el informe para el fabricante en dos idiomas | Redactor de casos con Muse Spark, EN + ES |
 
-## El problema
+## Inspiración
+
+Estas son las pantallas reales que dieron origen a FaultCase, fotografiadas con el celular porque eso es todo lo que suele tener un usuario cuando su equipo falla:
+
+| Pantallazo azul: el código de error | Pantallazo azul: los parámetros | Un segundo equipo |
+|---|---|---|
+| ![VIDEO_TDR_FAILURE (0x116), qué falló: nvlddmkm.sys](docs/img/inspiration/video-tdr-failure.jpg) | ![Parámetros del bug check, el tercero 0xFFFFFFFFC000009A](docs/img/inspiration/bugcheck-parameters.jpg) | ![Microsoft Visual C++ Runtime Library: Assertion failed](docs/img/inspiration/second-lenovo-app-crash.jpg) |
+| `VIDEO_TDR_FAILURE (0x116)`, qué falló: `nvlddmkm.sys`, el controlador de pantalla de NVIDIA. | Los cuatro parámetros del bug check. El tercero, `0xFFFFFFFFC000009A`, es `STATUS_INSUFFICIENT_RESOURCES`. | El cierre de una aplicación ("Assertion failed") en un segundo equipo Lenovo que tengo. |
 
 Cuando una laptop nueva se reinicia sola una y otra vez, el problema cae entre tres empresas: Microsoft es dueña del sistema operativo, NVIDIA del controlador y Lenovo de la garantía. Cada una solo ve su propia parte. El usuario termina con fotos borrosas de un pantallazo azul y un equipo de soporte que le pide datos que no sabe dónde encontrar.
 
 Este proyecto nació de un caso real: una Lenovo Legion Pro 7 16IAX10H (tipo de máquina 83F5, GPU NVIDIA, comprada en enero de 2026) con 6 incidentes en 6 meses (del 2026-04-22 al 2026-10-23). Cuatro fallos dejaron volcados de memoria, todos culpando a `nvlddmkm.sys` en dos compilaciones distintas del controlador (2026-03-04 y 2026-02-14); otros dos congelamientos no dejaron ningún volcado. Ese caso real anonimizado se incluye como la demostración de un clic.
+
+## Por qué ayuda Muse
+
+La computadora es el equipo que la mayoría usa todos los días para trabajar y estudiar, así que cuando falla el costo es real: horas perdidas, archivos en riesgo y un proceso de soporte que pocos saben recorrer. El Visor de eventos ya guarda la evidencia, pero está escrito para ingenieros. Muse la convierte en decisiones:
+
+| Beneficio | Cómo lo logra Muse | Qué gana el usuario |
+|---|---|---|
+| **Entender** | *Explicar con Muse* convierte los hechos contados en palabras sencillas, por componente, con un glosario de los términos técnicos | Sabe qué pasa sin leer códigos de error |
+| **Decidir** | *Intentar solucionarlo primero* arma un plan solo con soluciones seguras y dice con honestidad cuándo lo probable es la garantía | No pierde días con arreglos que no pueden funcionar, ni manda a reparar un equipo cuando bastaba actualizar un controlador |
+| **Actuar** | Muse Spark redacta un informe profesional para el fabricante en inglés y español, con cada incidente, código, controlador y paso ya intentado | Un solo mensaje con el que soporte puede actuar, en vez de idas y vueltas o un hilo anónimo en un foro |
+| **Confiar** | Dos análisis independientes de Muse Spark Open (Baseten y Fireworks) deben coincidir; cada hallazgo se etiqueta como hecho o hipótesis; los conteos los hace Python, no el modelo | Una confianza ganada, nunca números inventados |
+| **Rapidez** | Todo el proceso sale de una sola subida | Alrededor de un minuto en vez de una noche con el Visor de eventos y WinDbg |
+| **Privacidad** | Los datos personales se eliminan antes de llamar a un modelo, los volcados de memoria nunca salen del equipo y los casos solo viven en memoria | Recibe ayuda de IA sin entregar datos personales |
+| **Bajo costo** | Carga compacta y anonimizada (unos 9,5k tokens por análisis) y prompts en caché | El benchmark completo de 21 ejecuciones costó unos 1,92 USD, unos 9 centavos por caso |
 
 ## Pruébalo en 1 minuto
 
@@ -355,6 +380,16 @@ A petición, Muse Spark lee los hechos contados (nunca el registro crudo) y los 
 
 **¿Quién envía el informe al fabricante?**
 Tú. FaultCase prepara el paquete de evidencias y el borrador bilingüe; no actúa en tu nombre.
+
+## Aviso
+
+FaultCase se creó con fines demostrativos. Su objetivo es mostrar cómo Muse puede ser una herramienta útil que ayude a las personas a detectar, comprender y resolver incidencias con el equipo que usan a diario, ya que ese dispositivo debe mantenerse en las mejores condiciones de funcionamiento.
+
+- No está afiliado ni respaldado por Microsoft, NVIDIA, Lenovo ni ningún otro fabricante.
+- No sustituye al soporte oficial del fabricante, a un técnico ni a la evaluación de garantía. Un veredicto es "probable", nunca un defecto confirmado.
+- Cada hallazgo se etiqueta como hecho o hipótesis y los conteos salen de reglas deterministas; el usuario revisa el informe antes de enviarlo.
+- Es de solo lectura: nunca modifica el equipo. Cada arreglo lo hace el usuario, que decide si aplicarlo.
+- No da asesoría legal. El usuario decide si contacta al fabricante y cómo.
 
 ## Licencia
 
