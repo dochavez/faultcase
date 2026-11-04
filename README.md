@@ -67,7 +67,11 @@ The same two computers, diagnosed by FaultCase on the live demo:
 
 ![The two real computers diagnosed by FaultCase](docs/img/inspiration/two-computers-diagnosed.jpg)
 
-*Left: the second computer, "Instability, unclear cause": 40 unexpected shutdowns, most of them without a crash code, plus Wi-Fi driver errors. Right: the main computer, "Likely hardware fault": 6 crashes in 6 months linked to the NVIDIA display driver. Same tool, two different conclusions, each with its own evidence.*
+| ⬅️ Computer on the left | Computer on the right ➡️ |
+|---|---|
+| The **second computer**. Verdict: **"Instability, unclear cause"**. 40 unexpected shutdowns in 15 months, most of them without a crash code (24 of 39 followed by at least an hour powered off, possibly power loss), plus Wi-Fi driver errors. | The **main computer**. Verdict: **"Likely hardware fault"**. 6 crashes in 6 months; the 4 memory dumps all point to the NVIDIA display driver (`nvlddmkm.sys`), across two driver versions. |
+
+Same tool, two different conclusions, each backed by its own evidence.
 
 ## Why Muse helps
 

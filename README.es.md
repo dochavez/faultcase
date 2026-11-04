@@ -67,7 +67,11 @@ Los mismos dos equipos, diagnosticados por FaultCase en la demo en vivo:
 
 ![Los dos equipos reales diagnosticados por FaultCase](docs/img/inspiration/two-computers-diagnosed.jpg)
 
-*Izquierda: el segundo equipo, "Inestabilidad de causa incierta": 40 apagados inesperados, la mayoría sin código de error, más errores del controlador Wi-Fi. Derecha: el equipo principal, "Probable fallo de hardware": 6 fallos en 6 meses relacionados con el controlador de pantalla de NVIDIA. La misma herramienta, dos conclusiones distintas, cada una con su evidencia.*
+| ⬅️ Computadora de la izquierda | Computadora de la derecha ➡️ |
+|---|---|
+| El **segundo equipo**. Veredicto: **"Inestabilidad de causa incierta"**. 40 apagados inesperados en 15 meses, la mayoría sin código de error (24 de 39 seguidos de al menos una hora apagado, posiblemente por pérdida de energía), más errores del controlador Wi-Fi. | El **equipo principal**. Veredicto: **"Probable fallo de hardware"**. 6 fallos en 6 meses; los 4 volcados de memoria apuntan al controlador de pantalla de NVIDIA (`nvlddmkm.sys`), en dos versiones distintas del controlador. |
+
+La misma herramienta, dos conclusiones distintas, cada una respaldada por su propia evidencia.
 
 ## Por qué ayuda Muse
 
